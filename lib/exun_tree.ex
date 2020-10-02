@@ -19,7 +19,7 @@ defmodule Exun.Tree do
   end
 
   def single_expand({:vari, var}, context) do
-    in_context = Map.get(context, var, nil)
+    in_context = Map.get(context, var)
 
     if in_context != nil do
       with {:ok, toks, _} <- :exun_lex.string(in_context |> to_string() |> String.to_charlist()),

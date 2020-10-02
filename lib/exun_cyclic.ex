@@ -6,7 +6,28 @@ defmodule Exun.Cyclic do
   """
 
   def check(context) do
-    check_expand(maps_all(context), MapSet.new())
+    invalid_defs = check_definitions(context)
+
+    if length(invalid_defs) > 0 do
+      {:err, invalid_defs}
+    else
+      check_expand(maps_all(context), MapSet.new())
+    end
+  end
+
+  def check_definitions(context) do
+    for {name, _definition} <- context do
+      with {:ok, tok, _} <- :exun_lex.string(String.to_charlist(name)),
+           {:ok, tree} <- :exun_yacc.parse(tok) do
+        {name, tree}
+      end
+    end
+    |> Enum.reduce([], fn {v, t}, acc ->
+      case t do
+        {:vari, _} -> acc
+        _ -> ["Invalid definiton for #{v}" | acc]
+      end
+    end)
   end
 
   def check_expand(maps, prev_maps) do
