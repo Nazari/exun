@@ -69,15 +69,32 @@ defmodule Exun.Tree do
     collect {:mult,b,{:elev,a,@dos}}
   end
 
+  def collect{:unit,@zero,_b} do
+    @zero
+  end
+
+  def collect({:unit,0,_b}) do
+    @zero
+  end
+
+  def collect({:unit,a,b}) do
+    {:unit, collect(a), collect(b)}
+  end
+
   def collect({op, l, r}) do
     cl = collect(l)
     cr = collect(r)
     {bn,n1,n2}=both_numbers(cl,cr)
-
+    {un,un_a,un_b,un_n}=unit_number(cl,cr)
+    {nu,nu_n,nu_a,nu_b}=number_unit(cl,cr)
+    {uu,a1,b1,a2,b2}=unit_unit(cl,cr)
     case op do
       :mult ->
         cond do
           bn -> {:numb, n1*n2}
+          un -> {:unit, {:mult,un_a,{:numb,un_n}}, un_b}
+          nu -> {:unit, {:mult,nu_a,{:numb,nu_n}}, nu_b}
+          uu -> {:unit, {:mult,a1,a2},{:mult,b1,b2}}
           cl == @uno -> cr
           cr == @uno -> cl
           cl == @zero or cr == @zero -> @zero
@@ -89,6 +106,9 @@ defmodule Exun.Tree do
       :divi ->
         cond do
           bn -> {:numb, n1/n2}
+          un -> {:unit, {:divi,un_a,{:numb,un_n}}, un_b}
+          nu -> {:unit, {:divi,nu_a,{:numb,nu_n}}, nu_b}
+          uu -> {:unit, {:divi,a1,a2},{:divi,b1,b2}}
           cr == @uno -> cl
           cl == @zero -> @zero
           cr == cl -> @uno
@@ -119,6 +139,8 @@ defmodule Exun.Tree do
       :elev ->
         cond do
           bn -> {:numb, :math.pow(n1,n2)}
+          un -> {:unit, {:elev,un_a,un_n}, {:elev,un_b,un_n}}
+          nu or uu -> throw "Units can not be exponents"
           cr == @zero -> @uno
           cl == @zero -> @zero
           cr == @uno -> @uno
@@ -132,6 +154,29 @@ defmodule Exun.Tree do
     tree
   end
 
+  def unit_unit({:unit,a1,b1},{:unit,a2,b2}) do
+    {true,a1,b1,a2,b2}
+  end
+
+  def unit_unit(_a,_b) do
+    {false,nil,nil,nil,nil}
+  end
+
+  def number_unit({:numb,n},{:unit,a,b}) do
+    {true, n,a,b}
+  end
+
+  def number_unit(_a,_b) do
+    {false,nil,nil,nil}
+  end
+
+  def unit_number({:unit,a,b},{:numb,n}) do
+    {true,a,b,n}
+  end
+
+  def unit_number(_a,_b) do
+    {false,nil,nil,nil}
+  end
   def both_numbers({:numb,n1}, {:numb,n2}) do
     {true,n1,n2}
   end
