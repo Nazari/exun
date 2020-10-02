@@ -1,5 +1,4 @@
 defmodule Exun.Units do
-  alias Exun.Eval
 
   @prefixes %{
     # Exa
@@ -85,33 +84,15 @@ defmodule Exun.Units do
       @prefixes[pref] != nil and byte_size(rest) > 0 ->
         {:unit, val, tree} = get_def(rest, pcontext)
         pref_val = @prefixes[pref]
-        {:unit, val * pref_val, tree}
+        {:unit, {:num, pref_val * val}, tree}
 
       pcontext[name] != nil ->
-        Eval.to_num(pcontext[name], pcontext)
+        pcontext[name]
+      true ->
+        throw "Undefined unit"
     end
   end
 
-  def conv_si({:unit, {:numb, n}, tree}, pcontext) do
-    type = elem(tree,0)
-    case type do
-      :vari ->
-        tree
-
-      :numb ->
-        {:unit, {:numb, n}, tree}
-
-      _ ->
-        {type, l, r} = tree
-        lu = conv_si(l, pcontext)
-        ru = conv_si(r, pcontext)
-        execop(type, lu, ru)
-    end
-  end
-
-  def execop(:mult, {:unit, {{:numb, l_n}}, l_tree}, {:unit, {{:numb, r_n}}, r_tree}) do
-    {:unit, { {:numb, l_n*r_n},{:mult,{l_tree,r_tree}}}}
-  end
 
   def parseunit(value) do
     with {:ok, tok, _} <- :exun_lex.string(String.to_charlist(value)),
@@ -119,4 +100,6 @@ defmodule Exun.Units do
       tree
     end
   end
+
+
 end
