@@ -1,0 +1,3 @@
+{:ok, tok, _}= :exun_lex.string '1[m]'
+{:ok,tree}= :exun_yacc.parse tok
+Exun.Cyclic.check %{"m"=>"s", "s"=>"t"}
