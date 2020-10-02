@@ -61,7 +61,7 @@ defmodule Exun.Cyclic do
             {:ok, newmaps}
 
           prev_maps |> MapSet.member?(newmaps) ->
-            {:err, "Cyclic definitions", newmaps}
+            {:err, "Cyclic definitions on user context", newmaps}
 
           maps != newmaps ->
             check_expand(newmaps, prev_maps |> MapSet.put(newmaps))

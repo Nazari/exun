@@ -7,37 +7,26 @@ defmodule Exun do
   end
 
   def parse(txt, context) do
-    Cyclic.check(context)
+    case Cyclic.check(context) do
+      {:ok, _deps} ->
+        {tree, _deps} = parse_text(txt, context)
+
+        {tree |> Tree.collect,
+         for {func, defi} <- context, into: %{} do
+           {subtree, _deps} = parse_text(defi, context)
+           {func, subtree |> Tree.collect}
+         end}
+
+      a ->
+        a
+    end
+  end
+
+  def parse_text(txt, context) do
     with {:ok, toks, _} <- :exun_lex.string(txt |> String.to_charlist()),
          {:ok, utree} <- :exun_yacc.parse(toks) do
       Tree.expand(utree, context, %{})
     end
   end
 
-  def get_var_exponents({:unit, _val, tree}) do
-    rec_gvt(tree, %{}, 1)
-  end
-
-  defp rec_gvt({op, left, right}, map_var, sign) do
-    map_var =
-      case op do
-        :divide ->
-          map_var = rec_gvt(left, map_var, sign)
-          rec_gvt(right, map_var, -sign)
-
-        :multiply ->
-          map_var = rec_gvt(left, map_var, sign)
-          rec_gvt(right, map_var, sign)
-
-        :power ->
-          rec_gvt(left, map_var, sign * right)
-      end
-
-    map_var
-  end
-
-  defp rec_gvt({:variable, var}, map_var, sign) do
-    current_exponent = map_var |> Map.get(var, 0)
-    map_var |> Map.put(var, current_exponent + sign)
-  end
 end

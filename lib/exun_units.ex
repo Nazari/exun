@@ -1,4 +1,6 @@
 defmodule Exun.Units do
+  alias Exun.Eval
+
   @prefixes %{
     # Exa
     "E" => 1.0e18,
@@ -66,22 +68,55 @@ defmodule Exun.Units do
     "N" => "101.9716[g*m/s^2]",
     "slug" => "14.59[kg*m/s^2]",
     "Pa" => "01[N/m^2]",
-    "Psi" => "737.07[kg/m^2]",
+    "Psi" => "737.07[kg/m^2]"
   }
-  def is_si(var), do: @fundamental_units |> Map.get(var, false)
 
-  def with_prefix(var) do
-    cpo = var |> String.codepoints()
-    [prefix | rst] = cpo
-    if length(rst) == 0 do
-      1
-    else
-      @prefixes |> Map.get(prefix, 1)
+  def get_def(name, pcontext) do
+    <<pref::utf8, rest::binary>> = name
+
+    cond do
+      @fundamental_units[name] != nil ->
+        {:unit, 1, name}
+
+      @conversions[name] != nil ->
+        @conversions[name]
+        |> parseunit()
+
+      @prefixes[pref] != nil and byte_size(rest) > 0 ->
+        {:unit, val, tree} = get_def(rest, pcontext)
+        pref_val = @prefixes[pref]
+        {:unit, val * pref_val, tree}
+
+      pcontext[name] != nil ->
+        Eval.to_num(pcontext[name], pcontext)
     end
   end
 
-  def get_equiv(var) do
-    @conversions |> Map.get(var,var)
+  def conv_si({:unit, {:numb, n}, tree}, pcontext) do
+    type = elem(tree,0)
+    case type do
+      :vari ->
+        tree
+
+      :numb ->
+        {:unit, {:numb, n}, tree}
+
+      _ ->
+        {type, l, r} = tree
+        lu = conv_si(l, pcontext)
+        ru = conv_si(r, pcontext)
+        execop(type, lu, ru)
+    end
   end
 
+  def execop(:mult, {:unit, {{:numb, l_n}}, l_tree}, {:unit, {{:numb, r_n}}, r_tree}) do
+    {:unit, { {:numb, l_n*r_n},{:mult,{l_tree,r_tree}}}}
+  end
+
+  def parseunit(value) do
+    with {:ok, tok, _} <- :exun_lex.string(String.to_charlist(value)),
+         {:ok, tree} <- :exun_yacc.parse(tok) do
+      tree
+    end
+  end
 end

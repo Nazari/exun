@@ -1,5 +1,144 @@
 defmodule Exun.Tree do
+  @zero {:numb, 0}
+  @uno {:numb, 1}
+  @dos {:numb, 2}
+  @infinite {:numb, :infinite}
 
+  @defop %{
+    :elev => {100,"^"},
+    :mult => {90, "*"},
+    :divi => {90, "/"},
+    :suma => {50, "+"},
+    :rest => {50, "-"},
+    :numb => {200, nil},
+    :unit => {200, nil},
+    :vari => {200, nil}
+  }
+  @doc """
+  a^b^c -> a^(b*c)
+  """
+  def collect({:elev,a,{:elev,b,c}}) do
+    collect {:elev,a,{:mult,b,c}}
+  end
+  @doc """
+  a^b*a -> a^(b+1)
+  """
+  def collect({:mult,{:elev,a,b},a}) do
+    collect {:elev,a,{:suma,b,@uno}}
+  end
+  @doc """
+  a^b*a^c -> a^(b+c)
+  """
+  def collect({:mult,{:elev,a,b},{:elev,a,c}}) do
+    collect {:elev,a,{:suma,b,c}}
+  end
+  @doc """
+  a^b/a -> a^(b-1)
+  """
+  def collect({:divi,{:elev,a,b},a}) do
+    collect {:elev,a,{:rest,b,@uno}}
+  end
+  @doc """
+  a^b/a^c -> a^(b-c)
+  """
+  def collect({:divi,{:elev,a,b},{:elev,a,c}}) do
+    collect {:elev,a,{:rest,b,c}}
+  end
+  @doc """
+  a*(a*b) -> b*a^2
+  """
+  def collect({:mult,a,{:mult,a,b}}) do
+    collect {:mult,b,{:elev,a,@dos}}
+  end
+  @doc """
+  a*(b*a) -> b*a^2
+  """
+  def collect({:mult,a,{:mult,b,a}}) do
+    collect {:mult,b,{:elev,a,@dos}}
+  end
+  @doc """
+  (a*b)*a -> b*a^2
+  """
+  def collect({:mult,{:mult,a,b},a}) do
+    collect {:mult,b,{:elev,a,@dos}}
+  end
+  @doc """
+  (b*a)*a -> b*a^2
+  """
+  def collect({:mult,{:mult,b,a},a}) do
+    collect {:mult,b,{:elev,a,@dos}}
+  end
+
+  def collect({op, l, r}) do
+    cl = collect(l)
+    cr = collect(r)
+    {bn,n1,n2}=both_numbers(cl,cr)
+
+    case op do
+      :mult ->
+        cond do
+          bn -> {:numb, n1*n2}
+          cl == @uno -> cr
+          cr == @uno -> cl
+          cl == @zero or cr == @zero -> @zero
+          cl == cr -> {:elev, cl, @dos}
+          l == cl and r == cr -> {op,cl,cr}
+          true -> collect({op, cl, cr})
+        end
+
+      :divi ->
+        cond do
+          bn -> {:numb, n1/n2}
+          cr == @uno -> cl
+          cl == @zero -> @zero
+          cr == cl -> @uno
+          cr == @zero -> @infinite
+          l == cl and r == cr -> {op,cl,cr}
+          true -> collect({op, cl, cr})
+        end
+
+      :suma ->
+        cond do
+          bn -> {:numb, n1+n2 }
+          cr == @zero -> cl
+          cl == @zero -> cr
+          cl == cr -> {:mult, cl, @dos}
+          l == cl and r == cr -> {op,cl,cr}
+          true -> collect({op, cl, cr})
+        end
+
+      :rest ->
+        cond do
+          bn -> {:numb, n1-n2}
+          cr == @zero -> cl
+          cl == cr -> @zero
+          l == cl and r == cr -> {op,cl,cr}
+          true -> collect({op, cl, cr})
+        end
+
+      :elev ->
+        cond do
+          bn -> {:numb, :math.pow(n1,n2)}
+          cr == @zero -> @uno
+          cl == @zero -> @zero
+          cr == @uno -> @uno
+          l == cl and r == cr -> {op,cl,cr}
+          true -> collect({op, cl, cr})
+        end
+    end
+  end
+
+  def collect(tree) do
+    tree
+  end
+
+  def both_numbers({:numb,n1}, {:numb,n2}) do
+    {true,n1,n2}
+  end
+
+  def both_numbers(_one, _other) do
+    {false,0,0}
+  end
   def expand(tree, context) do
     expand(tree, context, %{})
   end
@@ -14,11 +153,11 @@ defmodule Exun.Tree do
     end
   end
 
-  def single_expand({op, left, right}, context) do
+  defp single_expand({op, {left, right}}, context) do
     {op, single_expand(left, context), single_expand(right, context)}
   end
 
-  def single_expand({:vari, var}, context) do
+  defp single_expand({:vari, var}, context) do
     in_context = Map.get(context, var)
 
     if in_context != nil do
@@ -31,7 +170,40 @@ defmodule Exun.Tree do
     end
   end
 
-  def single_expand(a, _context) do
+  defp single_expand(a, _context) do
     a
+  end
+
+  def tostr({:vari, var}) do
+    var
+  end
+
+  def tostr({:unit,n,tree}) do
+    to_string(n) <> "[" <> tostr(tree) <> "]"
+  end
+
+  def tostr({:numb,n}) do
+    to_string(n)
+  end
+
+  def tostr({op,l,r}) do
+    {hpri,hstr} = @defop[op]
+    {lpri,_} = @defop[ l|>elem(0) ]
+    {rpri,_} = @defop[ r|>elem(0) ]
+
+    ltxt = tostr(l)
+    rtxt = tostr(r)
+
+    cond do
+      hpri > lpri and hpri > rpri ->
+        "("<>ltxt<>")"<>hstr<>"("<>rtxt<>")"
+      hpri > lpri ->
+        "("<>ltxt<>")"<>hstr<>rtxt
+      hpri > rpri ->
+        ltxt<>hstr<>"("<>rtxt<>")"
+      true ->
+        ltxt<>hstr<>rtxt
+    end
+
   end
 end
