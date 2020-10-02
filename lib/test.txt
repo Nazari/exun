@@ -1,3 +1,20 @@
 {:ok, tok, _}= :exun_lex.string '1[m]'
 {:ok,tree}= :exun_yacc.parse tok
 Exun.parse "1[m^2]", %{"m"=>"s*4", "s"=>"t*2", "t"=>"3"}
+
+
+{u1,d} = Exun.parse "2[km]"
+{u2,d} = Exun.parse "3[cm]"
+Exun.Units.convert u1,u2,%{}  
+
+{u1,d} = Exun.parse "2[m]"
+{u2,d} = Exun.parse "3[s]"
+Exun.Units.convert u1,u2,%{}  
+
+{u1,d}= Exun.parse "10[m/s^2]",%{}
+{u2,d}= Exun.parse "10[legua/day^2]",%{}
+Exun.Units.convert u1,u2,%{}
+
+{u1,d}= Exun.parse "1[m/s^2]",%{}
+{u2,d}= Exun.parse "1[km/hour^2]",%{}
+Exun.Units.convert u1,u2,%{}
