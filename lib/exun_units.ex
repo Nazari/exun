@@ -77,16 +77,17 @@ defmodule Exun.Units do
   u2 = Exun.parse "1[cm]"
   Exum.Units.convert(u1,u2,%{}) |> Exum.Tree.tostr() ===> "300[cm]"
   """
-  def convert({:unit, {:numb, n1}, t1}=_u1, {:unit, {:numb, _n2}, t2}=_u2, pcontext) do
+  def convert({:unit, {:numb, n1}, t1} = _u1, {:unit, {:numb, _n2}, t2} = _u2, pcontext) do
     {res1, exps1} = to_si({1, t1}, pcontext, 1, %{})
     {res2, exps2} = to_si({1, t2}, pcontext, 1, %{})
 
     if exps1 != exps2 do
-      {:err, "Inconsisten units "<>Tree.tostr(t1)<>" and "<>Tree.tostr(t2)}
+      {:err, "Inconsisten units " <> Tree.tostr(t1) <> " and " <> Tree.tostr(t2)}
     else
-      {:ok, {:unit, {:numb, n1*res1/res2} , t2}}
+      {:ok, {:unit, {:numb, n1 * res1 / res2}, t2}}
     end
   end
+
   @doc """
   Convert unit to International System
   """
@@ -122,6 +123,10 @@ defmodule Exun.Units do
     throw("Invalid unit definition: " <> Exun.Tree.tostr(b))
   end
 
+  @doc """
+  Transform a name into a unit, looking at fundamentals, conversions,
+  context and prefixes, in that search order.
+  """
   def get_def(name, pcontext) do
     [pref | rest] = name |> String.codepoints()
     rest = to_string(rest)
@@ -134,19 +139,23 @@ defmodule Exun.Units do
         @conversions[name]
         |> parseunit()
 
+      pcontext[name] != nil ->
+        pcontext[name]
+
       @prefixes[pref] != nil and byte_size(rest) > 0 ->
         pref_val = @prefixes[pref]
         {:unit, val, tree} = get_def(rest, pcontext)
         {:unit, {:numb, pref_val * val}, tree}
-
-      pcontext[name] != nil ->
-        pcontext[name]
 
       true ->
         throw("Undefined unit #{name}")
     end
   end
 
+  @doc """
+  Parse a unit:
+  "1[m]" -> {:unit, {:numb,1}, {:vari, "m"}}
+  """
   def parseunit(value) do
     with {:ok, tok, _} <- :exun_lex.string(String.to_charlist(value)),
          {:ok, tree} <- :exun_yacc.parse(tok) do
