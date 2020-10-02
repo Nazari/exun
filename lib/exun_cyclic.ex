@@ -14,7 +14,12 @@ defmodule Exun.Cyclic do
       check_expand(maps_all(context), MapSet.new())
     end
   end
-
+  @doc """
+  Check cyclic definitins in 'context', a map that holds
+  values like %{"f" => "x^2+2*x+3"}. If you pass a cyclic map
+  this function detects it, for example:
+  %{"a"=>"b", "b"=>"c", "c"=>"a"}
+  """
   def check_definitions(context) do
     for {name, _definition} <- context do
       with {:ok, tok, _} <- :exun_lex.string(String.to_charlist(name)),
@@ -29,7 +34,10 @@ defmodule Exun.Cyclic do
       end
     end)
   end
-
+  @doc """
+  Recursively expands defs and find variables on what definitions
+  depends.
+  """
   def check_expand(maps, prev_maps) do
     newmaps =
       for {varname, depends} <- maps, into: %{} do
@@ -71,7 +79,9 @@ defmodule Exun.Cyclic do
         {:err, msg, newmaps}
     end
   end
-
+  @doc """
+  Initial parse of definitions in map 'context'
+  """
   defp maps_all(context) do
     for {var, def} <- context, into: %{} do
       with {:ok, tok, _} <- :exun_lex.string(def |> String.to_charlist()),
@@ -80,7 +90,9 @@ defmodule Exun.Cyclic do
       end
     end
   end
-
+  @doc """
+  Select only vars
+  """
   defp extract_vars({_op, l, r}, acu) do
     MapSet.union(
       extract_vars(l, acu),
