@@ -1,4 +1,5 @@
 defmodule Exun.Units do
+  alias Exun.Tree
 
   @prefixes %{
     # Exa
@@ -70,29 +71,81 @@ defmodule Exun.Units do
     "Psi" => "737.07[kg/m^2]"
   }
 
+  @doc """
+  Convert first unit to the second unit in convert:
+  u1 = Exun.parse "3[m]"
+  u2 = Exun.parse "1[cm]"
+  Exum.Units.convert(u1,u2,%{}) |> Exum.Tree.tostr() ===> "300[cm]"
+  """
+  def convert({:unit, {:numb, n1}, t1}=_u1, {:unit, {:numb, _n2}, t2}=_u2, pcontext) do
+    {res1, exps1} = to_si({1, t1}, pcontext, 1, %{})
+    {res2, exps2} = to_si({1, t2}, pcontext, 1, %{})
+
+    if exps1 != exps2 do
+      {:err, "Inconsisten units "<>Tree.tostr(t1)<>" and "<>Tree.tostr(t2)}
+    else
+      {:ok, {:unit, {:numb, n1*res1/res2} , t2}}
+    end
+  end
+  @doc """
+  Convert unit to International System
+  """
+  def to_si({n, {:mult, left, right}}, pcontext, curr_exp, exps) do
+    {left_n, exps} = to_si({1, left}, pcontext, curr_exp, exps)
+    {right_n, exps} = to_si({1, right}, pcontext, curr_exp, exps)
+    {n * left_n * right_n, exps}
+  end
+
+  def to_si({n, {:divi, left, right}}, pcontext, curr_exp, exps) do
+    {left_n, exps} = to_si({1, left}, pcontext, curr_exp, exps)
+    {right_n, exps} = to_si({1, right}, pcontext, curr_exp, exps)
+    {n * left_n / right_n, exps}
+  end
+
+  def to_si({n, {:elev, left, {:numb, exponent}}}, pcontext, curr_exp, exps) do
+    {left_n, exps} = to_si({1, left}, pcontext, curr_exp, exps)
+    {n * :math.pow(left_n, exponent), exps}
+  end
+
+  def to_si({n, {:vari, var}}, pcontext, curr_exp, exps) do
+    case @fundamental_units[var] do
+      nil ->
+        {:unit, {:numb, vdef}, tdef} = get_def(var, pcontext)
+        to_si({n * vdef, tdef}, pcontext, curr_exp, exps)
+
+      true ->
+        {n, Map.put(exps, var, curr_exp + Map.get(exps, var, 0))}
+    end
+  end
+
+  def to_si({_a, b}, _pcontext, _curr_exp, _exps) do
+    throw("Invalid unit definition: " <> Exun.Tree.tostr(b))
+  end
+
   def get_def(name, pcontext) do
-    <<pref::utf8, rest::binary>> = name
+    [pref | rest] = name |> String.codepoints()
+    rest = to_string(rest)
 
     cond do
       @fundamental_units[name] != nil ->
-        {:unit, 1, name}
+        {:unit, 1, {:vari, name}}
 
       @conversions[name] != nil ->
         @conversions[name]
         |> parseunit()
 
       @prefixes[pref] != nil and byte_size(rest) > 0 ->
-        {:unit, val, tree} = get_def(rest, pcontext)
         pref_val = @prefixes[pref]
-        {:unit, {:num, pref_val * val}, tree}
+        {:unit, val, tree} = get_def(rest, pcontext)
+        {:unit, {:numb, pref_val * val}, tree}
 
       pcontext[name] != nil ->
         pcontext[name]
+
       true ->
-        throw "Undefined unit"
+        throw("Undefined unit #{name}")
     end
   end
-
 
   def parseunit(value) do
     with {:ok, tok, _} <- :exun_lex.string(String.to_charlist(value)),
@@ -100,6 +153,4 @@ defmodule Exun.Units do
       tree
     end
   end
-
-
 end
