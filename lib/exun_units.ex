@@ -70,6 +70,24 @@ defmodule Exun.Units do
     "Pa" => "01[N/m^2]",
     "Psi" => "737.07[kg/m^2]"
   }
+  @doc """
+  Sum of two units
+  """
+  def sum(op, _u1 = {:unit, {:numb, n1}, t1}, _u2 = {:unit, {:numb, n2}, t2}, pcontext) do
+    {res1, exps1} = to_si({1, t1}, pcontext, 1, %{})
+    {res2, exps2} = to_si({1, t2}, pcontext, 1, %{})
+
+    if exps1 != exps2 do
+      {:err, "Inconsisten units " <> Tree.tostr(t1) <> " and " <> Tree.tostr(t2)}
+    else
+      val = case op do
+        :suma -> res1 * n1 + res2 * n2
+        :resta -> res1 * n1 - res2 * n2
+        _ -> throw "Unknown op for Exun.Units.sum"
+      end
+      {:ok, {:unit, {:numb, val}, t2}}
+    end
+  end
 
   @doc """
   Convert first unit to the second unit in convert:
@@ -77,7 +95,7 @@ defmodule Exun.Units do
   u2 = Exun.parse "1[cm]"
   Exum.Units.convert(u1,u2,%{}) |> Exum.Tree.tostr() ===> "300[cm]"
   """
-  def convert({:unit, {:numb, n1}, t1} = _u1, {:unit, {:numb, _n2}, t2} = _u2, pcontext) do
+  def convert(_u1 = {:unit, {:numb, n1}, t1}, _u2 = {:unit, {:numb, _n2}, t2}, pcontext) do
     {res1, exps1} = to_si({1, t1}, pcontext, 1, %{})
     {res2, exps2} = to_si({1, t2}, pcontext, 1, %{})
 
@@ -86,6 +104,19 @@ defmodule Exun.Units do
     else
       {:ok, {:unit, {:numb, n1 * res1 / res2}, t2}}
     end
+  end
+
+  @doc """
+  Factorize unit2 from u1, for example
+  {u1,d} = Exun.parse "1[km*kg*A/hour^2], %{}
+  {u2,d} = Exum.parse "1[N]"
+
+  factorized = Exum.Units.factorize(u1,u2,pcontext)
+
+  Exum.Tree.tostr factorized ====> "7.716049e-5[N*A]
+
+  """
+  def factorize(u1 = {:unit, {:numb, n1}, t1}, u2 = {:unit, {:numb, _n2}, t2}) do
   end
 
   @doc """

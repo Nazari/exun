@@ -1,4 +1,6 @@
 defmodule Exun.Tree do
+  alias Exun.Units
+
   @zero {:numb, 0}
   @uno {:numb, 1}
   @dos {:numb, 2}
@@ -140,6 +142,8 @@ defmodule Exun.Tree do
       :suma ->
         cond do
           bn -> {:numb, n1 + n2}
+          uu -> Units.sum( :suma, cl,cr,%{} )
+          un or nu -> throw "Inconsistent sum of unit and no_unit"
           cr == @zero -> cl
           cl == @zero -> cr
           cl == cr -> {:mult, cl, @dos}
@@ -150,6 +154,8 @@ defmodule Exun.Tree do
       :rest ->
         cond do
           bn -> {:numb, n1 - n2}
+          un or nu -> throw "Inconsistent sum of unit and no_unit"
+          uu -> Units.sum( :resta, cl,cr,%{} )
           cr == @zero -> cl
           cl == cr -> @zero
           l == cl and r == cr -> {op, cl, cr}
