@@ -1,5 +1,5 @@
 defmodule Exun.Tree do
-  alias Exun.Units
+  alias Exun.Unit
 
   @zero {:numb, 0}
   @uno {:numb, 1}
@@ -142,7 +142,7 @@ defmodule Exun.Tree do
       :suma ->
         cond do
           bn -> {:numb, n1 + n2}
-          uu -> Units.sum( :suma, cl,cr,%{} )
+          uu -> Unit.sum( :suma, cl,cr,%{} )
           un or nu -> throw "Inconsistent sum of unit and no_unit"
           cr == @zero -> cl
           cl == @zero -> cr
@@ -155,7 +155,7 @@ defmodule Exun.Tree do
         cond do
           bn -> {:numb, n1 - n2}
           un or nu -> throw "Inconsistent sum of unit and no_unit"
-          uu -> Units.sum( :resta, cl,cr,%{} )
+          uu -> Unit.sum( :resta, cl,cr,%{} )
           cr == @zero -> cl
           cl == cr -> @zero
           l == cl and r == cr -> {op, cl, cr}
@@ -264,9 +264,13 @@ defmodule Exun.Tree do
     a
   end
 
-  @doc """
-  Translate tree to human readable math
-  expression
+  @doc ~S"""
+  Translate tree to human readable math expression:
+    iex(1)> {tree, deps} = Exun.parse "4*x^(y+1)/z",%{"z"=>"y+1"}
+    {{:divi,
+    {:mult, {:numb, 4}, {:elev, {:vari, "x"}, {:suma, {:vari, "y"}, {:numb, 1}}}},
+    {:vari, "z"}}, %{"z" => {:suma, {:vari, "y"}, {:numb, 1}}}}
+
   """
   def tostr({:vari, var}) do
     var

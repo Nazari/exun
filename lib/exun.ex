@@ -1,7 +1,13 @@
 defmodule Exun do
   alias Exun.Tree
   alias Exun.Cyclic
+  @doc ~S"""
+  Parse a math expression, without context:
+    iex(1)> Exun.parse "x*y^(1+x)"
+    {{:mult, {:vari, "x"}, {:elev, {:vari, "y"}, {:suma, {:numb, 1}, {:vari, "x"}}}},
+    %{}}
 
+  """
   def parse(txt) do
     parse(txt, %{})
   end
