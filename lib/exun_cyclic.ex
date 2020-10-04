@@ -82,7 +82,7 @@ defmodule Exun.Cyclic do
   @doc """
   Initial parse of definitions in map 'context'
   """
-  defp maps_all(context) do
+  def maps_all(context) do
     for {var, def} <- context, into: %{} do
       with {:ok, tok, _} <- :exun_lex.string(def |> String.to_charlist()),
            {:ok, tree} <- :exun_yacc.parse(tok) do
@@ -93,7 +93,7 @@ defmodule Exun.Cyclic do
   @doc """
   Select only vars
   """
-  defp extract_vars({_op, l, r}, acu) do
+  def extract_vars({_op, l, r}, acu) do
     MapSet.union(
       extract_vars(l, acu),
       extract_vars(r, acu)
