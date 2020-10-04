@@ -142,7 +142,10 @@ defmodule Exun.Tree do
       :suma ->
         cond do
           bn -> {:numb, n1 + n2}
-          uu -> Unit.sum( :suma, cl,cr,%{} )
+          uu -> case Unit.sum( :suma, cl,cr,%{} ) do
+            {:err, msg} -> throw msg
+            {:ok, result} -> result
+          end
           un or nu -> throw "Inconsistent sum of unit and no_unit"
           cr == @zero -> cl
           cl == @zero -> cr
@@ -155,7 +158,10 @@ defmodule Exun.Tree do
         cond do
           bn -> {:numb, n1 - n2}
           un or nu -> throw "Inconsistent sum of unit and no_unit"
-          uu -> Unit.sum( :resta, cl,cr,%{} )
+          uu -> case Unit.sum( :resta, cl,cr,%{} ) do
+            {:err, msg} -> throw msg
+            {:ok, unit} -> unit
+          end
           cr == @zero -> cl
           cl == cr -> @zero
           l == cl and r == cr -> {op, cl, cr}

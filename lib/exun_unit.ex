@@ -67,7 +67,7 @@ defmodule Exun.Unit do
     "l" => "100[cm^3]",
     "N" => "101.9716[g*m/s^2]",
     "slug" => "14.59[kg*m/s^2]",
-    "Pa" => "01[N/m^2]",
+    "Pa" => "1[N/m^2]",
     "Psi" => "737.07[kg/m^2]"
   }
   @doc """
@@ -80,12 +80,14 @@ defmodule Exun.Unit do
     if exps1 != exps2 do
       {:err, "Inconsisten units " <> Tree.tostr(t1) <> " and " <> Tree.tostr(t2)}
     else
-      val = case op do
-        :suma -> res1 * n1 + res2 * n2
-        :resta -> res1 * n1 - res2 * n2
-        _ -> throw "Unknown op for Exun.Units.sum"
-      end
-      {:ok, {:unit, {:numb, val}, t2}}
+      val =
+        case op do
+          :suma -> res1 * n1 + res2 * n2
+          :resta -> res1 * n1 - res2 * n2
+          _ -> throw("Unknown op for Exun.Units.sum")
+        end
+
+      {:ok, {:unit, {:numb, val}, t1}}
     end
   end
 
@@ -108,35 +110,46 @@ defmodule Exun.Unit do
 
   @doc """
   Factorize unit2 from u1, for example
-  {u1,d} = Exun.parse "1[km*kg*A/hour^2], %{}
-  {u2,d} = Exum.parse "1[N]"
-
-  factorized = Exum.Units.factorize(u1,u2,pcontext)
+    iex(1)> {u1,d} = Exun.parse "1[km*kg*A/hour^2]", %{}
+            {u2,d} = Exun.parse "1[N]"
+            factorized = Exun.Unit.factorize(u1,u2,%{})
 
   Exum.Tree.tostr factorized ====> "7.716049e-5[N*A]
 
   """
-  def factorize(u1 = {:unit, {:numb, n1}, t1}, u2 = {:unit, {:numb, _n2}, t2}) do
+  def factorize({:unit, {:numb, n1}, t1}, {:unit, {:numb, _n2}, t2}, pcontext) do
+    # Divide t1 by t2, reduce to si and multiply by t2
+    {nres, exps} = to_si({n1, {:divi, t1, t2}}, pcontext, 1, %{})
+    "#{nres}[#{Exun.Tree.tostr(t2)}#{exps_tostr(exps)}]"
   end
 
   @doc """
   Convert unit to International System
   """
+  def to_si({:unit, {:numb, n}, tree}) do
+    to_si {n,tree}, %{}, 1, %{}
+  end
+
   def to_si({n, {:mult, left, right}}, pcontext, curr_exp, exps) do
     {left_n, exps} = to_si({1, left}, pcontext, curr_exp, exps)
     {right_n, exps} = to_si({1, right}, pcontext, curr_exp, exps)
     {n * left_n * right_n, exps}
   end
 
+  def to_si({n, {:divi, {:numb, 1}, denom}}, pcontext, curr_exp, exps) do
+    {nn, exps} = to_si({1, denom}, pcontext, -curr_exp, exps)
+    {n / nn, exps}
+  end
+
   def to_si({n, {:divi, left, right}}, pcontext, curr_exp, exps) do
     {left_n, exps} = to_si({1, left}, pcontext, curr_exp, exps)
-    {right_n, exps} = to_si({1, right}, pcontext, curr_exp, exps)
+    {right_n, exps} = to_si({1, right}, pcontext, -curr_exp, exps)
     {n * left_n / right_n, exps}
   end
 
   def to_si({n, {:elev, left, {:numb, exponent}}}, pcontext, curr_exp, exps) do
-    {left_n, exps} = to_si({1, left}, pcontext, curr_exp, exps)
-    {n * :math.pow(left_n, exponent), exps}
+    {left_n, exps} = to_si({1, left}, pcontext, curr_exp * exponent, exps)
+    {n * left_n, exps}
   end
 
   def to_si({n, {:vari, var}}, pcontext, curr_exp, exps) do
@@ -192,5 +205,30 @@ defmodule Exun.Unit do
          {:ok, tree} <- :exun_yacc.parse(tok) do
       tree
     end
+  end
+
+  def exps_tostr(exps) do
+    exps
+    |> Enum.reduce("", fn {var, exp}, ac ->
+      cond do
+        exp == 0 ->
+          ac
+
+        exp == 1 ->
+          "#{ac}*#{var}"
+
+        exp == -1 ->
+          "#{ac}/#{var}"
+
+        exp > 0 ->
+          "#{ac}*#{var}^#{exp}"
+
+        exp < 0 ->
+          "#{ac}/#{var}^#{-exp}"
+
+        true ->
+          ac
+      end
+    end)
   end
 end

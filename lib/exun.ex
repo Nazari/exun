@@ -30,8 +30,8 @@ defmodule Exun do
 
   def parse_text(txt, context) do
     with {:ok, toks, _} <- :exun_lex.string(txt |> String.to_charlist()),
-         {:ok, utree} <- :exun_yacc.parse(toks) do
-      Tree.expand(utree, context, %{})
+         {:ok, tree} <- :exun_yacc.parse(toks) do
+      Tree.expand(tree, context, %{})
     end
   end
 
