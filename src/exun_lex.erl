@@ -442,8 +442,6 @@ yystate(2, Ics, Line, Tlen, Action, Alen) ->
     {Action,Alen,Tlen,Ics,Line,2};
 yystate(1, Ics, Line, Tlen, _, _) ->
     {3,Tlen,Ics,Line};
-yystate(0, [45|Ics], Line, Tlen, _, _) ->
-    yystate(0, Ics, Line, Tlen+1, 13, Tlen);
 yystate(0, [C|Ics], Line, Tlen, _, _) when C >= 48, C =< 57 ->
     yystate(0, Ics, Line, Tlen+1, 13, Tlen);
 yystate(0, [C|Ics], Line, Tlen, _, _) when C >= 65, C =< 90 ->

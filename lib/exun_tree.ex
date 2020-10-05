@@ -16,10 +16,32 @@ defmodule Exun.Tree do
     :unit => {200, nil},
     :vari => {200, nil}
   }
+
+  def headcollect(tree) do
+    case tree|>elem(0) do
+      :suma -> comm_collect({:suma,tree|>elem(1), tree|>elem(2)})
+      :mult -> comm_collect({:mult,tree|>elem(1), tree|>elem(2)})
+      _ -> collect(tree)
+    end
+  end
+
+  def comm_collect(orig={op,a,b}) do
+    order1 = collect orig
+    if order1 == orig do
+      collect {op,b,a}
+    else
+      order1
+    end
+  end
+
   @doc """
   a*b^-1 -> a/b
   """
   def collect({:mult, a, {:elev, b, {:numb, -1}}}) do
+    {:divi, a, b}
+  end
+
+  def collect({:mult, {:elev, b, {:numb, -1}}, a}) do
     {:divi, a, b}
   end
 
@@ -34,6 +56,10 @@ defmodule Exun.Tree do
   a^b*a -> a^(b+1)
   """
   def collect({:mult, {:elev, a, b}, a}) do
+    collect({:elev, a, {:suma, b, @uno}})
+  end
+
+  def collect({:mult, a, {:elev, a, b}}) do
     collect({:elev, a, {:suma, b, @uno}})
   end
 
@@ -65,37 +91,71 @@ defmodule Exun.Tree do
     collect({:mult, b, {:elev, a, @dos}})
   end
 
-  @doc """
-  a*(b*a) -> b*a^2
-  """
-  def collect({:mult, a, {:mult, b, a}}) do
-    collect({:mult, b, {:elev, a, @dos}})
-  end
-
-  @doc """
-  (a*b)*a -> b*a^2
-  """
   def collect({:mult, {:mult, a, b}, a}) do
     collect({:mult, b, {:elev, a, @dos}})
   end
 
-  @doc """
-  (b*a)*a -> b*a^2
-  """
   def collect({:mult, {:mult, b, a}, a}) do
     collect({:mult, b, {:elev, a, @dos}})
   end
 
-  def collect({:unit, @zero, _b}) do
+  @doc """
+  a*b/a -> b
+  """
+  def collect({:divi, {:mult, a, b}, a}) do
+    b
+  end
+
+  @doc """
+  a/b*b -> a
+  """
+  def collect({:mult, {:divi, a, b}, b}) do
+    a
+  end
+
+  def collect({:mult, b, {:divi, a, b}}) do
+    a
+  end
+
+  @doc """
+  a-a -> 0
+  """
+  def collect({:rest, a, a}) do
     @zero
   end
 
-  def collect({:unit, 0, _b}) do
-    @zero
+  @doc """
+  a+a -> 2*a
+  """
+  def collect({:suma, a, a}) do
+    collect {:mult, {:numb, 2}, a}
   end
 
-  def collect({:unit, a, b}) do
-    {:unit, collect(a), collect(b)}
+  def collect({:suma, {:mult, a, b}, a}) do
+    collect {:mult,{:suma,b,@uno}, a}
+  end
+
+  def collect({:suma, a, {:mult, a, b}}) do
+    collect {:mult,{:suma,b,@uno}, a}
+  end
+
+  def collect({:suma, {:mult, b, a}, a}) do
+    collect {:mult,{:suma,b,@uno}, a}
+  end
+
+  def collect({:suma, a, {:mult, b, a}}) do
+    collect {:mult,{:suma,b,@uno}, a}
+  end
+
+  @doc """
+  a*b/a^n -> b*a^(1-n)
+  """
+  def collect({:divi, {:mult, a, b}, {:elev, a, c}}) do
+    collect({:mult, b, {:elev, a, {:rest, @uno, c}}})
+  end
+
+  def collect({:divi, {:mult, b, a}, {:elev, a, c}}) do
+    collect({:mult, b, {:elev, a, {:rest, @uno, c}}})
   end
 
   @doc """
@@ -111,6 +171,9 @@ defmodule Exun.Tree do
     {uu, a1, b1, a2, b2} = unit_unit(cl, cr)
 
     case op do
+      :unit ->
+        {:unit, cl, cr}
+
       :mult ->
         cond do
           bn -> {:numb, n1 * n2}
@@ -141,31 +204,59 @@ defmodule Exun.Tree do
 
       :suma ->
         cond do
-          bn -> {:numb, n1 + n2}
-          uu -> case Unit.sum( :suma, cl,cr,%{} ) do
-            {:err, msg} -> throw msg
-            {:ok, result} -> result
-          end
-          un or nu -> throw "Inconsistent sum of unit and no_unit"
-          cr == @zero -> cl
-          cl == @zero -> cr
-          cl == cr -> {:mult, cl, @dos}
-          l == cl and r == cr -> {op, cl, cr}
-          true -> collect({op, cl, cr})
+          bn ->
+            {:numb, n1 + n2}
+
+          uu ->
+            case Unit.sum(:suma, cl, cr, %{}) do
+              {:err, msg} -> throw(msg)
+              {:ok, result} -> result
+            end
+
+          un or nu ->
+            throw("Inconsistent sum of unit and no_unit")
+
+          cr == @zero ->
+            cl
+
+          cl == @zero ->
+            cr
+
+          cl == cr ->
+            {:mult, cl, @dos}
+
+          l == cl and r == cr ->
+            {op, cl, cr}
+
+          true ->
+            collect({op, cl, cr})
         end
 
       :rest ->
         cond do
-          bn -> {:numb, n1 - n2}
-          un or nu -> throw "Inconsistent sum of unit and no_unit"
-          uu -> case Unit.sum( :resta, cl,cr,%{} ) do
-            {:err, msg} -> throw msg
-            {:ok, unit} -> unit
-          end
-          cr == @zero -> cl
-          cl == cr -> @zero
-          l == cl and r == cr -> {op, cl, cr}
-          true -> collect({op, cl, cr})
+          bn ->
+            {:numb, n1 - n2}
+
+          un or nu ->
+            throw("Inconsistent sum of unit and no_unit")
+
+          uu ->
+            case Unit.sum(:resta, cl, cr, %{}) do
+              {:err, msg} -> throw(msg)
+              {:ok, unit} -> unit
+            end
+
+          cr == @zero ->
+            cl
+
+          cl == cr ->
+            @zero
+
+          l == cl and r == cr ->
+            {op, cl, cr}
+
+          true ->
+            collect({op, cl, cr})
         end
 
       :elev ->

@@ -100,11 +100,11 @@ defmodule Exun.Cyclic do
     )
   end
 
-  defp extract_vars({:vari, var}, acu) do
+  def extract_vars({:vari, var}, acu) do
     MapSet.put(acu, var)
   end
 
-  defp extract_vars(_a, acu) do
+  def extract_vars(_a, acu) do
     acu
   end
 end
