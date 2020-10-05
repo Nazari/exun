@@ -48,7 +48,7 @@ defmodule Exun do
   def eval(txt, context, ast \\ false) do
     {expr, pcont} = parse(txt,context)
     evaluated = eval_repl(expr,pcont)
-              |> Tree.collect()
+              |> Tree.reduce()
     if ast, do: evaluated, else: Exun.Tree.tostr(evaluated)
   end
 
@@ -73,7 +73,7 @@ defmodule Exun do
   defp parse_text(txt, context) do
     with {:ok, toks, _} <- :exun_lex.string(txt |> String.to_charlist()),
          {:ok, tree} <- :exun_yacc.parse(toks) do
-      Tree.expand(tree, context, %{})
+      Tree.replace(tree, context, %{})
     end
   end
 end

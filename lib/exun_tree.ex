@@ -3,6 +3,7 @@ defmodule Exun.Tree do
 
   @zero {:numb, 0}
   @uno {:numb, 1}
+  @muno {:numb, -1}
   @dos {:numb, 2}
   @infinite {:numb, :infinite}
 
@@ -17,154 +18,158 @@ defmodule Exun.Tree do
     :vari => {200, nil}
   }
 
-  def headcollect(tree) do
-    case tree|>elem(0) do
-      :suma -> comm_collect({:suma,tree|>elem(1), tree|>elem(2)})
-      :mult -> comm_collect({:mult,tree|>elem(1), tree|>elem(2)})
-      _ -> collect(tree)
+  def reduce(orig = {op, left = {op, a, b}, right = c}) when op in [:suma, :mult] do
+    res1 = comm_collect({op, left, right})
+    res2 = comm_collect({op, {op, a, c}, b})
+    res3 = comm_collect({op, {op, b, c}, a})
+
+    cond do
+      not eq(orig, res1) -> reduce(res1)
+      not eq(orig, res2) -> reduce(res2)
+      not eq(orig, res3) -> reduce(res3)
+      true -> orig
+    end
+
+  end
+
+  def reduce(tree) do
+    case tree do
+      {:suma,l,r} ->
+        comm_collect({:suma,l,r})
+
+      {:mult,l,r} ->
+        comm_collect({:mult,l,r})
+
+      _ ->
+        coll(tree)
     end
   end
 
-  def comm_collect(orig={op,a,b}) do
-    order1 = collect orig
-    if order1 == orig do
-      collect {op,b,a}
-    else
-      order1
+  # propiedad commutativa de + y *, aplicamos collect en un orden y en el otro
+  # Lo ideal seria retornar el mas pequeno, retornamos el primero que
+  # sea diferente al original
+  def comm_collect(orig = {op, a, b}) do
+    ar = coll(a)
+    br = coll(b)
+
+    result1 = coll({op, ar, br})
+    result2 = coll({op, br, ar})
+
+    cond do
+      not eq(result1, orig) ->
+        result1
+
+      not eq(result2, orig) ->
+        result2
+
+      true ->
+        orig
     end
+  end
+
+  @doc """
+  a*(a*b) -> b*a^2
+  """
+  def coll({:mult, a, {:mult, a, b}}) do
+    reduce({:mult, b, {:elev, a, @dos}})
+  end
+
+  def coll({:mult, {:mult, a, b}, {:mult, a, c}}) do
+    reduce({:mult, b, {:mult, c, {:elev, a, @dos}}})
+  end
+
+  @doc """
+  a*a^b -> a^(b+1)
+  """
+  def coll({:mult, a, {:elev, a, b}}) do
+    reduce({:elev, a, {:suma, b, @uno}})
+  end
+
+  def coll({:mult, {:mult, a, b}, {:elev, a, c}}) do
+    reduce({:mult, b, {:mult, c, {:elev, a, {:suma, c, {:numb, 1}}}}})
   end
 
   @doc """
   a*b^-1 -> a/b
   """
-  def collect({:mult, a, {:elev, b, {:numb, -1}}}) do
-    {:divi, a, b}
-  end
-
-  def collect({:mult, {:elev, b, {:numb, -1}}, a}) do
+  def coll({:mult, a, {:elev, b, {:numb, -1}}}) do
     {:divi, a, b}
   end
 
   @doc """
   a^b^c -> a^(b*c)
   """
-  def collect({:elev, a, {:elev, b, c}}) do
-    collect({:elev, a, {:mult, b, c}})
-  end
-
-  @doc """
-  a^b*a -> a^(b+1)
-  """
-  def collect({:mult, {:elev, a, b}, a}) do
-    collect({:elev, a, {:suma, b, @uno}})
-  end
-
-  def collect({:mult, a, {:elev, a, b}}) do
-    collect({:elev, a, {:suma, b, @uno}})
+  def coll({:elev, a, {:elev, b, c}}) do
+    reduce({:elev, a, {:mult, b, c}})
   end
 
   @doc """
   a^b*a^c -> a^(b+c)
   """
-  def collect({:mult, {:elev, a, b}, {:elev, a, c}}) do
-    collect({:elev, a, {:suma, b, c}})
+  def coll({:mult, {:elev, a, b}, {:elev, a, c}}) do
+    reduce({:elev, a, {:suma, b, c}})
   end
 
   @doc """
   a^b/a -> a^(b-1)
   """
-  def collect({:divi, {:elev, a, b}, a}) do
-    collect({:elev, a, {:rest, b, @uno}})
+  def coll({:divi, {:elev, a, b}, a}) do
+    coll({:elev, a, {:rest, b, @uno}})
   end
 
   @doc """
   a^b/a^c -> a^(b-c)
   """
-  def collect({:divi, {:elev, a, b}, {:elev, a, c}}) do
-    collect({:elev, a, {:rest, b, c}})
-  end
-
-  @doc """
-  a*(a*b) -> b*a^2
-  """
-  def collect({:mult, a, {:mult, a, b}}) do
-    collect({:mult, b, {:elev, a, @dos}})
-  end
-
-  def collect({:mult, {:mult, a, b}, a}) do
-    collect({:mult, b, {:elev, a, @dos}})
-  end
-
-  def collect({:mult, {:mult, b, a}, a}) do
-    collect({:mult, b, {:elev, a, @dos}})
+  def coll({:divi, {:elev, a, b}, {:elev, a, c}}) do
+    coll({:elev, a, {:rest, b, c}})
   end
 
   @doc """
   a*b/a -> b
   """
-  def collect({:divi, {:mult, a, b}, a}) do
+  def coll({:divi, {:mult, a, b}, a}) do
     b
   end
 
   @doc """
   a/b*b -> a
   """
-  def collect({:mult, {:divi, a, b}, b}) do
-    a
-  end
-
-  def collect({:mult, b, {:divi, a, b}}) do
+  def coll({:mult, {:divi, a, b}, b}) do
     a
   end
 
   @doc """
   a-a -> 0
   """
-  def collect({:rest, a, a}) do
+  def coll({:rest, a, a}) do
     @zero
   end
 
   @doc """
   a+a -> 2*a
   """
-  def collect({:suma, a, a}) do
-    collect {:mult, {:numb, 2}, a}
+  def coll({:suma, a, a}) do
+    reduce({:mult, {:numb, 2}, a})
   end
 
-  def collect({:suma, {:mult, a, b}, a}) do
-    collect {:mult,{:suma,b,@uno}, a}
-  end
-
-  def collect({:suma, a, {:mult, a, b}}) do
-    collect {:mult,{:suma,b,@uno}, a}
-  end
-
-  def collect({:suma, {:mult, b, a}, a}) do
-    collect {:mult,{:suma,b,@uno}, a}
-  end
-
-  def collect({:suma, a, {:mult, b, a}}) do
-    collect {:mult,{:suma,b,@uno}, a}
+  def coll({:suma, {:mult, a, b}, a}) do
+    reduce({:mult, {:suma, b, @uno}, a})
   end
 
   @doc """
   a*b/a^n -> b*a^(1-n)
   """
-  def collect({:divi, {:mult, a, b}, {:elev, a, c}}) do
-    collect({:mult, b, {:elev, a, {:rest, @uno, c}}})
-  end
-
-  def collect({:divi, {:mult, b, a}, {:elev, a, c}}) do
-    collect({:mult, b, {:elev, a, {:rest, @uno, c}}})
+  def coll({:divi, {:mult, a, b}, {:elev, a, c}}) do
+    reduce({:mult, b, {:elev, a, {:rest, @uno, c}}})
   end
 
   @doc """
   Collect tree and simplify maths where
   applicable
   """
-  def collect({op, l, r}) do
-    cl = collect(l)
-    cr = collect(r)
+  def coll({op, l, r}) do
+    cl = reduce(l)
+    cr = reduce(r)
     {bn, n1, n2} = both_numbers(cl, cr)
     {un, un_a, un_b, un_n} = unit_number(cl, cr)
     {nu, nu_n, nu_a, nu_b} = number_unit(cl, cr)
@@ -177,29 +182,29 @@ defmodule Exun.Tree do
       :mult ->
         cond do
           bn -> {:numb, n1 * n2}
-          un -> collect({:unit, {:mult, un_a, {:numb, un_n}}, un_b})
-          nu -> collect({:unit, {:mult, nu_a, {:numb, nu_n}}, nu_b})
-          uu -> collect({:unit, {:mult, a1, a2}, {:mult, b1, b2}})
+          un -> coll({:unit, {:mult, un_a, {:numb, un_n}}, un_b})
+          nu -> coll({:unit, {:mult, nu_a, {:numb, nu_n}}, nu_b})
+          uu -> coll({:unit, {:mult, a1, a2}, {:mult, b1, b2}})
           cl == @uno -> cr
           cr == @uno -> cl
           cl == @zero or cr == @zero -> @zero
-          cl == cr -> {:elev, cl, @dos}
-          l == cl and r == cr -> {op, cl, cr}
-          true -> collect({op, cl, cr})
+          eq(cl, cr) -> {:elev, cl, @dos}
+          eq(l, cl) and eq(r, cr) -> {op, cl, cr}
+          true -> coll({op, cl, cr})
         end
 
       :divi ->
         cond do
           bn -> {:numb, n1 / n2}
-          un -> collect({:unit, {:divi, un_a, {:numb, un_n}}, un_b})
-          nu -> collect({:unit, {:divi, nu_a, {:numb, nu_n}}, nu_b})
-          uu -> collect({:unit, {:divi, a1, a2}, {:divi, b1, b2}})
+          un -> coll({:unit, {:divi, un_a, {:numb, un_n}}, un_b})
+          nu -> coll({:unit, {:divi, nu_a, {:numb, nu_n}}, nu_b})
+          uu -> coll({:unit, {:divi, a1, a2}, {:divi, b1, b2}})
           cr == @uno -> cl
           cl == @zero -> @zero
-          cr == cl -> @uno
+          eq(cr, cl) -> @uno
           cr == @zero -> @infinite
-          l == cl and r == cr -> {op, cl, cr}
-          true -> collect({op, cl, cr})
+          eq(l, cl) and eq(r, cr) -> {op, cl, cr}
+          true -> coll({op, cl, cr})
         end
 
       :suma ->
@@ -222,14 +227,14 @@ defmodule Exun.Tree do
           cl == @zero ->
             cr
 
-          cl == cr ->
+          eq(cl, cr) ->
             {:mult, cl, @dos}
 
-          l == cl and r == cr ->
+          eq(l, cl) and eq(r, cr) ->
             {op, cl, cr}
 
           true ->
-            collect({op, cl, cr})
+            coll({op, cl, cr})
         end
 
       :rest ->
@@ -249,14 +254,14 @@ defmodule Exun.Tree do
           cr == @zero ->
             cl
 
-          cl == cr ->
+          eq(cl, cr) ->
             @zero
 
-          l == cl and r == cr ->
+          eq(l, cl) and eq(r, cr) ->
             {op, cl, cr}
 
           true ->
-            collect({op, cl, cr})
+            coll({op, cl, cr})
         end
 
       :elev ->
@@ -267,13 +272,14 @@ defmodule Exun.Tree do
           cr == @zero -> @uno
           cl == @zero -> @zero
           cr == @uno -> cl
-          l == cl and r == cr -> {op, cl, cr}
-          true -> collect({op, cl, cr})
+          cr == @muno -> {:divi,@uno ,cl}
+          eq(l, cl) and eq(r, cr) -> {op, cl, cr}
+          true -> coll({op, cl, cr})
         end
     end
   end
 
-  def collect(tree) do
+  def coll(tree) do
     tree
   end
 
@@ -326,25 +332,25 @@ defmodule Exun.Tree do
   main tree expression until no more
   expansion is posssible
   """
-  def expand(tree, context) do
-    expand(tree, context, %{})
+  def replace(tree, context) do
+    replace(tree, context, %{})
   end
 
-  def expand(tree, context, deps) do
-    newtree = single_expand(tree, context)
+  def replace(tree, context, deps) do
+    newtree = single_replace(tree, context)
 
     if tree != newtree do
-      expand(newtree, context, deps)
+      replace(newtree, context, deps)
     else
       {tree, deps}
     end
   end
 
-  defp single_expand({op, {left, right}}, context) do
-    {op, single_expand(left, context), single_expand(right, context)}
+  defp single_replace({op, {left, right}}, context) do
+    {op, single_replace(left, context), single_replace(right, context)}
   end
 
-  defp single_expand({:vari, var}, context) do
+  defp single_replace({:vari, var}, context) do
     in_context = Map.get(context, var)
 
     if in_context != nil do
@@ -357,7 +363,7 @@ defmodule Exun.Tree do
     end
   end
 
-  defp single_expand(a, _context) do
+  defp single_replace(a, _context) do
     a
   end
 
@@ -402,5 +408,38 @@ defmodule Exun.Tree do
       true ->
         ltxt <> hstr <> rtxt
     end
+  end
+
+  @doc """
+  Tree equality, normalize compounds '*' and '+' because
+  {*,{*,1,2},{*,3,4}} == {*,{*,1,3},{*,2,4}}
+  so transform both trees to {{:m,*}[1,2,3,4]} before compare
+  """
+  def eq(t1, t2) do
+    norm(t1) == norm(t2)
+  end
+
+  def norm({op, {op, a, b}, {op, c, d}}) when op in [:suma, :mult] do
+    {{:m, op}, [norm(a), norm(b), norm(c), norm(d)] |> Enum.sort()}
+  end
+
+  def norm({op, c, {op, a, b}}) when op in [:suma, :mult] do
+    {{:m, op}, [norm(a), norm(b), norm(c)] |> Enum.sort()}
+  end
+
+  def norm({op, {op, a, b}, c}) when op in [:suma, :mult] do
+    {{:m, op}, [norm(a), norm(b), norm(c)] |> Enum.sort()}
+  end
+
+  def norm({op, a, b}) when op in [:suma, :mult] do
+    {{:m, op}, [norm(a), norm(b)] |> Enum.sort()}
+  end
+
+  def norm({op,a,b}) do
+    {op, norm(a), norm(b)}
+  end
+
+  def norm(other) do
+    other
   end
 end

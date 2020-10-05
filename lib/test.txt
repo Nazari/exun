@@ -18,3 +18,10 @@ Exun.Units.convert u1,u2,%{}
 {u1,d}= Exun.parse "1[m/s^2]",%{}
 {u2,d}= Exun.parse "1[km/hour^2]",%{}
 Exun.Units.convert u1,u2,%{}
+
+alias Exun.Tree
+orig={op,left={op,a,b},right=c}=Exun.parse "b*a^2*a"
+res1 = Tree.comm_collect({op, left, right})
+res2 = Tree.comm_collect({op, {op, a, c}, b})
+res3 = Tree.comm_collect({op, {op, b, c}, a})
+
