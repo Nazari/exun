@@ -1,5 +1,6 @@
 defmodule Exun.Tree do
   alias Exun.Unit
+  alias Exun.Tree.Eq
 
   @zero {:numb, 0}
   @uno {:numb, 1}
@@ -17,31 +18,39 @@ defmodule Exun.Tree do
     :unit => {200, nil},
     :vari => {200, nil}
   }
+  @doc """
+  Collects expressions, simplify math
+  This works for trees left composed on commutative operations so a*b*c is
+  represented {:mult,{:mult,a,b},c} and not {:mult,a,{:mult,b,c}}
+  Anyway comm_collect take care for commutative ops.
+  """
+  def reduce(orig = {op, {op, a, b}, c}) when op in [:suma, :mult] do
+    ar = reduce(Eq.sort(a))
+    br = reduce(Eq.sort(b))
+    cr = reduce(Eq.sort(c))
 
-  def reduce(orig = {op, left = {op, a, b}, right = c}) when op in [:suma, :mult] do
-    res1 = comm_collect({op, left, right})
-    res2 = comm_collect({op, {op, a, c}, b})
-    res3 = comm_collect({op, {op, b, c}, a})
+    res1 = comm_collect({op, {op, ar, br}, cr})
+    res2 = comm_collect({op, {op, ar, cr}, br})
+    res3 = comm_collect({op, {op, br, cr}, ar})
 
     cond do
-      not eq(orig, res1) -> reduce(res1)
-      not eq(orig, res2) -> reduce(res2)
-      not eq(orig, res3) -> reduce(res3)
+      not Eq.eq(orig, res1) -> reduce(res1)
+      not Eq.eq(orig, res2) -> reduce(res2)
+      not Eq.eq(orig, res3) -> reduce(res3)
       true -> orig
     end
-
   end
 
   def reduce(tree) do
     case tree do
-      {:suma,l,r} ->
-        comm_collect({:suma,l,r})
+      {:suma, l, r} ->
+        comm_collect({:suma, reduce(Eq.sort(l)), reduce(Eq.sort(r))})
 
-      {:mult,l,r} ->
-        comm_collect({:mult,l,r})
+      {:mult, l, r} ->
+        comm_collect({:mult, reduce(Eq.sort(l)), reduce(Eq.sort(r))})
 
       _ ->
-        coll(tree)
+        coll(Eq.sort(tree))
     end
   end
 
@@ -56,10 +65,10 @@ defmodule Exun.Tree do
     result2 = coll({op, br, ar})
 
     cond do
-      not eq(result1, orig) ->
+      not Eq.eq(result1, orig) ->
         result1
 
-      not eq(result2, orig) ->
+      not Eq.eq(result2, orig) ->
         result2
 
       true ->
@@ -139,13 +148,6 @@ defmodule Exun.Tree do
   end
 
   @doc """
-  a-a -> 0
-  """
-  def coll({:rest, a, a}) do
-    @zero
-  end
-
-  @doc """
   a+a -> 2*a
   """
   def coll({:suma, a, a}) do
@@ -188,8 +190,8 @@ defmodule Exun.Tree do
           cl == @uno -> cr
           cr == @uno -> cl
           cl == @zero or cr == @zero -> @zero
-          eq(cl, cr) -> {:elev, cl, @dos}
-          eq(l, cl) and eq(r, cr) -> {op, cl, cr}
+          Eq.eq(cl, cr) -> {:elev, cl, @dos}
+          Eq.eq(l, cl) and Eq.eq(r, cr) -> {op, cl, cr}
           true -> coll({op, cl, cr})
         end
 
@@ -201,67 +203,10 @@ defmodule Exun.Tree do
           uu -> coll({:unit, {:divi, a1, a2}, {:divi, b1, b2}})
           cr == @uno -> cl
           cl == @zero -> @zero
-          eq(cr, cl) -> @uno
+          Eq.eq(cr, cl) -> @uno
           cr == @zero -> @infinite
-          eq(l, cl) and eq(r, cr) -> {op, cl, cr}
+          Eq.eq(l, cl) and Eq.eq(r, cr) -> {op, cl, cr}
           true -> coll({op, cl, cr})
-        end
-
-      :suma ->
-        cond do
-          bn ->
-            {:numb, n1 + n2}
-
-          uu ->
-            case Unit.sum(:suma, cl, cr, %{}) do
-              {:err, msg} -> throw(msg)
-              {:ok, result} -> result
-            end
-
-          un or nu ->
-            throw("Inconsistent sum of unit and no_unit")
-
-          cr == @zero ->
-            cl
-
-          cl == @zero ->
-            cr
-
-          eq(cl, cr) ->
-            {:mult, cl, @dos}
-
-          eq(l, cl) and eq(r, cr) ->
-            {op, cl, cr}
-
-          true ->
-            coll({op, cl, cr})
-        end
-
-      :rest ->
-        cond do
-          bn ->
-            {:numb, n1 - n2}
-
-          un or nu ->
-            throw("Inconsistent sum of unit and no_unit")
-
-          uu ->
-            case Unit.sum(:resta, cl, cr, %{}) do
-              {:err, msg} -> throw(msg)
-              {:ok, unit} -> unit
-            end
-
-          cr == @zero ->
-            cl
-
-          eq(cl, cr) ->
-            @zero
-
-          eq(l, cl) and eq(r, cr) ->
-            {op, cl, cr}
-
-          true ->
-            coll({op, cl, cr})
         end
 
       :elev ->
@@ -272,11 +217,43 @@ defmodule Exun.Tree do
           cr == @zero -> @uno
           cl == @zero -> @zero
           cr == @uno -> cl
-          cr == @muno -> {:divi,@uno ,cl}
-          eq(l, cl) and eq(r, cr) -> {op, cl, cr}
+          cr == @muno -> {:divi, @uno, cl}
+          Eq.eq(l, cl) and Eq.eq(r, cr) -> {op, cl, cr}
           true -> coll({op, cl, cr})
         end
-    end
+      :suma ->
+        cond do
+          bn -> {:numb, n1 + n2}
+          uu ->
+            case Unit.sum(:suma, cl, cr, %{}) do
+              {:err, msg} -> throw(msg)
+              {:ok, result} -> result
+            end
+          un or nu -> throw("Inconsistent sum of unit and no_unit")
+          cr == @zero -> cl
+          cl == @zero -> cr
+          Eq.eq(cl, cr) -> {:mult, cl, @dos}
+          Eq.eq(l, cl) and Eq.eq(r, cr) -> {op, cl, cr}
+          true -> coll({op, cl, cr})
+        end
+
+      :rest ->
+        cond do
+          bn -> {:numb, n1 - n2}
+          un or nu -> throw("Inconsistent sum of unit and no_unit")
+          uu ->
+            case Unit.sum(:resta, cl, cr, %{}) do
+              {:err, msg} -> throw(msg)
+              {:ok, unit} -> unit
+            end
+
+          cr == @zero -> cl
+          Eq.eq(cl, cr) -> @zero
+          Eq.eq(l, cl) and Eq.eq(r, cr) -> {op, cl, cr}
+          true -> coll({op, cl, cr})
+        end
+
+      end
   end
 
   def coll(tree) do
@@ -332,39 +309,26 @@ defmodule Exun.Tree do
   main tree expression until no more
   expansion is posssible
   """
-  def replace(tree, context) do
-    replace(tree, context, %{})
-  end
+  def replace(tree, pc) do
+    newtree = repl(tree, pc)
 
-  def replace(tree, context, deps) do
-    newtree = single_replace(tree, context)
-
-    if tree != newtree do
-      replace(newtree, context, deps)
+    if not Eq.eq(tree, newtree) do
+      replace(newtree, pc)
     else
-      {tree, deps}
+      newtree
     end
   end
 
-  defp single_replace({op, {left, right}}, context) do
-    {op, single_replace(left, context), single_replace(right, context)}
+  def repl({:vari, var}, pc) do
+    Map.get(pc, var, {:vari, var})
   end
 
-  defp single_replace({:vari, var}, context) do
-    in_context = Map.get(context, var)
-
-    if in_context != nil do
-      with {:ok, toks, _} <- :exun_lex.string(in_context |> to_string() |> String.to_charlist()),
-           {:ok, tree} <- :exun_yacc.parse(toks) do
-        tree
-      end
-    else
-      {:vari, var}
-    end
+  def repl({op, l, r}, pc) do
+    {op, replace(l, pc), replace(r, pc)}
   end
 
-  defp single_replace(a, _context) do
-    a
+  def repl(other, _pc) do
+    other
   end
 
   @doc ~S"""
@@ -408,38 +372,5 @@ defmodule Exun.Tree do
       true ->
         ltxt <> hstr <> rtxt
     end
-  end
-
-  @doc """
-  Tree equality, normalize compounds '*' and '+' because
-  {*,{*,1,2},{*,3,4}} == {*,{*,1,3},{*,2,4}}
-  so transform both trees to {{:m,*}[1,2,3,4]} before compare
-  """
-  def eq(t1, t2) do
-    norm(t1) == norm(t2)
-  end
-
-  def norm({op, {op, a, b}, {op, c, d}}) when op in [:suma, :mult] do
-    {{:m, op}, [norm(a), norm(b), norm(c), norm(d)] |> Enum.sort()}
-  end
-
-  def norm({op, c, {op, a, b}}) when op in [:suma, :mult] do
-    {{:m, op}, [norm(a), norm(b), norm(c)] |> Enum.sort()}
-  end
-
-  def norm({op, {op, a, b}, c}) when op in [:suma, :mult] do
-    {{:m, op}, [norm(a), norm(b), norm(c)] |> Enum.sort()}
-  end
-
-  def norm({op, a, b}) when op in [:suma, :mult] do
-    {{:m, op}, [norm(a), norm(b)] |> Enum.sort()}
-  end
-
-  def norm({op,a,b}) do
-    {op, norm(a), norm(b)}
-  end
-
-  def norm(other) do
-    other
   end
 end
