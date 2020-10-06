@@ -9,7 +9,7 @@ defmodule Exun do
 
   """
   def parse(txt) do
-    {t,_}=parse(txt, %{})
+    {t, _} = parse(txt, %{})
     t
   end
 
@@ -27,53 +27,42 @@ defmodule Exun do
   def parse(txt, context) do
     case Cyclic.check(context) do
       {:ok, _deps} ->
-        {tree, _deps} = parse_text(txt, context)
+        tree = parse_text(txt)
 
         {tree,
          for {func, defi} <- context, into: %{} do
-           {subtree, _deps} = parse_text(defi, context)
-           {func, subtree }
+           subtree = parse_text(defi)
+           {func, subtree}
          end}
 
-      a ->
-        a
+      {:err,msg,_lst} ->
+        throw msg
     end
   end
+
   @doc """
   Parse and evaluate an expression. If ast is true returns de AST tuple,
   if it is false return a human-readable (and parseable) expression
     iex> Exun.eval "x[m^2]+4[cm^2]",%{"x"=>"3"}
     "3.04[m^2]"
   """
-  def eval(txt, context, ast \\ false) do
-    {expr, pcont} = parse(txt,context)
-    evaluated = eval_repl(expr,pcont)
-              |> Tree.reduce()
-    if ast, do: evaluated, else: Exun.Tree.tostr(evaluated)
+  def eval(txt, context) do
+    {ast, pcontext} = parse(txt, context)
+    ast
+    |> Tree.reduce
+    |> Tree.replace(pcontext)
+    |> Tree.reduce
+    |> Tree.tostr
   end
 
   def eval(txt) do
-    eval(txt,%{})
+    eval(txt, %{})
   end
 
-  def eval_repl(expr, pcontext) do
-    case expr do
-      {:vari, var} ->
-        Map.get(pcontext, var, {:vari, var})
-      {op, l, r} ->
-        {op,
-          eval_repl(l, pcontext),
-          eval_repl(r, pcontext)
-        }
-      other ->
-        other
-    end
-  end
-
-  defp parse_text(txt, context) do
+  def parse_text(txt) do
     with {:ok, toks, _} <- :exun_lex.string(txt |> String.to_charlist()),
          {:ok, tree} <- :exun_yacc.parse(toks) do
-      Tree.replace(tree, context, %{})
+      tree
     end
   end
 end
