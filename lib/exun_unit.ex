@@ -123,6 +123,10 @@ defmodule Exun.Unit do
     "#{nres}[#{Exun.Tree.tostr(t2)}#{exps_tostr(exps)}]"
   end
 
+  def factorize(e1,e2) do
+    factorize(e1|>Exun.parse, e2|>Exun.parse, %{})
+  end
+
   @doc """
   Convert unit to International System
   """
@@ -181,7 +185,7 @@ defmodule Exun.Unit do
 
       @conversions[name] != nil ->
         @conversions[name]
-        |> parseunit()
+        |> Exun.parse_text()
 
       pcontext[name] != nil ->
         pcontext[name]
@@ -193,17 +197,6 @@ defmodule Exun.Unit do
 
       true ->
         throw("Undefined unit #{name}")
-    end
-  end
-
-  @doc """
-  Parse a unit:
-  "1[m]" -> {:unit, {:numb,1}, {:vari, "m"}}
-  """
-  def parseunit(value) do
-    with {:ok, tok, _} <- :exun_lex.string(String.to_charlist(value)),
-         {:ok, tree} <- :exun_yacc.parse(tok) do
-      tree
     end
   end
 
