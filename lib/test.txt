@@ -19,9 +19,9 @@ Exun.Units.convert u1,u2,%{}
 {u2,d}= Exun.parse "1[km/hour^2]",%{}
 Exun.Units.convert u1,u2,%{}
 
-alias Exun.Tree
-orig={op,left={op,a,b},right=c}=Exun.parse "b*a^2*a"
-res1 = Tree.comm_collect({op, left, right})
-res2 = Tree.comm_collect({op, {op, a, c}, b})
-res3 = Tree.comm_collect({op, {op, b, c}, a})
 
+alias Exun.Collect
+alias Exun.Eq
+t=Exun.parse("a+a+2*a+b")
+tn= Eq.norm t
+Collect.mk tn

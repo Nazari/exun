@@ -1,6 +1,6 @@
 defmodule Exun.Tree do
   alias Exun.Unit
-  alias Exun.Tree.Eq
+  alias Exun.Eq
 
   @zero {:numb, 0}
   @uno {:numb, 1}

@@ -1,4 +1,4 @@
-defmodule Exun.Tree.Eq do
+defmodule Exun.Eq do
   @doc """
   Tree equality, normalize compounds '*' and '+' because
   {*,{*,1,2},{*,3,4}} == {*,{*,1,3},{*,2,4}}
@@ -55,6 +55,9 @@ defmodule Exun.Tree.Eq do
     other
   end
 
+  @doc """
+  Change sign of tree
+  """
   def chsign({:vari, var}) do
     {:mult, {:numb, -1}, {:vari, var}}
   end
@@ -98,6 +101,9 @@ defmodule Exun.Tree.Eq do
      end)}
   end
 
+  @doc """
+  Change power sign of tree
+  """
   def chpow({:vari, var}) do
     {:elev, {:vari, var}, {:numb, -1}}
   end
@@ -162,5 +168,9 @@ defmodule Exun.Tree.Eq do
     tree
   end
 
+  @doc """
+  Sort leafs
+  """
   def sort(tree), do: denorm(norm(tree))
+
 end

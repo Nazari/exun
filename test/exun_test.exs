@@ -37,13 +37,13 @@ defmodule ExunTest do
 
     assert Exun.eval("1[m] + 1[cm]") == "1.01[m]"
 
-    u4 = Exun.eval_ast("(2[slug] + 3[N]) / (16[lb] + 23[g])",%{})
+    u4 = Exun.parse("(2[slug] + 3[N]) / (16[lb] + 23[g])",%{})
     assert u4 == {:unit, {:numb, 4.046372279401674}, {:divi, {:vari, "slug"}, {:vari, "lb"}}}
 
-    u5 = Exun.eval_ast("(3[N] + 2[slug]) / (23[g] + 16[lb])", %{})
+    u5 = Exun.parse("(3[N] + 2[slug]) / (23[g] + 16[lb])", %{})
     assert u5 == {:unit, {:numb, 4.046372279401674}, {:divi, {:vari, "N"}, {:vari, "g"}}}
 
-    u6 = Exun.eval_ast("1[m] * 1[cm]", %{})
+    u6 = Exun.parse("1[m] * 1[cm]", %{})
     assert u6 == {:unit, {:numb, 1}, {:mult, {:vari, "m"}, {:vari, "cm"}}}
     assert Exun.Unit.to_si(u6) == {0.01, %{"m" => 2}}
   end
