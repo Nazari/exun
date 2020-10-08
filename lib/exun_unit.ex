@@ -1,5 +1,4 @@
 defmodule Exun.Unit do
-  alias Exun.Tree
 
   @prefixes %{
     # Exa
@@ -51,39 +50,100 @@ defmodule Exun.Unit do
   }
 
   @conversions %{
-    "pulg" => "2.54[cm]",
+    "in" => "2.54[cm]",
     "pie" => "30.48[cm]",
-    "mile" => "1609.344[m]",
-    "yard" => "91.44[cm]",
-    "legua" => "5.57[km]",
+    "mi" => "1609.344[m]",
+    "yd" => "91.44[cm]",
+    "ft" => "0.3048[m]",
+    "pc" => "3.08567818585e16[m]",
+    "lyr"=> "9.46052840488e15[m]",
+    "au" => "149597900000[m]",
+    "chain" => "20.1168402337[m]",
     "vara" => "83.6[cm]",
-    "oz" => "28.35[g]",
-    "lb" => "454[g]",
-    "arroba" => "25[lb]",
-    "hour" => "60[min]",
-    "min" => "60[s]",
-    "day" => "24[hour]",
-    "galon" => "3.78[l]",
+    "rd" => "5.02921005842[m]",
+    "fath" => "1.82880365761[m]",
+    "angstrom" => "1.0e-10[m]",
+
+    "a" => "100[m^2]",
+    "acre" => "4046.87260987[m^2]",
+
     "l" => "100[cm^3]",
+    "galUK" => "4.546092[l]",
+    "galC" => "4.54609[l]",
+    "gal" => "3.785411784[l]",
+    "qt" => "0.946352946[l]",
+    "pt" => "0.473176473[l]",
+    "cu" => "0.2365882365[l]",
+    "ozfl" => "2.95735295625e-2[l]",
+    "ozUK" => "28.413075[ml]",
+    "tbsp" => "14.78676447813[ml]",
+    "tsp" => "4.92892159375[ml]",
+    "bbl" => "158987.294928[ml]",
+    "bu" => "35239.07[ml]",
+    "pk" => "8809.7675[ml]",
+    "fbm" => "2359.737216[ml]",
+
+    "yr" => "31556925.9747[s]",
+    "d" => "86400[s]",
+    "h" => "3600[s]",
+    "min" => "60[s]",
+    "Hz" => "1[1/s]",
+
+    "lb" => "453.59237[g]",
+    "arroba" => "25[lb]",
+    "oz" => "28.349523125[g]",
+    "slug" => "14.5939029372[kg]",
+    "lbt" => "373.2417216[g]",
+    "ton" => "907.18474[kg]",
+    "tonUK" => "1016.0469088[kg]",
+    "t" => "1000[kg]",
+    "ozt" => "31.1034768[g]",
+    "ct" => "0.2[g]",
+    "grain" => "0.06479891[g]",
+    "u" => "1.6605402e-24[g]",
+
     "N" => "101.9716[g*m/s^2]",
-    "slug" => "14.59[kg*m/s^2]",
-    "Pa" => "1[N/m^2]",
-    "Psi" => "737.07[kg/m^2]"
+    "dyn" => "0.00001[kg*m/s^2]",
+    "gf" => "0.00980665[N]",
+    "kip" => "4448.22161526[N]",
+    "lbf" => "4.44822161526[N]",
+    "pdl" => "0.1382549544376[N]",
+
+    "J" => "1[kg*m^2/s^2]",
+    "erg" => "0.0000001[J]",
+    "cal" => "4.1868[J]",
+    "Btu" => "1055.05585262[J]",
+    "therm" => "105506000[J]",
+    "eV" => "1.60217733e-19[J]",
+
+    "W" => "1[kg*m^2/s^3]",
+    "hp" => "745.699871582[W]",
+    "CV" => "1[hp]",
+
+    "Pa" => "1[kg/m/s^2]",
+    "atm" => "101325[Pa]",
+    "bar" => "100000[Pa]",
+    "psi" => "6894.75729317[Pa]",
+    "torr" => "133.322368421[Pa]",
+    "mmHg" => "1[torr]",
+    "inHg" => "3386.38815789[Pa]",
+    "inH2O" => "248.84[Pa]",
+
   }
   @doc """
   Sum of two units
   """
-  def sum(op, _u1 = {:unit, {:numb, n1}, t1}, _u2 = {:unit, {:numb, n2}, t2}, pcontext) do
+  def sum(op, {:unit, {:numb, n1}, t1}, {:unit, {:numb, n2}, t2}, pcontext) do
     {res1, exps1} = to_si({1, t1}, pcontext, 1, %{})
     {res2, exps2} = to_si({1, t2}, pcontext, 1, %{})
 
     if exps1 != exps2 do
-      {:err, "Inconsisten units " <> Tree.tostr(t1) <> " and " <> Tree.tostr(t2)}
+      {:err, "Inconsisten units " <> Exun.tostr(t1) <> " and " <> Exun.tostr(t2)}
     else
       val =
         case op do
-          :suma -> res1 * n1 + res2 * n2
-          :resta -> res1 * n1 - res2 * n2
+          :suma ->  (n1*res1 + n2*res2)/res1
+          :resta -> (n1*res1 - n2*res2)/res1
           _ -> throw("Unknown op for Exun.Units.sum")
         end
 
@@ -95,14 +155,14 @@ defmodule Exun.Unit do
   Convert first unit to the second unit in convert:
   u1 = Exun.parse "3[m]"
   u2 = Exun.parse "1[cm]"
-  Exum.Units.convert(u1,u2,%{}) |> Exum.Tree.tostr() ===> "300[cm]"
+  Exum.Units.convert(u1,u2,%{}) |> Exum.tostr() ===> "300[cm]"
   """
   def convert(_u1 = {:unit, {:numb, n1}, t1}, _u2 = {:unit, {:numb, _n2}, t2}, pcontext) do
     {res1, exps1} = to_si({1, t1}, pcontext, 1, %{})
     {res2, exps2} = to_si({1, t2}, pcontext, 1, %{})
 
     if exps1 != exps2 do
-      {:err, "Inconsisten units " <> Tree.tostr(t1) <> " and " <> Tree.tostr(t2)}
+      {:err, "Inconsisten units " <> Exun.tostr(t1) <> " and " <> Exun.tostr(t2)}
     else
       {:ok, {:unit, {:numb, n1 * res1 / res2}, t2}}
     end
@@ -120,7 +180,7 @@ defmodule Exun.Unit do
   def factorize({:unit, {:numb, n1}, t1}, {:unit, {:numb, _n2}, t2}, pcontext) do
     # Divide t1 by t2, reduce to si and multiply by t2
     {nres, exps} = to_si({n1, {:divi, t1, t2}}, pcontext, 1, %{})
-    "#{nres}[#{Exun.Tree.tostr(t2)}#{exps_tostr(exps)}]"
+    "#{nres}[#{Exun.tostr(t2)}#{exps_tostr(exps)}]"
   end
 
   def factorize(e1,e2) do
@@ -129,11 +189,17 @@ defmodule Exun.Unit do
 
   @doc """
   Convert unit to International System
+  args: unit
   """
   def to_si({:unit, {:numb, n}, tree}) do
     to_si {n,tree}, %{}, 1, %{}
   end
 
+  @doc """
+  Convert unit to International System
+  args: {coef, ast}, parsed_context, current_exponent, exponents
+  returns: {newcoef, exponents}
+  """
   def to_si({n, {:mult, left, right}}, pcontext, curr_exp, exps) do
     {left_n, exps} = to_si({1, left}, pcontext, curr_exp, exps)
     {right_n, exps} = to_si({1, right}, pcontext, curr_exp, exps)
@@ -153,7 +219,7 @@ defmodule Exun.Unit do
 
   def to_si({n, {:elev, left, {:numb, exponent}}}, pcontext, curr_exp, exps) do
     {left_n, exps} = to_si({1, left}, pcontext, curr_exp * exponent, exps)
-    {n * left_n, exps}
+    {n * :math.pow(left_n,exponent), exps}
   end
 
   def to_si({n, {:vari, var}}, pcontext, curr_exp, exps) do
@@ -168,7 +234,7 @@ defmodule Exun.Unit do
   end
 
   def to_si({_a, b}, _pcontext, _curr_exp, _exps) do
-    throw("Invalid unit definition: " <> Exun.Tree.tostr(b))
+    throw("Invalid unit definition: " <> Exun.tostr(b))
   end
 
   @doc """

@@ -1,27 +1,20 @@
-{:ok, tok, _}= :exun_lex.string '1[m]'
-{:ok,tree}= :exun_yacc.parse tok
-Exun.parse "1[m^2]", %{"m"=>"s*4", "s"=>"t*2", "t"=>"3"}
 
+t  = Exun.parse "1[m]*1[cm]/2[m]"
+tn = Exun.Collect.norm t
+Exun.Collect.make tn
 
-{u1,d} = Exun.parse "2[km]"
-{u2,d} = Exun.parse "3[cm]"
-Exun.Units.convert u1,u2,%{}  
+t  = Exun.parse "m/m"
+tn = Exun.Collect.norm t
+tnc = Exun.Collect.make tn
 
-{u1,d} = Exun.parse "2[m]"
-{u2,d} = Exun.parse "3[s]"
-Exun.Units.convert u1,u2,%{}  
+t  = Exun.parse "m-m"
+tn = Exun.Collect.norm t
+tnc = Exun.Collect.make tn
 
-{u1,d}= Exun.parse "10[m/s^2]",%{}
-{u2,d}= Exun.parse "10[legua/day^2]",%{}
-Exun.Units.convert u1,u2,%{}
+ast=Exun.parse("1[m^2]+1[cm^2]")
+nor=Exun.Collect.norm ast
+op=:mult
+{_,lst}=nor
+[head|_]=lst
+base = Exun.Collect.get_base(head,op,lst)
 
-{u1,d}= Exun.parse "1[m/s^2]",%{}
-{u2,d}= Exun.parse "1[km/hour^2]",%{}
-Exun.Units.convert u1,u2,%{}
-
-
-alias Exun.Collect
-alias Exun.Eq
-t=Exun.parse("a+a+2*a+b")
-tn= Eq.norm t
-Collect.mk tn
