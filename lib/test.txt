@@ -18,3 +18,11 @@ op=:mult
 [head|_]=lst
 base = Exun.Collect.get_base(head,op,lst)
 
+t = Exun.parse "x^2+2*x"
+tn = Exun.Collect.norm t
+{_,l} = Exun.Collect.norm t
+[h|_]=l
+base =Exun.Collect.get_base(h,:suma,l)
+isol = Exun.Collect.get_isol(base,l)
+coefs = Exun.Collect.get_coefs isol
+rest = Exun.Collect.get_rest isol

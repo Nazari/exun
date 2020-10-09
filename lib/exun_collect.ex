@@ -24,7 +24,7 @@ defmodule Exun.Collect do
           nil
 
         1 ->
-          [{:numb,n}] = numbers
+          [{:numb, n}] = numbers
           n
 
         _ ->
@@ -95,6 +95,7 @@ defmodule Exun.Collect do
           [{a, nil} | ac]
       end
     end)
+    |> Enum.reverse()
   end
 
   def get_coefs(isol) do
@@ -113,24 +114,20 @@ defmodule Exun.Collect do
     end)
   end
 
-  def procmult(op, lst) do
-    [head | _tail] = lst
-    base = get_base(head, op, lst)
-    isol = get_isol(base, lst)
-    coefs = get_coefs(isol)
-    rest = get_rest(isol)
-
-    case op do
-      :suma ->
-        isol = {:mult, head, mk({{:m, :suma}, coefs})}
-        rest = mk({{:m, :suma}, rest})
-        mk({:suma, isol, rest})
-
-      :mult ->
-        isol = mk({:elev, head, {{:m, :suma}, coefs}})
-        mk({{:m, :mult}, [isol | rest]})
-    end
-  end
+  # simplify
+  def mk({:suma, a, @zero}), do: make(a)
+  def mk({:suma, @zero, a}), do: make(a)
+  def mk({:mult, _, @zero}), do: @zero
+  def mk({:mult, @zero, _}), do: @zero
+  def mk({:mult, @uno, a}), do: make(a)
+  def mk({:mult, a, @uno}), do: make(a)
+  def mk({:mult, a, a}), do: {:elev, make(a), @dos}
+  def mk({:divi, _, @zero}), do: @infinite
+  def mk({:divi, @zero, _}), do: @zero
+  def mk({:divi, a, @uno}), do: make(a)
+  def mk({:elev, _, @zero}), do: @uno
+  def mk({:elev, a, @uno}), do: make(a)
+  def mk({:elev, @uno, _}), do: @uno
 
   def mk({{:m, op}, lst}) when op in [:suma, :mult] do
     lst = simplify(lst, op)
@@ -153,25 +150,25 @@ defmodule Exun.Collect do
             Enum.at(lst, 0)
 
           _ ->
-            procmult(op, lst)
+            [head | _tail] = lst
+            base = get_base(head, op, lst)
+            isol = get_isol(base, lst)
+            coefs = get_coefs(isol)
+            rest = get_rest(isol)
+
+            case op do
+              :suma ->
+                isol = {:mult, head, mk({{:m, :suma}, coefs})}
+                rest = mk({{:m, :suma}, rest})
+                {:suma, isol, make(rest)}
+
+              :mult ->
+                isol = mk({:elev, head, {{:m, :suma}, coefs}})
+                {{:m, :mult}, [isol | make(rest)]}
+            end
         end
     end
   end
-
-  # simplify
-  def mk({:suma, a, @zero}), do: make(a)
-  def mk({:suma, @zero, a}), do: make(a)
-  def mk({:mult, _, @zero}), do: @zero
-  def mk({:mult, @zero, _}), do: @zero
-  def mk({:mult, @uno, a}), do: make(a)
-  def mk({:mult, a, a}), do: {:elev, make(a), @dos}
-  def mk({:mult, a, @uno}), do: make(a)
-  def mk({:divi, _, @zero}), do: @infinite
-  def mk({:divi, @zero, _}), do: @zero
-  def mk({:divi, a, @uno}), do: make(a)
-  def mk({:elev, _, @zero}), do: @uno
-  def mk({:elev, a, @uno}), do: make(a)
-  def mk({:elev, @uno, _}), do: @uno
 
   # number, number
   def mk({:suma, {:numb, n1}, {:numb, n2}}) do
