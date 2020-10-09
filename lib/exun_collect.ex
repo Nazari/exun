@@ -9,13 +9,15 @@ defmodule Exun.Collect do
   @invalid_unit_operation "Inconsistent unit operation"
 
   def make(tree) do
-    tree
+    newtree = tree
     # |> IO.inspect(label: "make01,init:Antes de inspect")
     |> norm()
     # |> IO.inspect(label: "make02,norm:Antes de mkrec")
-    |> mkrec()
+    |> mk()
     # |> IO.inspect(label: "make03,mkrec:Antes de denorm")
     |> denorm()
+
+    if Exun.eq(newtree,tree), do: tree, else: make(newtree)
   end
 
   def simplify(op, lst) when op in [:suma, :mult] and is_list(lst) do
@@ -157,11 +159,6 @@ defmodule Exun.Collect do
     |> Enum.reverse()
   end
 
-  def mkrec(tree) do
-    newtree = mk(tree)
-    if Exun.eq(newtree, tree), do: newtree, else: mkrec(newtree)
-  end
-
   # simplify
   def mk({:suma, a, @zero}), do: make(a)
   def mk({:suma, @zero, a}), do: make(a)
@@ -212,11 +209,11 @@ defmodule Exun.Collect do
 
                 case op do
                   :suma ->
-                    isolp = make({:mult, pivot, mkrec({{:m, :suma}, coefs})})
+                    isolp = make({:mult, pivot, mk({{:m, :suma}, coefs})})
                     {{:m, :suma}, [isolp | rest]}
 
                   :mult ->
-                    isolp = make({:elev, pivot, mkrec({{:m, :suma}, coefs})})
+                    isolp = make({:elev, pivot, mk({{:m, :suma}, coefs})})
                     {{:m, :mult}, [isolp | rest]}
                 end
             end
@@ -328,7 +325,7 @@ defmodule Exun.Collect do
   def cbs(op, {:elev, a, b}, {:elev, a, c}) do
     case op do
       :suma -> {:err, nil}
-      :mult -> {:ok, mkrec({:elev, a, {:rest, c, b}})}
+      :mult -> {:ok, mk({:elev, a, {:rest, c, b}})}
     end
   end
 
