@@ -9,12 +9,6 @@ Unary 0 variable.
 
 expr -> '(' expr ')' : '$2'.
 
-expr -> uexpr '^' uexpr : {elev, '$1', '$3' }.
-expr -> uexpr '/' uexpr : {divi, '$1', '$3'}.
-expr -> uexpr '*' uexpr : {mult, '$1', '$3'}.
-expr -> uexpr '+' uexpr : {suma, '$1', '$3'}.
-expr -> uexpr '-' uexpr : {rest, '$1', '$3'}.
-
 expr -> expr '^' expr : {elev, '$1', '$3'}.
 expr -> expr '/' expr : {divi, '$1', '$3'}.
 expr -> expr '*' expr : {mult, '$1', '$3'}.

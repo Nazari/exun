@@ -10,16 +10,17 @@ defmodule Exun.Collect do
 
   def make(tree) do
     tree
-    # |> IO.inspect(label: "make01:Antes de inspect")
+    #|> IO.inspect(label: "make01,init:Antes de inspect")
     |> norm()
-    # |> IO.inspect(label: "make02:Antes de mkrec")
+    #|> IO.inspect(label: "make02,norm:Antes de mkrec")
     |> mkrec()
-    # |> IO.inspect(label: "make03:Antes de denorm")
+    #|> IO.inspect(label: "make03,mkrec:Antes de denorm")
     |> denorm()
   end
 
-  def simplify(lst, op) when op in [:suma, :mult] and is_list(lst) do
+  def simplify(op, lst) when op in [:suma, :mult] and is_list(lst) do
     numbers = Enum.filter(lst, &(elem(&1, 0) == :numb))
+    lst = lst -- numbers
 
     collnumb =
       case length(numbers) do
@@ -27,19 +28,20 @@ defmodule Exun.Collect do
           nil
 
         1 ->
-          [{:numb, n}] = numbers
-          n
+          numbers |> List.first()
 
         _ ->
-          Enum.reduce(numbers, if(op == :suma, do: 0, else: 1), fn {:numb, n}, ac ->
-            case op do
-              :suma -> ac + n
-              :mult -> ac * n
-            end
-          end)
+          {:numb,
+           Enum.reduce(numbers, if(op == :suma, do: 0, else: 1), fn {:numb, n}, ac ->
+             case op do
+               :suma -> ac + n
+               :mult -> ac * n
+             end
+           end)}
       end
 
     units = Enum.filter(lst, &(elem(&1, 0) == :unit))
+    lst = lst -- units
 
     collunit =
       case length(units) do
@@ -56,11 +58,8 @@ defmodule Exun.Collect do
             case op do
               :suma ->
                 case Unit.sum(op, ac, el, %{}) do
-                  {:ok, res} ->
-                    res
-
-                  {:err, msg} ->
-                    throw(msg)
+                  {:ok, res} -> res
+                  {:err, msg} -> throw(msg)
                 end
 
               :mult ->
@@ -72,10 +71,18 @@ defmodule Exun.Collect do
       end
 
     case {collnumb, collunit} do
-      {nil, nil} -> lst
-      {_, nil} -> [{:numb, collnumb} | lst -- numbers]
-      {nil, _} -> [collunit | lst -- units]
-      _ -> [{:numb, collnumb}, collunit | lst -- numbers -- units]
+      {nil, nil} ->
+        lst
+
+      {_, nil} ->
+        [collnumb | lst]
+
+      {nil, _} ->
+        [collunit | lst]
+
+      _ ->
+        {:unit, n2, ut} = collunit
+        [{:unit, {:mult, collnumb, n2}, ut} | lst]
     end
   end
 
@@ -168,7 +175,7 @@ defmodule Exun.Collect do
   def mk({:elev, @uno, _}), do: @uno
 
   def mk(orig = {{:m, op}, lst}) when op in [:suma, :mult] and is_list(lst) do
-    lst = simplify(lst, op)
+    lst = simplify(op, lst)
 
     # if a multiple mult {:m,:mult} check if zero is a component
     cond do
@@ -290,14 +297,8 @@ defmodule Exun.Collect do
     {:unit, make({:divi, n1, n2}), make({:divi, a1, a2})}
   end
 
-  def mk(orig = {op, a, b}) do
-    dst = {op, mk(a), mk(b)}
-
-    if Exun.eq(orig, dst) do
-      dst
-    else
-      mk(dst)
-    end
+  def mk({op, a, b}) do
+    {op, mk(a), mk(b)}
   end
 
   # Fallthrough
@@ -343,50 +344,6 @@ defmodule Exun.Collect do
 
   def scoll(tree) do
     tree
-  end
-
-  @doc """
-  Both args are units?
-  """
-  def unit_unit({:unit, a1, b1}, {:unit, a2, b2}) do
-    {true, a1, b1, a2, b2}
-  end
-
-  def unit_unit(_a, _b) do
-    {false, nil, nil, nil, nil}
-  end
-
-  @doc """
-  Number and unit?
-  """
-  def number_unit({:numb, n}, {:unit, a, b}) do
-    {true, n, a, b}
-  end
-
-  def number_unit(_a, _b) do
-    {false, nil, nil, nil}
-  end
-
-  @doc """
-  UNit and number?
-  """
-  def unit_number({:unit, a, b}, {:numb, n}) do
-    {true, a, b, n}
-  end
-
-  def unit_number(_a, _b) do
-    {false, nil, nil, nil}
-  end
-
-  @doc """
-  Both numbers?
-  """
-  def both_numbers({:numb, n1}, {:numb, n2}) do
-    {true, n1, n2}
-  end
-
-  def both_numbers(_one, _other) do
-    {false, 0, 0}
   end
 
   @doc """
@@ -568,7 +525,7 @@ defmodule Exun.Collect do
 
   def denorm(tree) do
     tree
-    |> IO.inspect(label: "Not possible denorm")
+    # |> IO.inspect(label: "Not possible denorm")
   end
 
   @doc """

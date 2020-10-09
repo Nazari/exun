@@ -57,12 +57,23 @@ defmodule Exun do
     "3.04[m^2]"
   """
   def eval(txt, context) do
-    {ast,pcontext}=parse(txt,context)
-    ast
-    |> Collect.make()
-    |> replace(pcontext)
-    |> Collect.make()
-    #|> tostr()
+    {ast, pcontext} = parse(txt, context)
+
+    case ast do
+      {:error, {line, _app, list}} ->
+        throw("Error line:#{line} #{list}")
+
+      _ ->
+        ast
+        #|> IO.inspect(label: "eval01,AST:")
+        |> Collect.make()
+        #|> IO.inspect(label: "eval02,make:")
+        |> replace(pcontext)
+        #|> IO.inspect(label: "eval03,replace:")
+        |> Collect.make()
+        #|> IO.inspect(label: "eval04,make:")
+        |> tostr()
+    end
   end
 
   def eval(txt) do
