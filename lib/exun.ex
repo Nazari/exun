@@ -54,7 +54,7 @@ defmodule Exun do
   Parse and evaluate an expression. If ast is true returns de AST tuple,
   if it is false return a human-readable (and parseable) expression
     iex> Exun.eval "x[m^2]+4[cm^2]",%{"x"=>"3"}
-    "3.04[m^2]"
+    "3.0004[m^2]"
   """
   def eval(txt, context) do
     {ast, pcontext} = parse(txt, context)
@@ -66,7 +66,7 @@ defmodule Exun do
       _ ->
         ast
         #|> IO.inspect(label: "eval01,AST:")
-        |> Collect.make()
+        #|> Collect.make()
         #|> IO.inspect(label: "eval02,make:")
         |> replace(pcontext)
         #|> IO.inspect(label: "eval03,replace:")

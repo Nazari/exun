@@ -5,7 +5,7 @@ defmodule ExunTest do
   doctest Exun
 
   test "[ precedes sum" do
-    assert Exun.eval("1[m]+1[cm]+1[mm]") == "1.011[m]"
+    assert Exun.eval("1[m]+1[cm]+1[mm]") in [ "1.011[m]", "101.1[cm]"]
   end
 
   test "[ precedes *" do
@@ -13,9 +13,9 @@ defmodule ExunTest do
   end
 
   test "Parse x[me]/3[se]" do
-    assert Exun.parse("x[me]/3[se]")
-           |> Collect.make() ==
-             {:unit, {:divi, {:vari, "x"}, {:numb, 3}}, {:divi, {:vari, "me"}, {:vari, "se"}}}
+    assert Exun.parse("x[me]/3[se]") ==
+      {:divi, {:unit, {:vari, "x"}, {:vari, "me"}},
+      {:unit, {:numb, 3}, {:vari, "se"}}}
   end
 
   test "Parse x[me]/3[se] with %{x => \"7\", me => m^2, se => s^2}" do
@@ -24,7 +24,6 @@ defmodule ExunTest do
         "x[me]/3[se]",
         %{"x" => "7", "me" => "m^2", "se" => "s^2"}
       )
-      |> Collect.make()
 
     assert tree ==
              {:divi, {:unit, {:vari, "x"}, {:vari, "me"}}, {:unit, {:numb, 3}, {:vari, "se"}}}
@@ -37,11 +36,11 @@ defmodule ExunTest do
 
   test "1[slug/N]" do
     u2 = Exun.parse("1[slug/N]")
-    assert Exun.Unit.to_si(u2) == {143.0790533834911, %{"g" => 0, "m" => 0, "s" => 0}}
+    assert Exun.Unit.to_si(u2) == {143.11732813057753, %{"g" => 0, "m" => -1, "s" => 2}}
   end
 
-  test "1[m]+3[cm] + 2[db]+4[mm]" do
-    assert Exun.eval("1[m] + 1[cm]") == "1.234[m]"
+  test "1[m]+3[cm]+2[dm]+4[mm]" do
+    assert Exun.eval("1[m]+3[cm]+2[dm]+4[mm]") == "1.234[m]"
   end
 
   test "(3[kg] + 2[slug]) / (23[g] + 16[lb])" do
@@ -50,9 +49,9 @@ defmodule ExunTest do
   end
 
   test "1[m] * 1[cm]" do
-    u6 = Exun.parse("1[m] * 1[cm]", %{}) |> Collect.make()
+    u6 = Exun.parse("1[m] * 1[cm]", %{})
 
-    assert u6 == {:unit, {:numb, 1}, {:mult, {:vari, "m"}, {:vari, "cm"}}}
+    assert u6 == {{:mult, {:unit, {:numb, 1}, {:vari, "m"}}, {:unit, {:numb, 1}, {:vari, "cm"}}}, %{}}
     assert Exun.Unit.to_si(u6) == {0.01, %{"m" => 2}}
   end
 end
