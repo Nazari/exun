@@ -145,7 +145,9 @@ defmodule Exun.Unit do
   Convert first unit to the second unit in convert:
   u1 = Exun.parse "3[m]"
   u2 = Exun.parse "1[cm]"
-  Exum.Units.convert(u1,u2,%{}) |> Exum.tostr() ===> "300[cm]"
+  Exum.Units.convert(u1,u2,%{}) |> Exum.tostr()
+
+  "300[cm]"
   """
   def convert(_u1 = {:unit, {:numb, n1}, t1}, _u2 = {:unit, {:numb, _n2}, t2}, pcontext) do
     {res1, exps1} = to_si({1, t1}, pcontext, 1, %{})
@@ -160,11 +162,11 @@ defmodule Exun.Unit do
 
   @doc """
   Factorize unit2 from u1, for example
-    iex(1)> {u1,d} = Exun.parse "1[km*kg*A/hour^2]", %{}
-            {u2,d} = Exun.parse "1[N]"
+    iex(1)> {u1,d} = Exun.parse "1[km*kg*A/h^2]", %{}
+            {u2,d} = Exun.parse "1[N]", %{}
             factorized = Exun.Unit.factorize(u1,u2,%{})
-
-  Exum.Tree.tostr factorized ====> "7.716049e-5[N*A]
+            Exum.Tree.tostr factorized
+            "7.566861148315854e-4[N*A]"
 
   """
   def factorize({:unit, {:numb, n1}, t1}, {:unit, {:numb, _n2}, t2}, pcontext) do
