@@ -104,7 +104,7 @@ defmodule Exun do
   end
 
   def tostr({:numb, n}) do
-    to_string(n)
+    if n == floor(n), do: to_string(floor(n)), else: to_string(n)
   end
 
   def tostr({op, l, r}) do
