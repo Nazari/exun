@@ -57,13 +57,12 @@ defmodule Exun do
     "3.04[m^2]"
   """
   def eval(txt, context) do
-    {ast, pcontext} = parse(txt, context)
-
+    {ast,pcontext}=parse(txt,context)
     ast
     |> Collect.make()
     |> replace(pcontext)
     |> Collect.make()
-    |> tostr()
+    #|> tostr()
   end
 
   def eval(txt) do

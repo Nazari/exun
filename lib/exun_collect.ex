@@ -10,12 +10,15 @@ defmodule Exun.Collect do
 
   def make(tree) do
     tree
+    # |> IO.inspect(label: "make01:Antes de inspect")
     |> norm()
-    |> mk()
+    # |> IO.inspect(label: "make02:Antes de mkrec")
+    |> mkrec()
+    # |> IO.inspect(label: "make03:Antes de denorm")
     |> denorm()
   end
 
-  def simplify(lst, op) do
+  def simplify(lst, op) when op in [:suma, :mult] and is_list(lst) do
     numbers = Enum.filter(lst, &(elem(&1, 0) == :numb))
 
     collnumb =
@@ -76,12 +79,42 @@ defmodule Exun.Collect do
     end
   end
 
-  def get_base(pivot, op, lst) do
-    lst
-    |> Enum.reduce([], fn expr, ac ->
-      [cbs(op, pivot, expr) | ac]
-    end)
-    |> Enum.reverse()
+  def get_base(op, lst) do
+    pivots =
+      for pivot <- lst do
+        {pivot,
+         lst
+         |> Enum.reduce([], fn expr, ac ->
+           [cbs(op, pivot, expr) | ac]
+         end)
+         |> Enum.reverse()}
+      end
+
+    counts =
+      pivots
+      |> Enum.reduce([], fn {pivot, bases}, ac ->
+        [
+          {pivot, bases,
+           bases
+           |> Enum.reduce(0, fn {result, _}, ac ->
+             case result do
+               :ok -> ac + 1
+               _ -> ac
+             end
+           end)}
+          | ac
+        ]
+      end)
+      |> Enum.reverse()
+
+    maxbase(counts)
+  end
+
+  def maxbase([a]), do: a
+  def maxbase([h | t]), do: Enum.reduce(t, h, &maxbasef/2)
+
+  def maxbasef(a1 = {_, _, c1}, a2 = {_, _, c2}) do
+    if c1 > c2, do: a1, else: a2
   end
 
   def get_isol(base, lst) do
@@ -91,7 +124,7 @@ defmodule Exun.Collect do
         {:ok, b} ->
           [{a, b} | ac]
 
-        {:err} ->
+        {:err, _} ->
           [{a, nil} | ac]
       end
     end)
@@ -114,6 +147,11 @@ defmodule Exun.Collect do
     end)
   end
 
+  def mkrec(tree) do
+    newtree = mk(tree)
+    if Exun.eq(newtree, tree), do: newtree, else: mkrec(newtree)
+  end
+
   # simplify
   def mk({:suma, a, @zero}), do: make(a)
   def mk({:suma, @zero, a}), do: make(a)
@@ -129,7 +167,7 @@ defmodule Exun.Collect do
   def mk({:elev, a, @uno}), do: make(a)
   def mk({:elev, @uno, _}), do: @uno
 
-  def mk({{:m, op}, lst}) when op in [:suma, :mult] do
+  def mk(orig = {{:m, op}, lst}) when op in [:suma, :mult] and is_list(lst) do
     lst = simplify(lst, op)
 
     # if a multiple mult {:m,:mult} check if zero is a component
@@ -150,21 +188,26 @@ defmodule Exun.Collect do
             Enum.at(lst, 0)
 
           _ ->
-            [head | _tail] = lst
-            base = get_base(head, op, lst)
-            isol = get_isol(base, lst)
-            coefs = get_coefs(isol)
-            rest = get_rest(isol)
+            {pivot, base, counts} = get_base(op, lst)
 
-            case op do
-              :suma ->
-                isol = {:mult, head, mk({{:m, :suma}, coefs})}
-                rest = mk({{:m, :suma}, rest})
-                {:suma, isol, make(rest)}
+            case counts do
+              1 ->
+                orig
 
-              :mult ->
-                isol = mk({:elev, head, {{:m, :suma}, coefs}})
-                {{:m, :mult}, [isol | make(rest)]}
+              _ ->
+                isol = get_isol(base, lst)
+                coefs = get_coefs(isol)
+                rest = get_rest(isol)
+
+                case op do
+                  :suma ->
+                    isolp = make({:mult, pivot, mkrec({{:m, :suma}, coefs})})
+                    {{:m, :suma}, [isolp | rest]}
+
+                  :mult ->
+                    isolp = make({:elev, pivot, mkrec({{:m, :suma}, coefs})})
+                    {{:m, :mult}, [isolp | rest]}
+                end
             end
         end
     end
@@ -175,7 +218,7 @@ defmodule Exun.Collect do
     {:numb, n1 + n2}
   end
 
-  def mk({:resta, {:numb, n1}, {:numb, n2}}) do
+  def mk({:rest, {:numb, n1}, {:numb, n2}}) do
     {:numb, n1 - n2}
   end
 
@@ -195,7 +238,7 @@ defmodule Exun.Collect do
     throw(@invalid_unit_operation)
   end
 
-  def mk({:resta, {:numb, _}, {:unit, _, _}}) do
+  def mk({:rest, {:numb, _}, {:unit, _, _}}) do
     throw(@invalid_unit_operation)
   end
 
@@ -212,7 +255,7 @@ defmodule Exun.Collect do
     throw(@invalid_unit_operation)
   end
 
-  def mk({:resta, {:unit, _, _}, {:numb, _}}) do
+  def mk({:rest, {:unit, _, _}, {:numb, _}}) do
     throw(@invalid_unit_operation)
   end
 
@@ -233,7 +276,7 @@ defmodule Exun.Collect do
   end
 
   def mk({:rest, u1 = {:unit, _, _}, u2 = {:unit, _, _}}) do
-    case Unit.sum(:resta, u1, u2, %{}) do
+    case Unit.sum(:rest, u1, u2, %{}) do
       {:ok, res} -> res
       {:err, msg} -> throw(msg)
     end
@@ -271,9 +314,16 @@ defmodule Exun.Collect do
 
   def cbs(op, a, {:elev, a, b}) do
     case op do
-      :suma -> {:ok, {:elev, a, {:rest, b, @uno}}}
+      :suma -> {:ok, mk({:elev, a, mk({:rest, b, @uno})})}
       :mult -> {:ok, b}
-      _ -> {:err}
+      _ -> {:err, nil}
+    end
+  end
+
+  def cbs(op, {:elev, a, b}, {:elev, a, c}) do
+    case op do
+      :suma -> {:err, nil}
+      :mult -> {:ok, mkrec({:elev, a, {:rest, c, b}})}
     end
   end
 
@@ -283,12 +333,12 @@ defmodule Exun.Collect do
         {:ok, {{:m, :mult}, lst |> List.delete(a)}}
 
       true ->
-        {:err}
+        {:err, nil}
     end
   end
 
   def cbs(_op, _t1, _t2) do
-    {:err}
+    {:err, nil}
   end
 
   def scoll(tree) do
@@ -340,8 +390,8 @@ defmodule Exun.Collect do
   end
 
   @doc """
-  Normalize tree so :mult and :sum are converted to list:
-  {:mult,{:mul,a,b},c} -> {{:m,:mult},[a,b,c]}
+  Normalize tree so :mult and :suma are converted to list:
+  {:mult,{:mult,a,b},c} -> {{:m,:mult},[a,b,c]}
   """
   def norm({:rest, a, {{:m, :suma}, lst}}) do
     {{:m, :suma}, [norm(a) | Enum.map(lst, fn el -> chsign(norm(el)) end)]}
@@ -468,11 +518,11 @@ defmodule Exun.Collect do
   end
 
   def chpow({:suma, a, b}) do
-    {:div, {:numb, 1}, {:suma, a, b}}
+    {:divi, {:numb, 1}, {:suma, a, b}}
   end
 
   def chpow({:rest, a, b}) do
-    {:div, {:numb, 1}, {:rest, a, b}}
+    {:divi, {:numb, 1}, {:rest, a, b}}
   end
 
   def chpow({{:m, :mult}, lst}) do
@@ -483,31 +533,28 @@ defmodule Exun.Collect do
     {:divi, {:numb, 1}, suma}
   end
 
-  defp denorm({{:m, op}, lista}) do
+  def denorm({{:m, op}, lista}) when op in [:suma, :mult] and is_list(lista) do
     case length(lista) do
       0 ->
         if op == :mult, do: @uno, else: @zero
 
       1 ->
-        Enum.at(lista, 0)
+        denorm(List.first(lista))
 
       _ ->
+        [first, second | tail] = lista
+
         {res, _} =
-          Enum.reduce(lista, {{op, nil, nil}, :left}, fn el, ac ->
+          Enum.reduce(tail, {{op, first, second}, :left}, fn el, ac ->
             eld = denorm(el)
+            {realac, _} = ac
 
             case ac do
-              {{op, nil, nil}, _} ->
-                {{op, eld, nil}, :left}
-
-              {{op, a, nil}, _} ->
-                {{op, a, eld}, :left}
-
               {{op, _a, _b}, :left} ->
-                {{op, ac, eld}, :right}
+                {{op, realac, eld}, :right}
 
               {{op, _a, _b}, :right} ->
-                {{op, eld, ac}, :left}
+                {{op, eld, realac}, :left}
             end
           end)
 
@@ -515,12 +562,13 @@ defmodule Exun.Collect do
     end
   end
 
-  defp denorm({op, l, r}) do
+  def denorm({op, l, r}) do
     {op, denorm(l), denorm(r)}
   end
 
-  defp denorm(tree) do
+  def denorm(tree) do
     tree
+    |> IO.inspect(label: "Not possible denorm")
   end
 
   @doc """
