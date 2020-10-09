@@ -1,5 +1,4 @@
 defmodule Exun.Unit do
-
   @prefixes %{
     # Exa
     "E" => 1.0e18,
@@ -56,17 +55,15 @@ defmodule Exun.Unit do
     "yd" => "91.44[cm]",
     "ft" => "0.3048[m]",
     "pc" => "3.08567818585e16[m]",
-    "lyr"=> "9.46052840488e15[m]",
+    "lyr" => "9.46052840488e15[m]",
     "au" => "149597900000[m]",
     "chain" => "20.1168402337[m]",
     "vara" => "83.6[cm]",
     "rd" => "5.02921005842[m]",
     "fath" => "1.82880365761[m]",
     "angstrom" => "1.0e-10[m]",
-
     "a" => "100[m^2]",
     "acre" => "4046.87260987[m^2]",
-
     "l" => "100[cm^3]",
     "galUK" => "4.546092[l]",
     "galC" => "4.54609[l]",
@@ -82,13 +79,11 @@ defmodule Exun.Unit do
     "bu" => "35239.07[ml]",
     "pk" => "8809.7675[ml]",
     "fbm" => "2359.737216[ml]",
-
     "yr" => "31556925.9747[s]",
     "d" => "86400[s]",
     "h" => "3600[s]",
     "min" => "60[s]",
     "Hz" => "1[1/s]",
-
     "lb" => "453.59237[g]",
     "arroba" => "25[lb]",
     "oz" => "28.349523125[g]",
@@ -101,25 +96,21 @@ defmodule Exun.Unit do
     "ct" => "0.2[g]",
     "grain" => "0.06479891[g]",
     "u" => "1.6605402e-24[g]",
-
     "N" => "101.9716[g*m/s^2]",
     "dyn" => "0.00001[kg*m/s^2]",
     "gf" => "0.00980665[N]",
     "kip" => "4448.22161526[N]",
     "lbf" => "4.44822161526[N]",
     "pdl" => "0.1382549544376[N]",
-
     "J" => "1[kg*m^2/s^2]",
     "erg" => "0.0000001[J]",
     "cal" => "4.1868[J]",
     "Btu" => "1055.05585262[J]",
     "therm" => "105506000[J]",
     "eV" => "1.60217733e-19[J]",
-
     "W" => "1[kg*m^2/s^3]",
     "hp" => "745.699871582[W]",
     "CV" => "1[hp]",
-
     "Pa" => "1[kg/m/s^2]",
     "atm" => "101325[Pa]",
     "bar" => "100000[Pa]",
@@ -127,8 +118,7 @@ defmodule Exun.Unit do
     "torr" => "133.322368421[Pa]",
     "mmHg" => "1[torr]",
     "inHg" => "3386.38815789[Pa]",
-    "inH2O" => "248.84[Pa]",
-
+    "inH2O" => "248.84[Pa]"
   }
   @doc """
   Sum of two units
@@ -142,8 +132,8 @@ defmodule Exun.Unit do
     else
       val =
         case op do
-          :suma ->  (n1*res1 + n2*res2)/res1
-          :resta -> (n1*res1 - n2*res2)/res1
+          :suma -> (n1 * res1 + n2 * res2) / res1
+          :resta -> (n1 * res1 - n2 * res2) / res1
           _ -> throw("Unknown op for Exun.Units.sum")
         end
 
@@ -183,8 +173,8 @@ defmodule Exun.Unit do
     "#{nres}[#{Exun.tostr(t2)}#{exps_tostr(exps)}]"
   end
 
-  def factorize(e1,e2) do
-    factorize(e1|>Exun.parse, e2|>Exun.parse, %{})
+  def factorize(e1, e2) do
+    factorize(e1 |> Exun.parse(), e2 |> Exun.parse(), %{})
   end
 
   @doc """
@@ -192,7 +182,7 @@ defmodule Exun.Unit do
   args: unit
   """
   def to_si({:unit, {:numb, n}, tree}) do
-    to_si {n,tree}, %{}, 1, %{}
+    to_si({n, tree}, %{}, 1, %{})
   end
 
   @doc """
@@ -219,7 +209,7 @@ defmodule Exun.Unit do
 
   def to_si({n, {:elev, left, {:numb, exponent}}}, pcontext, curr_exp, exps) do
     {left_n, exps} = to_si({1, left}, pcontext, curr_exp * exponent, exps)
-    {n * :math.pow(left_n,exponent), exps}
+    {n * :math.pow(left_n, exponent), exps}
   end
 
   def to_si({n, {:vari, var}}, pcontext, curr_exp, exps) do
@@ -289,5 +279,16 @@ defmodule Exun.Unit do
           ac
       end
     end)
+  end
+
+  def simplify(u = {:unit, _val, _}) do
+    {r, e} = to_si(u)
+
+    if Enum.filter(e, fn {_unit, exponent} -> exponent != 0 end) == [] do
+      # Units are gone (like in 1kg/2g)
+      {:numb, r}
+    else
+      u
+    end
   end
 end
