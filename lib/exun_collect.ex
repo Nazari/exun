@@ -83,10 +83,10 @@ defmodule Exun.Collect do
         [Unit.simplify(collunit) | lst]
 
       _ ->
-        {:unit, n2, ut} = collunit
-        newunit = Unit.simplify({:unit, {:mult, collnumb, n2}})
-        [newunit, ut | lst]
-    end
+        {:unit,val,tree} = collunit
+        newunit = {:unit, make({:mult,collnumb,val}), tree}
+        [Unit.simplify(newunit) | lst]
+      end
   end
 
   def get_base(op, lst) do
