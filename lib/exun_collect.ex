@@ -10,11 +10,11 @@ defmodule Exun.Collect do
 
   def make(tree) do
     tree
-    #|> IO.inspect(label: "make01,init:Antes de inspect")
+    # |> IO.inspect(label: "make01,init:Antes de inspect")
     |> norm()
-    #|> IO.inspect(label: "make02,norm:Antes de mkrec")
+    # |> IO.inspect(label: "make02,norm:Antes de mkrec")
     |> mkrec()
-    #|> IO.inspect(label: "make03,mkrec:Antes de denorm")
+    # |> IO.inspect(label: "make03,mkrec:Antes de denorm")
     |> denorm()
   end
 
@@ -144,6 +144,7 @@ defmodule Exun.Collect do
     |> Enum.reduce([], fn {_, b}, ac ->
       [b | ac]
     end)
+    |> Enum.reverse()
   end
 
   def get_rest(isol) do
@@ -152,6 +153,7 @@ defmodule Exun.Collect do
     |> Enum.reduce([], fn {a, _}, ac ->
       [a | ac]
     end)
+    |> Enum.reverse()
   end
 
   def mkrec(tree) do
@@ -173,6 +175,7 @@ defmodule Exun.Collect do
   def mk({:elev, _, @zero}), do: @uno
   def mk({:elev, a, @uno}), do: make(a)
   def mk({:elev, @uno, _}), do: @uno
+  def mk({:unit, val, {:numb, 1}}), do: mk(val)
 
   def mk(orig = {{:m, op}, lst}) when op in [:suma, :mult] and is_list(lst) do
     lst = simplify(op, lst)
