@@ -1,28 +1,5 @@
 
-t  = Exun.parse "1[m]*1[cm]/2[m]"
-tn = Exun.Collect.norm t
-Exun.Collect.make tn
+To-Do
+1. Fractions
+2. Tests
 
-t  = Exun.parse "m/m"
-tn = Exun.Collect.norm t
-tnc = Exun.Collect.make tn
-
-t  = Exun.parse "m-m"
-tn = Exun.Collect.norm t
-tnc = Exun.Collect.make tn
-
-ast=Exun.parse("1[m^2]+1[cm^2]")
-nor=Exun.Collect.norm ast
-op=:mult
-{_,lst}=nor
-[head|_]=lst
-base = Exun.Collect.get_base(head,op,lst)
-
-t = Exun.parse "x^2+2*x"
-tn = Exun.Collect.norm t
-{_,l} = tn
-[h|_]=l
-{pivot,base} =Exun.Collect.get_base(:suma,l)
-isol = Exun.Collect.get_isol(base,l)
-coefs = Exun.Collect.get_coefs isol
-rest = Exun.Collect.get_rest isol

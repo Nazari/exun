@@ -31,7 +31,7 @@ defmodule ExunTest do
   end
 
   test "1[1/h^2]" do
-    u1 = Exun.parse("1[1/hour^2]")
+    u1 = Exun.parse("1[1/h^2]")
     assert Exun.Unit.to_si(u1) == {7.71604938271605e-8, %{"s" => -2}}
   end
 
@@ -45,7 +45,7 @@ defmodule ExunTest do
   end
 
   test "(3[kg] + 2[slug]) / (23[g] + 16[lb])" do
-    u5 = Exun.parse("(3[kg] + 2[slug]) / (23[g] + 16[lb])")
+    u5 = Exun.eval("(3[kg] + 2[slug]) / (23[g] + 16[lb])")
     assert u5 == {:unit, {:numb, 4.046372279401674}, {:divi, {:vari, "N"}, {:vari, "g"}}}
   end
 
