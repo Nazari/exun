@@ -78,11 +78,12 @@ defmodule Exun.Collect do
         [collnumb | lst]
 
       {nil, _} ->
-        [collunit | lst]
+        [Unit.simplify(collunit) | lst]
 
       _ ->
         {:unit, n2, ut} = collunit
-        [{:unit, {:mult, collnumb, n2}, ut} | lst]
+        newunit = Unit.simplify({:unit, {:mult, collnumb, n2}})
+        [newunit, ut | lst]
     end
   end
 
