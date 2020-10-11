@@ -65,13 +65,8 @@ defmodule Exun do
 
       _ ->
         ast
-        #|> IO.inspect(label: "eval01,AST:")
-        #|> Collect.make()
-        #|> IO.inspect(label: "eval02,make:")
         |> replace(pcontext)
-        #|> IO.inspect(label: "eval03,replace:")
         |> Collect.make()
-        #|> IO.inspect(label: "eval04,make:")
         |> tostr()
     end
   end

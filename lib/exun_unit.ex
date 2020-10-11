@@ -283,7 +283,7 @@ defmodule Exun.Unit do
     end)
   end
 
-  def simplify(u = {:unit, _val, _}) do
+  def tonumber(u = {:unit, _val, _}) do
     {r, e} = to_si(u)
 
     if Enum.filter(e, fn {_unit, exponent} -> exponent != 0 end) == [] do

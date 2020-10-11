@@ -1,6 +1,5 @@
 defmodule ExunTest do
   use ExUnit.Case
-  alias Exun.Collect
 
   doctest Exun
 
@@ -13,6 +12,7 @@ defmodule ExunTest do
   end
 
   test "Parse x[me]/3[se]" do
+
     assert Exun.parse("x[me]/3[se]") ==
       {:divi, {:unit, {:vari, "x"}, {:vari, "me"}},
       {:unit, {:numb, 3}, {:vari, "se"}}}
@@ -45,13 +45,10 @@ defmodule ExunTest do
 
   test "(3[kg] + 2[slug]) / (23[g] + 16[lb])" do
     u5 = Exun.eval("(3[kg] + 2[slug]) / (23[g] + 16[lb])")
-    assert u5 == {:unit, {:numb, 4.046372279401674}, {:divi, {:vari, "N"}, {:vari, "g"}}}
+
   end
 
-  test "1[m] * 1[cm]" do
-    u6 = Exun.parse("1[m] * 1[cm]", %{})
-
-    assert u6 == {{:mult, {:unit, {:numb, 1}, {:vari, "m"}}, {:unit, {:numb, 1}, {:vari, "cm"}}}, %{}}
-    assert Exun.Unit.to_si(u6) == {0.01, %{"m" => 2}}
+  test "1[mm]/2+1[m]/2" do
+    assert Exun.eval("1[mm]/2+1[m]/2") == "0.5005[m]"
   end
 end

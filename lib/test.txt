@@ -3,3 +3,10 @@ To-Do
 1. Fractions
 2. Tests
 3. expression as unit's val
+4. Revisar reduce y pasar a map
+5. mk :m recurse down primero
+6. Going multprocess
+
+
+ast = Exun.parse "(3[kg] + 2[slug]) / (23[g] + 16[lb])"
+astr = Exun.Collect.mkrec ast

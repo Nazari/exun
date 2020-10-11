@@ -9,18 +9,43 @@ defmodule Exun.Collect do
   @invalid_unit_operation "Inconsistent unit operation"
 
   def make(tree) do
-    newtree = tree
-    # |> IO.inspect(label: "make01,init:Antes de inspect")
-    |> norm()
-    # |> IO.inspect(label: "make02,norm:Antes de mkrec")
-    |> mk()
-    # |> IO.inspect(label: "make03,mkrec:Antes de denorm")
-    |> denorm()
+    newtree =
+      tree
+      # |> IO.inspect(label: "make00, orig->mkrec")
+      |> mkrec()
+      # |> IO.inspect(label: "make01,mkrec->norm")
+      |> norm()
+      # |> IO.inspect(label: "make02, norm->solve_literals")
+      |> solve_literals()
+      # |> IO.inspect(label: "make03,solve_literals->mkrec")
+      |> mkrec()
+      # |> IO.inspect(label: "make04,mk->denorm")
+      |> denorm()
 
-    if Exun.eq(newtree,tree), do: tree, else: make(newtree)
+    if Exun.eq(newtree, tree), do: newtree, else: make(newtree)
   end
 
-  def simplify(op, lst) when op in [:suma, :mult] and is_list(lst) do
+  def mkrec(tree) do
+    ntree = mk(tree)
+
+    if Exun.eq(ntree, tree),
+      do: ntree,
+      else: mkrec(ntree)
+  end
+
+  @doc """
+  Simplify literals, reduce to one number and one unit when possible
+  """
+  def solve_literals({{:m, op}, lst}) when op in [:suma, :mult] and is_list(lst) do
+    lst =
+      lst
+      |> Enum.map(fn el ->
+        case el do
+          {{:m, _}, _} -> solve_literals(el)
+          _ -> el
+        end
+      end)
+
     numbers = Enum.filter(lst, &(elem(&1, 0) == :numb))
     lst = lst -- numbers
 
@@ -67,26 +92,28 @@ defmodule Exun.Collect do
               :mult ->
                 {_, valunit, treeunit} = ac
                 {_, valel, treeel} = el
-                {:unit, mk({:mult, valunit, valel}), mk({:mult, treeunit, treeel})}
+                {:unit, {:mult, valunit, valel}, {:mult, treeunit, treeel}}
             end
           end)
       end
 
     case {collnumb, collunit} do
       {nil, nil} ->
-        lst
+        {{:m, op}, lst}
 
       {_, nil} ->
-        [collnumb | lst]
+        {{:m, op}, [collnumb | lst]}
 
       {nil, _} ->
-        [Unit.simplify(collunit) | lst]
+        {{:m, op}, [Unit.tonumber(collunit) | lst]}
 
       _ ->
-        {:unit,val,tree} = collunit
-        newunit = {:unit, make({:mult,collnumb,val}), tree}
-        [Unit.simplify(newunit) | lst]
-      end
+        {{:m, op}, [Unit.tonumber(mk({op, collnumb, collunit})) | lst]}
+    end
+  end
+
+  def solve_literals(tree) do
+    tree
   end
 
   def get_base(op, lst) do
@@ -160,24 +187,26 @@ defmodule Exun.Collect do
   end
 
   # simplify
-  def mk({:suma, a, @zero}), do: make(a)
-  def mk({:suma, @zero, a}), do: make(a)
+  def mk({:suma, a, @zero}), do: mk(a)
+  def mk({:suma, @zero, a}), do: mk(a)
   def mk({:mult, _, @zero}), do: @zero
   def mk({:mult, @zero, _}), do: @zero
-  def mk({:mult, @uno, a}), do: make(a)
-  def mk({:mult, a, @uno}), do: make(a)
-  def mk({:mult, a, a}), do: {:elev, make(a), @dos}
+  def mk({:mult, @uno, a}), do: mk(a)
+  def mk({:mult, a, @uno}), do: mk(a)
+  def mk({:mult, a, a}), do: {:elev, mk(a), @dos}
+  def mk({:mult, a, {:divi, @uno, b}}), do: {:mult, mk(a), mk(b)}
   def mk({:divi, _, @zero}), do: @infinite
   def mk({:divi, @zero, _}), do: @zero
-  def mk({:divi, a, @uno}), do: make(a)
+  def mk({:divi, a, @uno}), do: mk(a)
+  def mk({:divi, a, a}), do: @uno
   def mk({:elev, _, @zero}), do: @uno
-  def mk({:elev, a, @uno}), do: make(a)
+  def mk({:elev, a, @uno}), do: mk(a)
   def mk({:elev, @uno, _}), do: @uno
+  def mk({{:m, _}, [a]}), do: mk(a)
   def mk({:unit, val, {:numb, 1}}), do: mk(val)
+  def mk({:unit, val, ut}), do: Unit.tonumber({:unit, val, ut})
 
   def mk(orig = {{:m, op}, lst}) when op in [:suma, :mult] and is_list(lst) do
-    lst = simplify(op, lst)
-
     # if a multiple mult {:m,:mult} check if zero is a component
     cond do
       op == :mult and @zero in lst ->
@@ -209,11 +238,11 @@ defmodule Exun.Collect do
 
                 case op do
                   :suma ->
-                    isolp = make({:mult, pivot, mk({{:m, :suma}, coefs})})
+                    isolp = mk({:mult, pivot, mk({{:m, :suma}, coefs})})
                     {{:m, :suma}, [isolp | rest]}
 
                   :mult ->
-                    isolp = make({:elev, pivot, mk({{:m, :suma}, coefs})})
+                    isolp = mk({:elev, pivot, mk({{:m, :suma}, coefs})})
                     {{:m, :mult}, [isolp | rest]}
                 end
             end
@@ -251,11 +280,11 @@ defmodule Exun.Collect do
   end
 
   def mk({:mult, {:numb, n1}, {:unit, n2, a}}) do
-    {:unit, make({:mult, {:numb, n1}, n2}), make(a)}
+    {:unit, mk({:mult, {:numb, n1}, n2}), mk(a)}
   end
 
   def mk({:divi, {:numb, n1}, {:unit, n2, a}}) do
-    {:unit, make({:divi, {:numb, n1}, n2}), chpow(make(a))}
+    {:unit, mk({:divi, {:numb, n1}, n2}), chpow(mk(a))}
   end
 
   # unit, number
@@ -268,11 +297,11 @@ defmodule Exun.Collect do
   end
 
   def mk({:mult, {:unit, n2, a}, n = {:numb, _n1}}) do
-    {:unit, make({:mult, n2, n}), make(a)}
+    {:unit, mk({:mult, n2, n}), mk(a)}
   end
 
   def mk({:divi, {:unit, n1, a}, n = {:numb, _n2}}) do
-    {:unit, make({:divi, n1, n}), make(a)}
+    {:unit, mk({:divi, n1, n}), mk(a)}
   end
 
   # unit, unit
@@ -291,11 +320,11 @@ defmodule Exun.Collect do
   end
 
   def mk({:mult, {:unit, n1, a1}, {:unit, n2, a2}}) do
-    {:unit, make({:mult, n1, n2}), make({:mult, a1, a2})}
+    {:unit, mk({:mult, n1, n2}), mk({:mult, a1, a2})}
   end
 
   def mk({:divi, {:unit, n1, a1}, {:unit, n2, a2}}) do
-    {:unit, make({:divi, n1, n2}), make({:divi, a1, a2})}
+    {:unit, mk({:divi, n1, n2}), mk({:divi, a1, a2})}
   end
 
   def mk({op, a, b}) do
@@ -351,28 +380,13 @@ defmodule Exun.Collect do
   Normalize tree so :mult and :suma are converted to list:
   {:mult,{:mult,a,b},c} -> {{:m,:mult},[a,b,c]}
   """
-  def norm({:rest, a, {{:m, :suma}, lst}}) do
-    {{:m, :suma}, [norm(a) | Enum.map(lst, fn el -> chsign(norm(el)) end)]}
-  end
-
-  def norm({:rest, {{:m, :suma}, lst}, a}) do
-    {{:m, :suma}, lst ++ [chsign(norm(a))]}
-  end
-
-  def norm({:divi, a, {{:m, :mult}, lst}}) do
-    {{:m, :mult}, [norm(a) | Enum.map(lst, fn el -> chpow(norm(el)) end)]}
-  end
-
-  def norm({:divi, {{:m, :mult}, lst}, a}) do
-    {{:m, :mult}, lst ++ [chpow(norm(a))]}
-  end
 
   def norm({:divi, a, b}) do
-    norm({:mult, a, chpow(b)})
+    norm({{:m, :mult}, [norm(a), chpow(norm(b))]})
   end
 
   def norm({:rest, a, b}) do
-    norm({:suma, a, chsign(b)})
+    norm({{:m, :suma}, [norm(a), chsign(norm(b))]})
   end
 
   def norm({op, a, b}) when op in [:suma, :mult] do
@@ -384,13 +398,13 @@ defmodule Exun.Collect do
         {{:m, op}, (l1 ++ l2) |> Enum.sort()}
 
       {{{:m, ^op}, l1}, ^bn} ->
-        {{:m, op}, ([bn] ++ l1) |> Enum.sort()}
+        {{:m, op}, [bn | l1] |> Enum.sort()}
 
       {^an, {{:m, ^op}, l2}} ->
-        {{:m, op}, ([an] ++ l2) |> Enum.sort()}
+        {{:m, op}, [an | l2] |> Enum.sort()}
 
       {^an, ^bn} ->
-        {{:m, op}, ([an] ++ [bn]) |> Enum.sort()}
+        {{:m, op}, [an, bn] |> Enum.sort()}
     end
   end
 
