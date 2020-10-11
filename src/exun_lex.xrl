@@ -15,6 +15,7 @@ DIVIDE = \/
 MULTIPLY = \*
 POWER = \^
 DOT = \.
+COMMA = \,
 
 SIGN = (\-|\+)
 
@@ -40,6 +41,7 @@ Rules.
 {STRING} : {token, {string, TokenLine, parse_string(TokenChars)}}.
 {WORD}  : {token, {word, TokenLine, list_to_binary(TokenChars)}}.
 {DOT} : {token, {'.', TokenLine}}.
+{COMMA} : {token, {',', TokenLine}}.
 
 {WHITESPACE}+ : skip_token.
 
