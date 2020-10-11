@@ -51,4 +51,20 @@ defmodule ExunTest do
   test "1[mm]/2+1[m]/2" do
     assert Exun.eval("1[mm]/2+1[m]/2") == "0.5005[m]"
   end
+
+  test "Powers" do
+    assert Exun.eval("(a+1)*(a+1)/(a+1)^3") == "1/(1+a)"
+  end
+
+  test "(a+1)^2/b, %{b=>a+1}" do
+    assert Exun.eval("(a+1)^2/b", %{"b"=>"a+1"}) == "1+a"
+  end
+
+  test "(a+1)^2/b, %{b=>a+1,a=>2}" do
+    assert Exun.eval("(a+1)^2/b", %{"b"=>"a+1","a"=>"2"}) == "3"
+  end
+
+  test "Order of sum" do
+    assert Exun.eval("(1+a)*(a+1)") == "(1+a)^2"
+  end
 end

@@ -67,6 +67,7 @@ defmodule Exun do
         ast
         |> replace(pcontext)
         |> Collect.make()
+        #|> IO.inspect(label: "make->tostr")
         |> tostr()
     end
   end
@@ -102,14 +103,23 @@ defmodule Exun do
     if n == floor(n), do: to_string(floor(n)), else: to_string(n)
   end
 
+  def tostr({:elev, a, {:numb, -1}}) do
+    #IO.inspect([:elev,a,{:numb,-1}])
+    tostr({:divi, {:numb, 1}, a})
+  end
+
   def tostr({op, l, r}) do
+    #IO.inspect([op,l,r])
     {hpri, hstr} = @defop[op]
     {lpri, _} = @defop[l |> elem(0)]
     {rpri, _} = @defop[r |> elem(0)]
 
     ltxt = tostr(l)
     rtxt = tostr(r)
+    conctostr(hpri, hstr, lpri, ltxt, rpri, rtxt)
+  end
 
+  def conctostr(hpri, hstr, lpri, ltxt, rpri, rtxt) do
     cond do
       hpri > lpri and hpri > rpri ->
         "(" <> ltxt <> ")" <> hstr <> "(" <> rtxt <> ")"

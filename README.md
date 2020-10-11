@@ -7,7 +7,7 @@ run "iex -S mix" inside exun dir and type:
 Exun.eval "(a+1)*(a+1)/(a+1)^3"
 
 -->
-"1/(a+1)
+"1/(a+1)"
 
 Exun.eval "1[m]+1[cm]"
 

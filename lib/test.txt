@@ -1,12 +1,9 @@
 
 To-Do
-1. Fractions
-2. Tests
-3. expression as unit's val
-4. Revisar reduce y pasar a map
-5. mk :m recurse down primero
-6. Going multprocess
-
-
-ast = Exun.parse "1[m]*1[cm]/2[m]"
-astr = Exun.Collect.mkrec ast
+ 1. Fractions
++2. Tests
+ 3. expression as unit's val
++4. Revisar reduce y pasar a map
++5. mk :m recurse down primero
+ 6. Going multiprocess
+ 7. Functions! Derivate! Integrate!
