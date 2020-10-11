@@ -1,4 +1,6 @@
 defmodule Exun.Unit do
+  alias Exun.Collect
+
   @prefixes %{
     # Exa
     "E" => 1.0e18,
@@ -283,14 +285,22 @@ defmodule Exun.Unit do
     end)
   end
 
-  def tonumber(u = {:unit, _val, _}) do
+  def toSI(u = {:unit, _, _}) do
     {r, e} = to_si(u)
 
-    if Enum.filter(e, fn {_unit, exponent} -> exponent != 0 end) == [] do
-      # Units are gone (like in 1kg/2g)
-      {:numb, r}
-    else
-      u
-    end
+    {:unit, {:numb, r},
+     e
+     |> Enum.reject(fn {_a, b} -> b == 0 end)
+     |> Enum.reduce({:numb,1}, fn {var, exp}, tree ->
+       vvar = {:vari, var}
+       vexp = {:numb, exp}
+       cond do
+         tree == {:numb,1} -> Collect.mk({:elev, vvar, vexp})
+         exp == 1 -> {:mult, tree, vvar}
+         exp == -1 -> {:divi, tree, vvar}
+         exp < 0 -> {:divi, tree, {:elev, vvar, vexp}}
+         exp > 0 -> {:mult, tree, {:elev, vvar, vexp}}
+       end
+     end)}
   end
 end

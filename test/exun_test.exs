@@ -8,7 +8,7 @@ defmodule ExunTest do
   end
 
   test "[ precedes *" do
-    assert Exun.eval("1[m]*1[cm]/2[m]") == "0.5[cm]"
+    assert Exun.eval("1[m]*1[cm]/2[m]") == "0.005[m]"
   end
 
   test "Parse x[me]/3[se]" do
@@ -44,7 +44,7 @@ defmodule ExunTest do
   end
 
   test "(3[kg] + 2[slug]) / (23[g] + 16[lb])" do
-    u5 = Exun.eval("(3[kg] + 2[slug]) / (23[g] + 16[lb])")
+    assert Exun.eval("(3[kg] + 2[slug]) / (23[g] + 16[lb])") == "4.421111667130775"
 
   end
 

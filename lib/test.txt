@@ -8,5 +8,5 @@ To-Do
 6. Going multprocess
 
 
-ast = Exun.parse "(3[kg] + 2[slug]) / (23[g] + 16[lb])"
+ast = Exun.parse "1[m]*1[cm]/2[m]"
 astr = Exun.Collect.mkrec ast

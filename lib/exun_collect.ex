@@ -204,7 +204,7 @@ defmodule Exun.Collect do
   def mk({:elev, @uno, _}), do: @uno
   def mk({{:m, _}, [a]}), do: mk(a)
   def mk({:unit, val, {:numb, 1}}), do: mk(val)
-  def mk({:unit, val, ut}), do: Unit.tonumber({:unit, val, ut})
+  def mk({:unit, val, ut}), do: Unit.toSI({:unit, val, ut})
 
   def mk(orig = {{:m, op}, lst}) when op in [:suma, :mult] and is_list(lst) do
     # if a multiple mult {:m,:mult} check if zero is a component

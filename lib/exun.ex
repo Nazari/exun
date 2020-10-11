@@ -84,7 +84,7 @@ defmodule Exun do
 
   @doc ~S"""
   Translate tree to human readable math expression:
-    iex(1)> {tree, deps} = Exun.parse "4*x^(y+1)/z",%{"z"=>"y+1"}
+    iex(1)> {_tree, _deps} = Exun.parse "4*x^(y+1)/z",%{"z"=>"y+1"}
     {{:divi,
     {:mult, {:numb, 4}, {:elev, {:vari, "x"}, {:suma, {:vari, "y"}, {:numb, 1}}}},
     {:vari, "z"}}, %{"z" => {:suma, {:vari, "y"}, {:numb, 1}}}}
