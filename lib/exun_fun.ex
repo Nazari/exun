@@ -6,21 +6,31 @@ defmodule Exun.Fun do
   @uno {:numb, 1}
 
   @base %{
-    "sin(x)" => {&:math.sin/1, "cos(x)"},
-    "cos(x)" => {&:math.cos/1, "-sin(x)"}
+    "sin" => {&:math.sin/1, "x'*cos"},
+    "cos" => {&:math.cos/1, "-x'*sin"},
+    "ln"  => {&:math.log/1, "x'/x"}
   }
 
   @compounds %{
-    "tan(x)" => "sin(x)/cos(x)"
+    "tan" => "sin/cos"
   }
+
+  def fcall(name,args) do
+    cond do
+      (b=@base[name]) != nil ->
+        {:bfunc, b}
+      (c=@compounds[name]) != nil ->
+        {:cfunc, c}
+    end
+  end
 
   def deriv(txt, x) do
     txt
     |> parse()
     |> coll()
-    |> der({:vari,x})
+    |> der({:vari, x})
     |> coll()
-    #|> IO.inspect(label: "reduced")
+    # |> IO.inspect(label: "reduced")
     |> tostr()
   end
 
@@ -31,7 +41,7 @@ defmodule Exun.Fun do
     do: @zero
 
   def der({:vari, var}, {:vari, x}),
-    do: if var==x, do: @uno, else: @zero
+    do: if(var == x, do: @uno, else: @zero)
 
   def der({:suma, a, b}, x),
     do: {:suma, der(a, x), der(b, x)}
@@ -47,9 +57,6 @@ defmodule Exun.Fun do
 
   def der(y = {:elev, f, g}, x),
     do:
-      {:mult,
-       y,
-       {:suma,
-        {:mult, der(g, x), {:fcall, "ln", [f]}},
-        {:mult, g, {:divi, der(f, x), f}}}}
+      {:mult, y,
+       {:suma, {:mult, der(g, x), {:fcall, "ln", [f]}}, {:mult, g, {:divi, der(f, x), f}}}}
 end

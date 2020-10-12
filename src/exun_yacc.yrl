@@ -33,6 +33,7 @@ arguments -> expr : ['$1'] .
 arguments -> arguments ',' expr : ['$3'|'$1'] .
 
 uexpr -> expr '[' expr ']' : {unit, '$1', '$3'}.
+expr -> '-' expr : {mult, {numb, -1}, '$2'}.
 expr -> uexpr : '$1'.
 
 Erlang code.
