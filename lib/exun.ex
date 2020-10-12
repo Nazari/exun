@@ -65,9 +65,11 @@ defmodule Exun do
 
       _ ->
         ast
+        #|> IO.inspect(label: "eval01,AST")
         |> replace(pcontext)
+        #|> IO.inspect(label: "eval02,Replaced")
         |> Collect.make()
-        #|> IO.inspect(label: "make->tostr")
+        #|> IO.inspect(label: "eval03,make->tostr")
         |> tostr()
     end
   end
@@ -91,31 +93,42 @@ defmodule Exun do
     {:vari, "z"}}, %{"z" => {:suma, {:vari, "y"}, {:numb, 1}}}}
 
   """
-  def tostr({:vari, var}) do
+  def tostr(tree), do: innertostr(Collect.denorm(tree))
+
+  def innertostr({:vari, var}) do
     var
   end
 
-  def tostr({:unit, n, tree}) do
-    tostr(n) <> "[" <> tostr(tree) <> "]"
+  def innertostr({:fcall, name, args}) do
+    name <> "(" <> Enum.reduce(args,"",fn el,ac ->
+      case ac do
+        "" -> innertostr(el)
+        _ -> ac <> ", "<> innertostr(el)
+      end
+    end) <> ")"
   end
 
-  def tostr({:numb, n}) do
+  def innertostr({:unit, n, tree}) do
+    innertostr(n) <> "[" <> innertostr(tree) <> "]"
+  end
+
+  def innertostr({:numb, n}) do
     if n == floor(n), do: to_string(floor(n)), else: to_string(n)
   end
 
-  def tostr({:elev, a, {:numb, -1}}) do
+  def innertostr({:elev, a, {:numb, -1}}) do
     #IO.inspect([:elev,a,{:numb,-1}])
-    tostr({:divi, {:numb, 1}, a})
+    innertostr({:divi, {:numb, 1}, a})
   end
 
-  def tostr({op, l, r}) do
+  def innertostr({op, l, r}) do
     #IO.inspect([op,l,r])
     {hpri, hstr} = @defop[op]
     {lpri, _} = @defop[l |> elem(0)]
     {rpri, _} = @defop[r |> elem(0)]
 
-    ltxt = tostr(l)
-    rtxt = tostr(r)
+    ltxt = innertostr(l)
+    rtxt = innertostr(r)
     conctostr(hpri, hstr, lpri, ltxt, rpri, rtxt)
   end
 

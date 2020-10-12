@@ -13,7 +13,7 @@ defmodule Exun.Unit do
     # Mega
     "M" => 1.0e6,
     # Kilo
-    "k" => 1000,
+    "K" => 1000,
     # hecto
     "h" => 100,
     # deci
@@ -89,31 +89,31 @@ defmodule Exun.Unit do
     "lb" => "453.59237[g]",
     "arroba" => "25[lb]",
     "oz" => "28.349523125[g]",
-    "slug" => "14.5939029372[kg]",
+    "slug" => "14.5939029372[Kg]",
     "lbt" => "373.2417216[g]",
-    "ton" => "907.18474[kg]",
-    "tonUK" => "1016.0469088[kg]",
-    "t" => "1000[kg]",
+    "ton" => "907.18474[Kg]",
+    "tonUK" => "1016.0469088[Kg]",
+    "t" => "1000[Kg]",
     "ozt" => "31.1034768[g]",
     "ct" => "0.2[g]",
     "grain" => "0.06479891[g]",
     "u" => "1.6605402e-24[g]",
     "N" => "101.9716[g*m/s^2]",
-    "dyn" => "0.00001[kg*m/s^2]",
+    "dyn" => "0.00001[Kg*m/s^2]",
     "gf" => "0.00980665[N]",
     "kip" => "4448.22161526[N]",
     "lbf" => "4.44822161526[N]",
     "pdl" => "0.1382549544376[N]",
-    "J" => "1[kg*m^2/s^2]",
+    "J" => "1[Kg*m^2/s^2]",
     "erg" => "0.0000001[J]",
     "cal" => "4.1868[J]",
     "Btu" => "1055.05585262[J]",
     "therm" => "105506000[J]",
     "eV" => "1.60217733e-19[J]",
-    "W" => "1[kg*m^2/s^3]",
+    "W" => "1[Kg*m^2/s^3]",
     "hp" => "745.699871582[W]",
     "CV" => "1[hp]",
-    "Pa" => "1[kg/m/s^2]",
+    "Pa" => "1[Kg/m/s^2]",
     "atm" => "101325[Pa]",
     "bar" => "100000[Pa]",
     "psi" => "6894.75729317[Pa]",
@@ -122,6 +122,30 @@ defmodule Exun.Unit do
     "inHg" => "3386.38815789[Pa]",
     "inH2O" => "248.84[Pa]"
   }
+
+  def help do
+    IO.puts("Known Units prefixes:")
+
+    @prefixes
+    |> Enum.each(fn {k, v} ->
+      IO.puts("\t#{k} = #{v}")
+    end)
+
+    IO.puts("Know fundamental units:")
+
+    @fundamental_units
+    |> Enum.each(fn {k, v} ->
+      IO.puts("\t#{k} = #{v}")
+    end)
+
+    IO.puts("Know conversions, you can add more via 'context'")
+
+    @conversions
+    |> Enum.each(fn {k, v} ->
+      IO.puts("\t#{k} = #{v}")
+    end)
+  end
+
   @doc """
   Sum of two units
   """
@@ -148,10 +172,9 @@ defmodule Exun.Unit do
   u1 = Exun.parse "3[m]"
   u2 = Exun.parse "1[cm]"
   Exum.Units.convert(u1,u2,%{}) |> Exum.tostr()
-
   "300[cm]"
   """
-  def convert(_u1 = {:unit, {:numb, n1}, t1}, _u2 = {:unit, {:numb, _n2}, t2}, pcontext) do
+  def convert({:unit, {:numb, n1}, t1}, {:unit, {:numb, _n2}, t2}, pcontext) do
     {res1, exps1} = to_si({1, t1}, pcontext, 1, %{})
     {res2, exps2} = to_si({1, t2}, pcontext, 1, %{})
 
@@ -163,8 +186,24 @@ defmodule Exun.Unit do
   end
 
   @doc """
+  Convert units, for example
+    iex> import Exun.Unit
+    iex> "120[Km/h]" |> convert("m/s")
+    "33.333333333333336[m/s]"
+  """
+  def convert(tu1, tu2) when is_binary(tu1) and is_binary(tu2) do
+    u1 = Exun.parse(tu1)
+    u2 = Exun.parse("1[" <> tu2 <> "]")
+
+    case convert(u1, u2, %{}) do
+      {:err, msg} -> throw(msg)
+      {:ok, res} -> Exun.tostr(res)
+    end
+  end
+
+  @doc """
   Factorize unit2 from u1, for example
-    iex(1)> {u1,d} = Exun.parse "1[km*kg*A/h^2]", %{}
+    iex(1)> {u1,d} = Exun.parse "1[km*Kg*A/h^2]", %{}
             {u2,d} = Exun.parse "1[N]", %{}
             factorized = Exun.Unit.factorize(u1,u2,%{})
             Exum.Tree.tostr factorized
@@ -186,7 +225,7 @@ defmodule Exun.Unit do
   args: unit
   """
   def to_si({:unit, {:numb, n}, tree}) do
-    to_si({n, tree}, %{}, 1, %{})
+    to_si({n, Collect.denorm(tree)}, %{}, 1, %{})
   end
 
   @doc """
@@ -227,8 +266,9 @@ defmodule Exun.Unit do
     end
   end
 
-  def to_si({_a, b}, _pcontext, _curr_exp, _exps) do
-    throw("Invalid unit definition: " <> Exun.tostr(b))
+  def to_si({a, b}, _pcontext, _curr_exp, _exps) do
+    # IO.inspect({:unit, {:numb, a}, b}, label: "For unit:")
+    throw("Invalid unit definition: " <> Exun.tostr({:unit, {:numb, a}, b}))
   end
 
   @doc """
@@ -285,21 +325,16 @@ defmodule Exun.Unit do
     end)
   end
 
-  def toSI(u = {:unit, _, _}) do
-    {r, e} = to_si(u)
+  def toSI({:unit, uv, ut}) do
+    {r, e} = to_si({:unit, Collect.mk(uv), Collect.mk(ut)})
 
     {:unit, {:numb, r},
      e
      |> Enum.reject(fn {_a, b} -> b == 0 end)
-     |> Enum.reduce({:numb,1}, fn {var, exp}, tree ->
-       vvar = {:vari, var}
-       vexp = {:numb, exp}
+     |> Enum.reduce({:numb, 1}, fn {var, expon}, tree ->
        cond do
-         tree == {:numb,1} -> Collect.mk({:elev, vvar, vexp})
-         exp == 1 -> {:mult, tree, vvar}
-         exp == -1 -> {:divi, tree, vvar}
-         exp < 0 -> {:divi, tree, {:elev, vvar, vexp}}
-         exp > 0 -> {:mult, tree, {:elev, vvar, vexp}}
+         expon > 0 -> Collect.mk({:mult, tree, {:elev, {:vari, var}, {:numb, expon}}})
+         expon < 0 -> Collect.mk({:divi, tree, {:elev, {:vari, var}, {:numb, -expon}}})
        end
      end)}
   end

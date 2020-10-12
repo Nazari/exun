@@ -7,3 +7,9 @@ To-Do
 +5. mk :m recurse down primero
  6. Going multiprocess
  7. Functions! Derivate! Integrate!
+
+import Exun
+import Exun.Collect
+{exp,ctx}=parse "(a+b)^2/c", %{"a"=>"20[m]","b"=>"2[cm]","c"=>"3[s^2]"}
+expr = replace exp,ctx
+

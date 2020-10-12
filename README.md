@@ -1,23 +1,30 @@
 # Exun
 
 Symbolic math library for Elixir, with unit support.
+TODO:
+ - Derivate, Integration
 
 run "iex -S mix" inside exun dir and type:
 
-Exun.eval "(a+1)*(a+1)/(a+1)^3"
+import Exun
+import Exun.Unit
+eval "(a+1)*(a+1)/(a+1)^3"
 
 -->
 "1/(a+1)"
 
-Exun.eval "1[m]+1[cm]"
+eval "1[m]+1[cm]"
 
 -->
 "1.01[m]"
 
-Exun.Unit.factorize "1[A*kg*m/s^2]","1[N]"
+factorize "1[A*kg*m/s^2]","1[N]"
 
 -->
 "9.806652048217348[N*A]"
+
+"120[Km/h]" |> convert("m/s")
+"33.3333333333[m/s]"
 
 You can put context also:
 
@@ -26,7 +33,7 @@ Exun.eval "(a+1)^2/b", %{"b"=>"a+1"}
 -->
 "a+1"
 
-Exun.eval "(a+1)^2/b", %{"b"=>"a+1","a"=>"2"}
+eval "(a+b)^2/c", %{"a"=>"20[m]","b"=>"2[cm]","c"=>"3[s^2]"}
 "0.3333333333"
 
 ## Installation

@@ -43,8 +43,8 @@ defmodule ExunTest do
     assert Exun.eval("1[m]+3[cm]+2[dm]+4[mm]") == "1.234[m]"
   end
 
-  test "(3[kg] + 2[slug]) / (23[g] + 16[lb])" do
-    assert Exun.eval("(3[kg] + 2[slug]) / (23[g] + 16[lb])") == "4.421111667130775"
+  test "(3[Kg] + 2[slug]) / (23[g] + 16[lb])" do
+    assert Exun.eval("(3[Kg] + 2[slug]) / (23[g] + 16[lb])") == "4.421111667130775"
 
   end
 
@@ -66,5 +66,9 @@ defmodule ExunTest do
 
   test "Order of sum" do
     assert Exun.eval("(1+a)*(a+1)") == "(1+a)^2"
+  end
+
+  test "Context" do
+    assert Exun.eval("(a+b)^2/c", %{"a"=>"20[m]","b"=>"2[cm]","c"=>"3[s^2]"}) == "133.60013333333333[m^2/s^2]"
   end
 end

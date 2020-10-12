@@ -1,6 +1,6 @@
 defmodule Fun do
 
   @known %{
-    "sin" => {}
+    "sin(x)" => { &:math.sin/1 , "-cos(x)" }
   }
 end
