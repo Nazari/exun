@@ -3,7 +3,7 @@
 Symbolic math library for Elixir, with unit support.
 
 TODO:
- - Derivate, Integration
+ - Derivate (some done, try Exun.Fun.deriv("x^x^x","x")), Integration
  - Fractions, to avoid decimal ops
  - User functions definition
 
