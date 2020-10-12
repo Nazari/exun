@@ -10,7 +10,8 @@ defmodule Exun do
     :rest => {50, "-"},
     :numb => {200, nil},
     :unit => {200, nil},
-    :vari => {200, nil}
+    :vari => {200, nil},
+    :fcall => {200, nil}
   }
   @doc ~S"""
   Parse a math expression, without context:
@@ -57,6 +58,11 @@ defmodule Exun do
     "3.0004[m^2]"
   """
   def eval(txt, context) do
+    eval_ast(txt, context)
+    |> tostr()
+  end
+
+  def eval_ast(txt, context) do
     {ast, pcontext} = parse(txt, context)
 
     case ast do
@@ -65,17 +71,19 @@ defmodule Exun do
 
       _ ->
         ast
-        #|> IO.inspect(label: "eval01,AST")
+        # |> IO.inspect(label: "eval01,AST")
         |> replace(pcontext)
-        #|> IO.inspect(label: "eval02,Replaced")
-        |> Collect.make()
-        #|> IO.inspect(label: "eval03,make->tostr")
-        |> tostr()
+        # |> IO.inspect(label: "eval02,Replaced")
+        |> Collect.coll()
     end
   end
 
   def eval(txt) do
     eval(txt, %{})
+  end
+
+  def eval_ast(txt) do
+    eval_ast(txt, %{})
   end
 
   def parse_text(txt) do
@@ -93,19 +101,27 @@ defmodule Exun do
     {:vari, "z"}}, %{"z" => {:suma, {:vari, "y"}, {:numb, 1}}}}
 
   """
-  def tostr(tree), do: innertostr(Collect.denorm(tree))
+  def tostr(tree) do
+    tree
+    # |> IO.inspect(label: "tostr1,orig")
+    |> Collect.denorm()
+    # |> IO.inspect(label: "tostr2,denorm")
+    |> innertostr()
+  end
 
   def innertostr({:vari, var}) do
     var
   end
 
-  def innertostr({:fcall, name, args}) do
-    name <> "(" <> Enum.reduce(args,"",fn el,ac ->
-      case ac do
-        "" -> innertostr(el)
-        _ -> ac <> ", "<> innertostr(el)
-      end
-    end) <> ")"
+  def innertostr({:fcall, name, args}) when is_list(args) do
+    name <>
+      "(" <>
+      Enum.reduce(args, "", fn el, ac ->
+        case ac do
+          "" -> innertostr(el)
+          _ -> ac <> ", " <> innertostr(el)
+        end
+      end) <> ")"
   end
 
   def innertostr({:unit, n, tree}) do
@@ -117,12 +133,12 @@ defmodule Exun do
   end
 
   def innertostr({:elev, a, {:numb, -1}}) do
-    #IO.inspect([:elev,a,{:numb,-1}])
+    # IO.inspect([:elev,a,{:numb,-1}])
     innertostr({:divi, {:numb, 1}, a})
   end
 
   def innertostr({op, l, r}) do
-    #IO.inspect([op,l,r])
+    # IO.inspect([op,l,r])
     {hpri, hstr} = @defop[op]
     {lpri, _} = @defop[l |> elem(0)]
     {rpri, _} = @defop[r |> elem(0)]

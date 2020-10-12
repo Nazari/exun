@@ -7,7 +7,7 @@ defmodule Exun.Collect do
   @dos {:numb, 2}
   @invalid_unit_operation "Inconsistent unit operation"
 
-  def make(tree) do
+  def coll(tree) do
     newtree =
       tree
       # |> IO.inspect(label: "make00, orig->mkrec")
@@ -23,7 +23,7 @@ defmodule Exun.Collect do
       # |> IO.inspect(label: "make04,mk->denorm")
       |> denorm()
 
-    if Exun.eq(newtree, tree), do: newtree, else: make(newtree)
+    if Exun.eq(newtree, tree), do: newtree, else: coll(newtree)
   end
 
   def mkrec(tree) do
@@ -258,7 +258,7 @@ defmodule Exun.Collect do
   def mk({:mult, @uno, a}), do: mk(a)
   def mk({:mult, a, @uno}), do: mk(a)
   def mk({:mult, a, a}), do: {:elev, mk(a), @dos}
-  def mk({:mult, a, {:divi, @uno, b}}), do: {:mult, mk(a), mk(b)}
+  def mk({:mult, a, {:divi, @uno, b}}), do: {:divi, mk(a), mk(b)}
   def mk({:mult, {:elev, a, e1}, {:elev, a, e2}}), do: {:elev, mk(a), mk({:suma, mk(e1), mk(e2)})}
   def mk({:mult, {:numb, n1}, {:numb, n2}}), do: {:numb, n1 * n2}
   def mk({:mult, {:unit, n2, a}, n = {:numb, _n1}}), do: {:unit, mk({:mult, n2, n}), mk(a)}
@@ -274,6 +274,7 @@ defmodule Exun.Collect do
   def mk({:divi, {:numb, n1}, {:numb, n2}}), do: {:numb, n1 / n2}
   def mk({:divi, n = {:numb, _}, {:unit, nu, a}}), do: {:unit, mk({:divi, n, nu}), mk(chpow(a))}
   def mk({:divi, {:unit, nu, a}, n = {:numb, _}}), do: {:unit, mk({:divi, nu, n}), mk(a)}
+  def mk({:divi, {:elev, a, e1}, {:elev, a, e2}}), do: {:elev, mk(a), mk({:rest, mk(e1), mk(e2)})}
 
   def mk({:divi, {:unit, n1, a1}, {:unit, n2, a2}}),
     do: {:unit, mk({:divi, n1, n2}), mk({:divi, a1, a2})}
@@ -292,7 +293,9 @@ defmodule Exun.Collect do
   def mk({{:m, op}, lst}) when op in [:suma, :mult] and is_list(lst) do
     # Remove zeroes or ones, 0+any=any, 1*any=any
     unity = if op == :suma, do: @zero, else: @uno
-    lst = Enum.reject(lst, &(&1 == unity))
+    lst =
+      Enum.reject(lst, &(&1 == unity))
+      |> Enum.map(&mk/1)
 
     # if a multiple mult {:m,:mult} check if zero is a component
     cond do
@@ -418,14 +421,15 @@ defmodule Exun.Collect do
   end
 
   def chsign({{:m, :mult}, lst}) do
-    {{:m, :mult}, [@muno | lst]}
+    {{:m, :mult}, [@muno | lst] |> Enum.sort()}
   end
 
   def chsign({{:m, :suma}, lst}) do
     {{:m, :suma},
      Enum.map(lst, fn el ->
        chsign(el)
-     end)}
+     end)
+     |> Enum.sort()}
   end
 
   @doc """

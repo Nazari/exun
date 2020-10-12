@@ -13,7 +13,7 @@ import Exun
 import Exun.Unit
 
 eval "(1+a)*(a+1)/(a+1)^3"
-"1/(a+1)"
+"1/(1+a)"
 
 eval "1[m]+1[cm]"
 "1.01[m]"
@@ -41,10 +41,14 @@ eval "(a+b)^2/c", %{"a"=>"20[m]","b"=>"2[cm]","c"=>"3[s^2]"}
 "133.60013333333333[m^2/s^2]"
 ```
 
-If you are interested in parsing, use 'parse'
+If you are interested in parsing, use 'parse' or 'eval_ast'
 ```
 parse "(a+b)^2/c"
 {:divi, {:elev, {:suma, {:vari, "a"}, {:vari, "b"}}, {:numb, 2}}, {:vari, "c"}}
+
+eval_ast "(a+b)^2/c", %{"a"=>"20[m]","b"=>"2[cm]","c"=>"3[s^2]"}
+{:unit, {:numb, 133.60013333333333},
+ {:divi, {:elev, {:vari, "m"}, {:numb, 2}}, {:elev, {:vari, "s"}, {:numb, 2}}}}
 ```
 
 This library use an AST built with erlang's yecc parser and transformation in elixir like this:
