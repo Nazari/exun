@@ -217,7 +217,7 @@ defmodule Exun.Unit do
   end
 
   def factorize(e1, e2) do
-    factorize(e1 |> Exun.parse(), e2 |> Exun.parse(), %{})
+    factorize(e1 |> Exun.parse(), ("1"<>e2) |> Exun.parse(), %{})
   end
 
   @doc """

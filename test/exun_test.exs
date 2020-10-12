@@ -4,7 +4,7 @@ defmodule ExunTest do
   doctest Exun
 
   test "[ precedes sum" do
-    assert Exun.eval("1[m]+1[cm]+1[mm]") in [ "1.011[m]", "101.1[cm]"]
+    assert Exun.eval("1[m]+1[cm]+1[mm]") in ["1.011[m]", "101.1[cm]"]
   end
 
   test "[ precedes *" do
@@ -12,10 +12,8 @@ defmodule ExunTest do
   end
 
   test "Parse x[me]/3[se]" do
-
     assert Exun.parse("x[me]/3[se]") ==
-      {:divi, {:unit, {:vari, "x"}, {:vari, "me"}},
-      {:unit, {:numb, 3}, {:vari, "se"}}}
+             {:divi, {:unit, {:vari, "x"}, {:vari, "me"}}, {:unit, {:numb, 3}, {:vari, "se"}}}
   end
 
   test "Parse x[me]/3[se] with %{x => \"7\", me => m^2, se => s^2}" do
@@ -45,7 +43,6 @@ defmodule ExunTest do
 
   test "(3[Kg] + 2[slug]) / (23[g] + 16[lb])" do
     assert Exun.eval("(3[Kg] + 2[slug]) / (23[g] + 16[lb])") == "4.421111667130775"
-
   end
 
   test "1[mm]/2+1[m]/2" do
@@ -57,11 +54,11 @@ defmodule ExunTest do
   end
 
   test "(a+1)^2/b, %{b=>a+1}" do
-    assert Exun.eval("(a+1)^2/b", %{"b"=>"a+1"}) == "1+a"
+    assert Exun.eval("(a+1)^2/b", %{"b" => "a+1"}) == "1+a"
   end
 
   test "(a+1)^2/b, %{b=>a+1,a=>2}" do
-    assert Exun.eval("(a+1)^2/b", %{"b"=>"a+1","a"=>"2"}) == "3"
+    assert Exun.eval("(a+1)^2/b", %{"b" => "a+1", "a" => "2"}) == "3"
   end
 
   test "Order of sum" do
@@ -69,6 +66,11 @@ defmodule ExunTest do
   end
 
   test "Context" do
-    assert Exun.eval("(a+b)^2/c", %{"a"=>"20[m]","b"=>"2[cm]","c"=>"3[s^2]"}) == "133.60013333333333[m^2/s^2]"
+    assert Exun.eval("(a+b)^2/c", %{"a" => "20[m]", "b" => "2[cm]", "c" => "3[s^2]"}) ==
+             "133.60013333333333[m^2/s^2]"
+  end
+
+  test "Sort of tree" do
+    assert Exun.eval("(1+a)*(a+1)/(a+1)^3") == "1/(1+a)"
   end
 end

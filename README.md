@@ -1,41 +1,58 @@
 # Exun
 
 Symbolic math library for Elixir, with unit support.
+
 TODO:
  - Derivate, Integration
+ - Fractions, to avoid decimal ops
+ - User functions definition
 
 run "iex -S mix" inside exun dir and type:
-
+```
 import Exun
 import Exun.Unit
-eval "(a+1)*(a+1)/(a+1)^3"
 
--->
+eval "(1+a)*(a+1)/(a+1)^3"
 "1/(a+1)"
 
 eval "1[m]+1[cm]"
-
--->
 "1.01[m]"
 
-factorize "1[A*kg*m/s^2]","1[N]"
-
--->
-"9.806652048217348[N*A]"
+factorize "1[A*Kg*m/s^2]","[slug*cm]"
+"6.852176585682164[slug*cm*A/s^2]"
 
 "120[Km/h]" |> convert("m/s")
 "33.3333333333[m/s]"
+```
 
-You can put context also:
+Call Exun.Unit.help for a list of supported units, you can also add new units via context:
+```
+eval "25[Km/h]+14[myunit^2]", %{ "myunit" => "(m/s)^0.5" }
+"20.94444444444444[m/s]"
+```
 
-Exun.eval "(a+1)^2/b", %{"b"=>"a+1"}
 
--->
+You can put 'context' also, passing a map that defines values for variables:
+```
+eval "(a+1)^2/b", %{"b"=>"a+1"}
 "a+1"
 
 eval "(a+b)^2/c", %{"a"=>"20[m]","b"=>"2[cm]","c"=>"3[s^2]"}
-"0.3333333333"
+"133.60013333333333[m^2/s^2]"
+```
 
+If you are interested in parsing, use 'parse'
+```
+parse "(a+b)^2/c"
+{:divi, {:elev, {:suma, {:vari, "a"}, {:vari, "b"}}, {:numb, 2}}, {:vari, "c"}}
+```
+
+This library use an AST built with erlang's yecc parser and transformation in elixir like this:
+```
+  def mk({:suma, a, @zero}), do: mk(a)
+  def mk({:suma, {:numb, n1}, {:numb, n2}}), do: {:numb, n1 + n2}
+  def mk({:suma, {:numb, _}, {:unit, _, _}}), do: throw(@invalid_unit_operation)
+```
 ## Installation
 
 If [available in Hex](https://hex.pm/docs/publish), the package can be installed
