@@ -1,9 +1,11 @@
 # Exun
 
 Symbolic math library for Elixir, with unit support.
+Alpha state.
 
 TODO:
- - Derivate (some done, try Exun.Fun.deriv("x^x^x","x")), Integration
+ - Temperature unit conversions
+ - Integration
  - Fractions, to avoid decimal ops
  - User functions definition
 
@@ -40,6 +42,20 @@ eval "(a+1)^2/b", %{"b"=>"a+1"}
 eval "(a+b)^2/c", %{"a"=>"20[m]","b"=>"2[cm]","c"=>"3[s^2]"}
 "133.60013333333333[m^2/s^2]"
 ```
+
+Version 0.2.0 can derivate and support some functions (trigonometrics):
+Operator ' is derivate, so "f'x" is df(x)/dx
+```
+eval "(1+x)^2'x"
+"2*(1+x)"
+
+eval "sin(2*x)'x"
+"2*cos(x)"
+
+eval "(x^2+x)'x+1"
+"2*x+2"
+```
+
 
 If you are interested in parsing, use 'parse' or 'eval_ast'
 ```
