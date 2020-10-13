@@ -43,7 +43,7 @@ eval "(a+b)^2/c", %{"a"=>"20[m]","b"=>"2[cm]","c"=>"3[s^2]"}
 "133.60013333333333[m^2/s^2]"
 ```
 
-Version 0.2.0 can derivate and support some functions (trigonometrics):
+Version 0.1.2 can derivate and support some functions (trigonometrics):
 Operator ' is derivate, so "f'x" is df(x)/dx
 ```
 eval "(1+x)^2'x"
