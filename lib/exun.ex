@@ -54,6 +54,9 @@ defmodule Exun do
            {func, subtree}
          end}
 
+      {:err, msg} ->
+        throw(msg)
+
       {:err, msg, _lst} ->
         throw(msg)
     end
@@ -128,7 +131,7 @@ defmodule Exun do
     tree
     # |> IO.inspect(label: "tostr1,orig")
     |> Collect.denorm()
-    #|> IO.inspect(label: "tostr2,denorm")
+    # |> IO.inspect(label: "tostr2,denorm")
     |> innertostr()
   end
 
