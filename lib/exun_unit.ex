@@ -306,7 +306,7 @@ defmodule Exun.Unit do
   end
 
   @doc """
-  Factorize unit2 from u1, for example
+  Factorize unit u2 from u1, for example
   ```
     iex(1)> {u1,d} = Exun.parse "1[km*Kg*A/h^2]", %{}
             {u2,d} = Exun.parse "1[N]", %{}
@@ -321,6 +321,9 @@ defmodule Exun.Unit do
     "#{nres}[#{Exun.tostr(t2)}#{exps_tostr(exps)}]"
   end
 
+  @doc """
+  Factorize units, as text: factorize("2[N]","[Kg]")
+  """
   def factorize(e1, e2) do
     factorize(e1 |> Exun.parse(), ("1"<>e2) |> Exun.parse(), %{})
   end
