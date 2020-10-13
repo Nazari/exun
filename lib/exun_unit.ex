@@ -125,6 +125,104 @@ defmodule Exun.Unit do
     "inH2O" => "248.84[Pa]"
   }
 
+  @doc """
+  Shows help about unit:
+  Known Units prefixes:
+        E = 1.0e18
+        G = 1.0e9
+        K = 1000
+        M = 1.0e6
+        P = 1.0e15
+        T = 1.0e12
+        a = 1.0e-18
+        c = 0.01
+        d = 0.1
+        f = 1.0e-15
+        h = 100
+        m = 0.001
+        n = 1.0e-9
+        p = 1.0e-12
+        u = 1.0e-6
+  Know fundamental units:
+        A = true
+        K = true
+        cd = true
+        g = true
+        m = true
+        mol = true
+        s = true
+  Know conversions, you can add more via 'context'
+        lb = 453.59237[g]
+        torr = 133.322368421[Pa]
+        vara = 83.6[cm]
+        W = 1[Kg*m^2/s^3]
+        dyn = 0.00001[Kg*m/s^2]
+        ozt = 31.1034768[g]
+        pie = 30.48[cm]
+        min = 60[s]
+        ozUK = 28.413075[ml]
+        hp = 745.699871582[W]
+        yr = 31556925.9747[s]
+        acre = 4046.87260987[m^2]
+        cal = 4.1868[J]
+        in = 2.54[cm]
+        rd = 5.02921005842[m]
+        galUK = 4.546092[l]
+        J = 1[Kg*m^2/s^2]
+        pdl = 0.1382549544376[N]
+        Btu = 1055.05585262[J]
+        therm = 105506000[J]
+        u = 1.6605402e-24[g]
+        h = 3600[s]
+        qt = 0.946352946[l]
+        gf = 0.00980665[N]
+        ft = 0.3048[m]
+        ozfl = 2.95735295625e-2[l]
+        lbf = 4.44822161526[N]
+        Pa = 1[Kg/m/s^2]
+        cu = 0.2365882365[l]
+        bu = 35239.07[ml]
+        bar = 100000[Pa]
+        l = 100[cm^3]
+        ton = 907.18474[Kg]
+        tonUK = 1016.0469088[Kg]
+        bbl = 158987.294928[ml]
+        chain = 20.1168402337[m]
+        pt = 0.473176473[l]
+        t = 1000[Kg]
+        inH2O = 248.84[Pa]
+        pk = 8809.7675[ml]
+        inHg = 3386.38815789[Pa]
+        ct = 0.2[g]
+        mmHg = 1[torr]
+        N = 101.9716[g*m/s^2]
+        oz = 28.349523125[g]
+        galC = 4.54609[l]
+        pc = 3.08567818585e16[m]
+        mi = 1609.344[m]
+        eV = 1.60217733e-19[J]
+        kip = 4448.22161526[N]
+        Hz = 1[1/s]
+        yd = 91.44[cm]
+        CV = 1[hp]
+        slug = 14.5939029372[Kg]
+        fath = 1.82880365761[m]
+        arroba = 25[lb]
+        d = 86400[s]
+        gal = 3.785411784[l]
+        angstrom = 1.0e-10[m]
+        au = 149597900000[m]
+        atm = 101325[Pa]
+        lyr = 9.46052840488e15[m]
+        tbsp = 14.78676447813[ml]
+        tsp = 4.92892159375[ml]
+        erg = 0.0000001[J]
+        a = 100[m^2]
+        grain = 0.06479891[g]
+        lbt = 373.2417216[g]
+        fbm = 2359.737216[ml]
+        psi = 6894.75729317[Pa]
+  """
   def help do
     IO.puts("Known Units prefixes:")
 
@@ -227,19 +325,12 @@ defmodule Exun.Unit do
     factorize(e1 |> Exun.parse(), ("1"<>e2) |> Exun.parse(), %{})
   end
 
-  @doc """
-  Convert unit to International System
-  args: unit
-  """
+
   defp to_si({:unit, {:numb, n}, tree}) do
     to_si({n, Collect.denorm(tree)}, %{}, 1, %{})
   end
 
-  @doc """
-  Convert unit to International System
-  args: {coef, ast}, parsed_context, current_exponent, exponents
-  returns: {newcoef, exponents}
-  """
+
   defp to_si({n, {:mult, left, right}}, pcontext, curr_exp, exps) do
     {left_n, exps} = to_si({1, left}, pcontext, curr_exp, exps)
     {right_n, exps} = to_si({1, right}, pcontext, curr_exp, exps)
