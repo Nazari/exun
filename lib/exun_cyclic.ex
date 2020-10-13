@@ -38,10 +38,6 @@ defmodule Exun.Cyclic do
     end)
   end
 
-  @doc """
-  Recursively expands defs and find variables on what definitions
-  depends.
-  """
   defp check_expand(maps, prev_maps) do
     newmaps =
       for {varname, depends} <- maps, into: %{} do
@@ -84,9 +80,7 @@ defmodule Exun.Cyclic do
     end
   end
 
-  @doc """
-  Initial parse of definitions in map 'context'
-  """
+
   defp maps_all(context) do
     for {var, def} <- context, into: %{} do
       with {:ok, tok, _} <- :exun_lex.string(def |> String.to_charlist()),
@@ -96,9 +90,7 @@ defmodule Exun.Cyclic do
     end
   end
 
-  @doc """
-  Select only vars
-  """
+
   defp extract_vars({_op, l, r}, acu) do
     MapSet.union(
       extract_vars(l, acu),

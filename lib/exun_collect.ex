@@ -40,9 +40,6 @@ defmodule Exun.Collect do
       else: mkrec(ntree)
   end
 
-  @doc """
-  Simplify literals, reduce to one number and one unit when possible
-  """
   defp solve_literals({{:m, op}, lst}) when op in [:suma, :mult] and is_list(lst) do
     lst =
       lst
@@ -154,9 +151,6 @@ defmodule Exun.Collect do
     maxbase(counts)
   end
 
-  @doc """
-  Returns commom base for two trees. Used for collect {:m,:suma}
-  """
   defp cbs(op, a, a) when op in [:suma, :mult] do
     {:ok, @uno}
   end
@@ -172,7 +166,6 @@ defmodule Exun.Collect do
     case op do
       :suma -> {:ok, mk({:elev, a, mk({:rest, b, @uno})})}
       :mult -> {:ok, b}
-      _ -> {:err, nil}
     end
   end
 
@@ -299,8 +292,6 @@ defmodule Exun.Collect do
   defp mk({:elev, {:unit, uv, ut}, expon}),
     do: {:unit, mk({:elev, uv, expon}), mk({:elev, ut, expon})}
 
-  defp mk({op, a, b}), do: {op, mk(a), mk(b)}
-
   defp mk({{:m, op}, lst}) when op in [:suma, :mult] and is_list(lst) do
     # Remove zeroes or ones, 0+any=any, 1*any=any
     unity = if op == :suma, do: @zero, else: @uno
@@ -351,6 +342,12 @@ defmodule Exun.Collect do
         end
     end
   end
+
+  defp mk({:fcall, name, lst}) when is_list(lst) do
+    {:fcall, name, Enum.map(lst, &coll/1)}
+  end
+
+  defp mk({op, a, b}), do: {op, mk(a), mk(b)}
 
   # Fallthrough
   defp mk(tree) do

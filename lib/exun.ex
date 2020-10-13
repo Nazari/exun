@@ -20,6 +20,7 @@ defmodule Exun do
   ```
     iex(1)> Exun.parse "x*y^(1+x)"
     {:mult, {:vari, "x"}, {:elev, {:vari, "y"}, {:suma, {:numb, 1}, {:vari, "x"}}}}
+
   ```
   """
   def parse(txt) do
@@ -33,6 +34,7 @@ defmodule Exun do
   ```
     iex> Exun.parse( "x[m^2]", %{"x"=>"3"})
     {{:unit, {:vari, "x"}, {:elev, {:vari, "m"}, {:numb, 2}}}, %{"x" => {:numb, 3}}}
+
   ```
   returns a tuple {expression, parsed_conext} where
   expression is a tuple that holds math AST and
@@ -61,6 +63,7 @@ defmodule Exun do
   ```
     iex> Exun.eval "x[m^2]+4[cm^2]",%{"x"=>"3"}
     "3.0004[m^2]"
+
   ```
   """
   def eval(txt, context) do
@@ -116,6 +119,7 @@ defmodule Exun do
     {{:divi,
     {:mult, {:numb, 4}, {:elev, {:vari, "x"}, {:suma, {:vari, "y"}, {:numb, 1}}}},
     {:vari, "z"}}, %{"z" => {:suma, {:vari, "y"}, {:numb, 1}}}}
+
   ```
   """
   def tostr(tree) do
@@ -202,6 +206,12 @@ defmodule Exun do
 
   defp repl({op, l, r}, pc) do
     {op, replace(l, pc), replace(r, pc)}
+  end
+
+  defp repl(lst,pc) when is_list(lst) do
+    Enum.map(lst, fn el ->
+      repl(el,pc)
+    end)
   end
 
   defp repl(other, _pc) do

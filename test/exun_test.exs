@@ -29,12 +29,12 @@ defmodule ExunTest do
 
   test "1[1/h^2]" do
     u1 = Exun.parse("1[1/h^2]")
-    assert Exun.Unit.to_si(u1) == {7.71604938271605e-8, %{"s" => -2}}
+    assert Exun.Unit.toSI(u1)|>Exun.tostr() == "7.71604938271605e-8[s^-2]"
   end
 
   test "1[slug/N]" do
     u2 = Exun.parse("1[slug/N]")
-    assert Exun.Unit.to_si(u2) == {143.11732813057753, %{"g" => 0, "m" => -1, "s" => 2}}
+    assert Exun.Unit.toSI(u2)|>Exun.tostr() == "143.11732813057753[1/m*s^2]"
   end
 
   test "1[m]+3[cm]+2[dm]+4[mm]" do
@@ -67,7 +67,7 @@ defmodule ExunTest do
 
   test "Context" do
     assert Exun.eval("(a+b)^2/c", %{"a" => "20[m]", "b" => "2[cm]", "c" => "3[s^2]"}) ==
-             "133.60013333333333[m^2/s^2]"
+             "133.60013333333333[m^2*s^-2]"
   end
 
   test "Sort of tree" do
