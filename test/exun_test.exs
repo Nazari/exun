@@ -34,7 +34,7 @@ defmodule ExunTest do
 
   test "1[slug/N]" do
     u2 = Exun.parse("1[slug/N]")
-    assert Exun.Unit.toSI(u2)|>Exun.tostr() == "143.11732813057753[1/m*s^2]"
+    assert Exun.Unit.toSI(u2)|>Exun.tostr() == "143.11732813057753[s^2/m]"
   end
 
   test "1[m]+3[cm]+2[dm]+4[mm]" do

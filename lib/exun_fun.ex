@@ -10,34 +10,101 @@ defmodule Exun.Fun do
   @uno {:numb, 1}
 
   @base %{
-    "sin" => {&:math.sin/1, "x'*cos"},
-    "cos" => {&:math.cos/1, "-x'*sin"},
-    "ln"  => {&:math.log/1, "x'/x"}
+    "sin(F)" => {&:math.sin/1, "F'x*cos(F)"},
+    "cos(F)" => {&:math.cos/1, "-F'x*sin(F)"},
+    "ln(F)" => {&:math.log/1, "F'x/F"}
   }
 
   @compounds %{
-    "tan" => "sin/cos"
+    "tan(F)" => "sin(F)/cos(F)"
   }
 
-  def fcall(name,args) do
+  def fcall(name, args) do
+    # IO.inspect({name, args}, label: "fcall")
+    aau = allargs_numbers(args)
+    search_name = name <> "(F)"
+
     cond do
-      (b=@base[name]) != nil ->
-        {:bfunc, b}
-      (c=@compounds[name]) != nil ->
-        {:cfunc, c}
+      (b = @base[search_name]) != nil ->
+        cond do
+          aau -> {:numb, elem(b, 0).(args |> List.first() |> elem(1))}
+          true -> {:fcall, name, args}
+        end
+
+      (c = @compounds[search_name]) != nil ->
+        c
+        |> Exun.parse()
+        |> replace_args(args)
+
+      true ->
+        {:fcall, name, args}
     end
   end
+
+  defp replace_args(ast, args) do
+    case ast do
+      {:vari, "F"} ->
+        args |> List.first()
+
+      {:fcall, name, [{:vari, "F"}]} ->
+        {:fcall, name, args}
+
+      {:unit, uv, ut} ->
+        {:unit, replace_args(uv, args), ut}
+
+      {op, l, r} ->
+        {op, replace_args(l, args), replace_args(r, args)}
+
+      _ ->
+        ast
+    end
+  end
+
+  defp allargs_numbers(args) do
+    Enum.reduce(args, true, fn el, ac ->
+      ac and elem(el, 0) == :numb
+    end)
+  end
+
   @doc """
   Derive function txt for variable x, return string
   """
-  def deriv(txt, x) do
+  def deriv(txt, x) when is_binary(txt) and is_binary(x) do
     txt
     |> parse()
-    |> coll()
-    |> der({:vari, x})
-    |> coll()
+    |> deriv(x)
     # |> IO.inspect(label: "reduced")
     |> tostr()
+  end
+
+  def deriv(ast, name) when is_tuple(ast) and is_binary(name) do
+    ast
+    |> coll()
+    |> der({:vari, name})
+    |> coll()
+  end
+
+  defp der({:fcall, name, args}, x) do
+    search_name = name <> "(F)"
+
+    cond do
+      (b = @base[search_name]) != nil ->
+        b
+        |> elem(1)
+        |> parse()
+        #|> IO.inspect(label: "der parsed")
+        |> replace_args(args)
+        #|> IO.inspect(label: "replaced")
+
+      (c = @compounds[search_name]) != nil ->
+        c
+        |> parse
+        |> replace_args(args)
+        |> der(x)
+
+      true ->
+        {:deriv, {:fcall, name, args}, x}
+    end
   end
 
   defp der({:numb, _}, _x),

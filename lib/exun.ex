@@ -1,6 +1,7 @@
 defmodule Exun do
   alias Exun.Cyclic
   alias Exun.Collect
+
   @moduledoc """
   Symbolic Math for Elixir, with Units support
   """
@@ -13,7 +14,8 @@ defmodule Exun do
     :numb => {200, nil},
     :unit => {200, nil},
     :vari => {200, nil},
-    :fcall => {200, nil}
+    :fcall => {200, nil},
+    :deriv => {110, "'"}
   }
   @doc ~S"""
   Parse a math expression, without context:
@@ -126,8 +128,24 @@ defmodule Exun do
     tree
     # |> IO.inspect(label: "tostr1,orig")
     |> Collect.denorm()
-    # |> IO.inspect(label: "tostr2,denorm")
+    #|> IO.inspect(label: "tostr2,denorm")
     |> innertostr()
+  end
+
+  defp innertostr({:mult, {:numb, -1}, a}) do
+    "-" <> innertostr(a)
+  end
+
+  defp innertostr({:mult, a, {:numb, -1}}) do
+    "-" <> innertostr(a)
+  end
+
+  defp innertostr({:mult, {:divi, {:numb, 1}, a}, b}) do
+    innertostr({:divi, b, a})
+  end
+
+  defp innertostr({:mult, b, {:divi, {:numb, 1}, a}}) do
+    innertostr({:divi, b, a})
   end
 
   defp innertostr({:vari, var}) do
@@ -151,11 +169,6 @@ defmodule Exun do
 
   defp innertostr({:numb, n}) do
     if n == floor(n), do: to_string(floor(n)), else: to_string(n)
-  end
-
-  defp innertostr({:elev, a, {:numb, -1}}) do
-    # IO.inspect([:elev,a,{:numb,-1}])
-    innertostr({:divi, {:numb, 1}, a})
   end
 
   defp innertostr({op, l, r}) do
@@ -208,9 +221,9 @@ defmodule Exun do
     {op, replace(l, pc), replace(r, pc)}
   end
 
-  defp repl(lst,pc) when is_list(lst) do
+  defp repl(lst, pc) when is_list(lst) do
     Enum.map(lst, fn el ->
-      repl(el,pc)
+      repl(el, pc)
     end)
   end
 

@@ -16,6 +16,7 @@ MULTIPLY = \*
 POWER = \^
 DOT = \.
 COMMA = \,
+DERIV =\'
 
 SIGN = (\-|\+)
 
@@ -42,6 +43,7 @@ Rules.
 {WORD}  : {token, {word, TokenLine, list_to_binary(TokenChars)}}.
 {DOT} : {token, {'.', TokenLine}}.
 {COMMA} : {token, {',', TokenLine}}.
+{DERIV} : {token, {'\'', TokenLine}}.
 
 {WHITESPACE}+ : skip_token.
 
