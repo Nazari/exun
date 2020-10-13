@@ -4,11 +4,13 @@ defmodule Exun.Cyclic do
   """
   @doc """
   Get a list of variables down a tree, checking cyclic definition
-  from 'context' user defs
-  Check cyclic definitins in 'context', a map that holds
+  from 'context' user defs.
+  Check cyclic definitions in 'context', a map that holds
   values like %{"f" => "x^2+2*x+3"}. If you pass a cyclic map
   this function detects it, for example:
+  ```
   %{"a"=>"b", "b"=>"c", "c"=>"a"}
+  ```
   """
 
   def check(context) do
@@ -35,6 +37,7 @@ defmodule Exun.Cyclic do
       end
     end)
   end
+
   @doc """
   Recursively expands defs and find variables on what definitions
   depends.
@@ -80,6 +83,7 @@ defmodule Exun.Cyclic do
         {:err, msg, newmaps}
     end
   end
+
   @doc """
   Initial parse of definitions in map 'context'
   """
@@ -91,6 +95,7 @@ defmodule Exun.Cyclic do
       end
     end
   end
+
   @doc """
   Select only vars
   """
