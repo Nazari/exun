@@ -1,8 +1,14 @@
 defmodule Exun.Cyclic do
+  @moduledoc """
+  Check cyclic definitions in context
+  """
   @doc """
   Get a list of variables down a tree, checking cyclic definition
   from 'context' user defs
-
+  Check cyclic definitins in 'context', a map that holds
+  values like %{"f" => "x^2+2*x+3"}. If you pass a cyclic map
+  this function detects it, for example:
+  %{"a"=>"b", "b"=>"c", "c"=>"a"}
   """
 
   def check(context) do
@@ -14,13 +20,8 @@ defmodule Exun.Cyclic do
       check_expand(maps_all(context), MapSet.new())
     end
   end
-  @doc """
-  Check cyclic definitins in 'context', a map that holds
-  values like %{"f" => "x^2+2*x+3"}. If you pass a cyclic map
-  this function detects it, for example:
-  %{"a"=>"b", "b"=>"c", "c"=>"a"}
-  """
-  def check_definitions(context) do
+
+  defp check_definitions(context) do
     for {name, _definition} <- context do
       with {:ok, tok, _} <- :exun_lex.string(String.to_charlist(name)),
            {:ok, tree} <- :exun_yacc.parse(tok) do
@@ -38,7 +39,7 @@ defmodule Exun.Cyclic do
   Recursively expands defs and find variables on what definitions
   depends.
   """
-  def check_expand(maps, prev_maps) do
+  defp check_expand(maps, prev_maps) do
     newmaps =
       for {varname, depends} <- maps, into: %{} do
         {varname,
@@ -82,7 +83,7 @@ defmodule Exun.Cyclic do
   @doc """
   Initial parse of definitions in map 'context'
   """
-  def maps_all(context) do
+  defp maps_all(context) do
     for {var, def} <- context, into: %{} do
       with {:ok, tok, _} <- :exun_lex.string(def |> String.to_charlist()),
            {:ok, tree} <- :exun_yacc.parse(tok) do
@@ -93,18 +94,18 @@ defmodule Exun.Cyclic do
   @doc """
   Select only vars
   """
-  def extract_vars({_op, l, r}, acu) do
+  defp extract_vars({_op, l, r}, acu) do
     MapSet.union(
       extract_vars(l, acu),
       extract_vars(r, acu)
     )
   end
 
-  def extract_vars({:vari, var}, acu) do
+  defp extract_vars({:vari, var}, acu) do
     MapSet.put(acu, var)
   end
 
-  def extract_vars(_a, acu) do
+  defp extract_vars(_a, acu) do
     acu
   end
 end

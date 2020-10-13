@@ -1,7 +1,9 @@
 defmodule Exun do
   alias Exun.Cyclic
   alias Exun.Collect
-
+  @moduledoc """
+  Symbolic Math for Elixir, with Units support
+  """
   @defop %{
     :elev => {100, "^"},
     :mult => {90, "*"},
@@ -15,9 +17,10 @@ defmodule Exun do
   }
   @doc ~S"""
   Parse a math expression, without context:
+  ```
     iex(1)> Exun.parse "x*y^(1+x)"
     {:mult, {:vari, "x"}, {:elev, {:vari, "y"}, {:suma, {:numb, 1}, {:vari, "x"}}}}
-
+  ```
   """
   def parse(txt) do
     {t, _} = parse(txt, %{})
@@ -27,9 +30,10 @@ defmodule Exun do
   @doc ~S"""
   Parse a math expression, not a 'equality', with context definitions
   For example, express 'x' squared meters, and then define x to be 3.
+  ```
     iex> Exun.parse( "x[m^2]", %{"x"=>"3"})
     {{:unit, {:vari, "x"}, {:elev, {:vari, "m"}, {:numb, 2}}}, %{"x" => {:numb, 3}}}
-
+  ```
   returns a tuple {expression, parsed_conext} where
   expression is a tuple that holds math AST and
   parsed_context is a map whith all equalities (definitions) parsed as
@@ -53,15 +57,20 @@ defmodule Exun do
 
   @doc """
   Parse and evaluate an expression. If ast is true returns de AST tuple,
-  if it is false return a human-readable (and parseable) expression
+  if it is false return a human-readable (and parseable) expression.
+  ```
     iex> Exun.eval "x[m^2]+4[cm^2]",%{"x"=>"3"}
     "3.0004[m^2]"
+  ```
   """
   def eval(txt, context) do
     eval_ast(txt, context)
     |> tostr()
   end
 
+  @doc """
+  Same as eval but returns AST
+  """
   def eval_ast(txt, context) do
     {ast, pcontext} = parse(txt, context)
 
@@ -78,9 +87,16 @@ defmodule Exun do
     end
   end
 
+  @doc """
+  Same as eval but with empty context
+  """
   def eval(txt) do
     eval(txt, %{})
   end
+
+  @doc """
+  Same as eval_ast but with empty context
+  """
 
   def eval_ast(txt) do
     eval_ast(txt, %{})
@@ -95,11 +111,12 @@ defmodule Exun do
 
   @doc ~S"""
   Translate tree to human readable math expression:
+  ```
     iex(1)> {_tree, _deps} = Exun.parse "4*x^(y+1)/z",%{"z"=>"y+1"}
     {{:divi,
     {:mult, {:numb, 4}, {:elev, {:vari, "x"}, {:suma, {:vari, "y"}, {:numb, 1}}}},
     {:vari, "z"}}, %{"z" => {:suma, {:vari, "y"}, {:numb, 1}}}}
-
+  ```
   """
   def tostr(tree) do
     tree
@@ -109,11 +126,11 @@ defmodule Exun do
     |> innertostr()
   end
 
-  def innertostr({:vari, var}) do
+  defp innertostr({:vari, var}) do
     var
   end
 
-  def innertostr({:fcall, name, args}) when is_list(args) do
+  defp innertostr({:fcall, name, args}) when is_list(args) do
     name <>
       "(" <>
       Enum.reduce(args, "", fn el, ac ->
@@ -124,20 +141,20 @@ defmodule Exun do
       end) <> ")"
   end
 
-  def innertostr({:unit, n, tree}) do
+  defp innertostr({:unit, n, tree}) do
     innertostr(n) <> "[" <> innertostr(tree) <> "]"
   end
 
-  def innertostr({:numb, n}) do
+  defp innertostr({:numb, n}) do
     if n == floor(n), do: to_string(floor(n)), else: to_string(n)
   end
 
-  def innertostr({:elev, a, {:numb, -1}}) do
+  defp innertostr({:elev, a, {:numb, -1}}) do
     # IO.inspect([:elev,a,{:numb,-1}])
     innertostr({:divi, {:numb, 1}, a})
   end
 
-  def innertostr({op, l, r}) do
+  defp innertostr({op, l, r}) do
     # IO.inspect([op,l,r])
     {hpri, hstr} = @defop[op]
     {lpri, _} = @defop[l |> elem(0)]
@@ -148,7 +165,7 @@ defmodule Exun do
     conctostr(hpri, hstr, lpri, ltxt, rpri, rtxt)
   end
 
-  def conctostr(hpri, hstr, lpri, ltxt, rpri, rtxt) do
+  defp conctostr(hpri, hstr, lpri, ltxt, rpri, rtxt) do
     cond do
       hpri > lpri and hpri > rpri ->
         "(" <> ltxt <> ")" <> hstr <> "(" <> rtxt <> ")"
@@ -179,15 +196,15 @@ defmodule Exun do
     end
   end
 
-  def repl({:vari, var}, pc) do
+  defp repl({:vari, var}, pc) do
     Map.get(pc, var, {:vari, var})
   end
 
-  def repl({op, l, r}, pc) do
+  defp repl({op, l, r}, pc) do
     {op, replace(l, pc), replace(r, pc)}
   end
 
-  def repl(other, _pc) do
+  defp repl(other, _pc) do
     other
   end
 

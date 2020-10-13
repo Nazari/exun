@@ -1,6 +1,8 @@
 defmodule Exun.Unit do
   alias Exun.Collect
-
+  @moduledoc """
+  Handle Units, converts, sum, multiply, transform to SI and factorize
+  """
   @prefixes %{
     # Exa
     "E" => 1.0e18,
@@ -169,10 +171,12 @@ defmodule Exun.Unit do
 
   @doc """
   Convert first unit to the second unit in convert:
+  ```
   u1 = Exun.parse "3[m]"
   u2 = Exun.parse "1[cm]"
   Exum.Units.convert(u1,u2,%{}) |> Exum.tostr()
   "300[cm]"
+  ```
   """
   def convert({:unit, {:numb, n1}, t1}, {:unit, {:numb, _n2}, t2}, pcontext) do
     {res1, exps1} = to_si({1, t1}, pcontext, 1, %{})
@@ -187,9 +191,11 @@ defmodule Exun.Unit do
 
   @doc """
   Convert units, for example
+  ```
     iex> import Exun.Unit
     iex> "120[Km/h]" |> convert("m/s")
     "33.333333333333336[m/s]"
+  ```
   """
   def convert(tu1, tu2) when is_binary(tu1) and is_binary(tu2) do
     u1 = Exun.parse(tu1)
@@ -203,12 +209,13 @@ defmodule Exun.Unit do
 
   @doc """
   Factorize unit2 from u1, for example
+  ```
     iex(1)> {u1,d} = Exun.parse "1[km*Kg*A/h^2]", %{}
             {u2,d} = Exun.parse "1[N]", %{}
             factorized = Exun.Unit.factorize(u1,u2,%{})
             Exum.Tree.tostr factorized
             "7.566861148315854e-4[N*A]"
-
+  ```
   """
   def factorize({:unit, {:numb, n1}, t1}, {:unit, {:numb, _n2}, t2}, pcontext) do
     # Divide t1 by t2, reduce to si and multiply by t2
@@ -224,7 +231,7 @@ defmodule Exun.Unit do
   Convert unit to International System
   args: unit
   """
-  def to_si({:unit, {:numb, n}, tree}) do
+  defp to_si({:unit, {:numb, n}, tree}) do
     to_si({n, Collect.denorm(tree)}, %{}, 1, %{})
   end
 
@@ -233,29 +240,29 @@ defmodule Exun.Unit do
   args: {coef, ast}, parsed_context, current_exponent, exponents
   returns: {newcoef, exponents}
   """
-  def to_si({n, {:mult, left, right}}, pcontext, curr_exp, exps) do
+  defp to_si({n, {:mult, left, right}}, pcontext, curr_exp, exps) do
     {left_n, exps} = to_si({1, left}, pcontext, curr_exp, exps)
     {right_n, exps} = to_si({1, right}, pcontext, curr_exp, exps)
     {n * left_n * right_n, exps}
   end
 
-  def to_si({n, {:divi, {:numb, 1}, denom}}, pcontext, curr_exp, exps) do
+  defp to_si({n, {:divi, {:numb, 1}, denom}}, pcontext, curr_exp, exps) do
     {nn, exps} = to_si({1, denom}, pcontext, -curr_exp, exps)
     {n / nn, exps}
   end
 
-  def to_si({n, {:divi, left, right}}, pcontext, curr_exp, exps) do
+  defp to_si({n, {:divi, left, right}}, pcontext, curr_exp, exps) do
     {left_n, exps} = to_si({1, left}, pcontext, curr_exp, exps)
     {right_n, exps} = to_si({1, right}, pcontext, -curr_exp, exps)
     {n * left_n / right_n, exps}
   end
 
-  def to_si({n, {:elev, left, {:numb, exponent}}}, pcontext, curr_exp, exps) do
+  defp to_si({n, {:elev, left, {:numb, exponent}}}, pcontext, curr_exp, exps) do
     {left_n, exps} = to_si({1, left}, pcontext, curr_exp * exponent, exps)
     {n * :math.pow(left_n, exponent), exps}
   end
 
-  def to_si({n, {:vari, var}}, pcontext, curr_exp, exps) do
+  defp to_si({n, {:vari, var}}, pcontext, curr_exp, exps) do
     case @fundamental_units[var] do
       nil ->
         {:unit, {:numb, vdef}, tdef} = get_def(var, pcontext)
@@ -266,16 +273,12 @@ defmodule Exun.Unit do
     end
   end
 
-  def to_si({a, b}, _pcontext, _curr_exp, _exps) do
+  defp to_si({a, b}, _pcontext, _curr_exp, _exps) do
     # IO.inspect({:unit, {:numb, a}, b}, label: "For unit:")
     throw("Invalid unit definition: " <> Exun.tostr({:unit, {:numb, a}, b}))
   end
 
-  @doc """
-  Transform a name into a unit, looking at fundamentals, conversions,
-  context and prefixes, in that search order.
-  """
-  def get_def(name, pcontext) do
+  defp get_def(name, pcontext) do
     [pref | rest] = name |> String.codepoints()
     rest = to_string(rest)
 
@@ -300,7 +303,7 @@ defmodule Exun.Unit do
     end
   end
 
-  def exps_tostr(exps) do
+  defp exps_tostr(exps) do
     exps
     |> Enum.reduce("", fn {var, exp}, ac ->
       cond do
@@ -324,17 +327,19 @@ defmodule Exun.Unit do
       end
     end)
   end
-
+  @doc """
+  Converts unit to International System
+  """
   def toSI({:unit, uv, ut}) do
-    {r, e} = to_si({:unit, Collect.mk(uv), Collect.mk(ut)})
+    {r, e} = to_si({:unit, Collect.coll(uv), Collect.coll(ut)})
 
     {:unit, {:numb, r},
      e
      |> Enum.reject(fn {_a, b} -> b == 0 end)
      |> Enum.reduce({:numb, 1}, fn {var, expon}, tree ->
        cond do
-         expon > 0 -> Collect.mk({:mult, tree, {:elev, {:vari, var}, {:numb, expon}}})
-         expon < 0 -> Collect.mk({:divi, tree, {:elev, {:vari, var}, {:numb, -expon}}})
+         expon > 0 -> Collect.coll({:mult, tree, {:elev, {:vari, var}, {:numb, expon}}})
+         expon < 0 -> Collect.coll({:divi, tree, {:elev, {:vari, var}, {:numb, -expon}}})
        end
      end)}
   end

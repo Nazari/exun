@@ -1,4 +1,8 @@
 defmodule Exun.Fun do
+  @moduledoc """
+  Function management, not complete.
+  @base and  @compound will be the definitions of external functions.
+  """
   import Exun.Collect
   import Exun
 
@@ -23,7 +27,9 @@ defmodule Exun.Fun do
         {:cfunc, c}
     end
   end
-
+  @doc """
+  Derive function txt for variable x, return string
+  """
   def deriv(txt, x) do
     txt
     |> parse()
@@ -34,28 +40,28 @@ defmodule Exun.Fun do
     |> tostr()
   end
 
-  def der({:numb, _}, _x),
+  defp der({:numb, _}, _x),
     do: @zero
 
-  def der({:unit, _uv, _ut}, _x),
+  defp der({:unit, _uv, _ut}, _x),
     do: @zero
 
-  def der({:vari, var}, {:vari, x}),
+  defp der({:vari, var}, {:vari, x}),
     do: if(var == x, do: @uno, else: @zero)
 
-  def der({:suma, a, b}, x),
+  defp der({:suma, a, b}, x),
     do: {:suma, der(a, x), der(b, x)}
 
-  def der({:rest, a, b}, x),
+  defp der({:rest, a, b}, x),
     do: {:rest, der(a, x), der(b, x)}
 
-  def der({:mult, a, b}, x),
+  defp der({:mult, a, b}, x),
     do: {:suma, {:mult, der(a, x), b}, {:mult, a, der(b, x)}}
 
-  def der({:divi, a, b}, x),
+  defp der({:divi, a, b}, x),
     do: {:divi, {:rest, {:mult, b, der(a, x)}, {:mult, der(b, x), a}}, {:elev, b, {:numb, 2}}}
 
-  def der(y = {:elev, f, g}, x),
+  defp der(y = {:elev, f, g}, x),
     do:
       {:mult, y,
        {:suma, {:mult, der(g, x), {:fcall, "ln", [f]}}, {:mult, g, {:divi, der(f, x), f}}}}
