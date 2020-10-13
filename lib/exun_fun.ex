@@ -3,7 +3,6 @@ defmodule Exun.Fun do
   Function management, not complete.
   @base and  @compound will be the definitions of external functions.
   """
-  import Exun.Collect
   import Exun
 
   @zero {:numb, 0}
@@ -79,9 +78,7 @@ defmodule Exun.Fun do
 
   def deriv(ast, name) when is_tuple(ast) and is_binary(name) do
     ast
-    |> coll()
     |> der({:vari, name})
-    |> coll()
   end
 
   defp der({:fcall, name, args}, x) do
@@ -92,9 +89,10 @@ defmodule Exun.Fun do
         b
         |> elem(1)
         |> parse()
-        #|> IO.inspect(label: "der parsed")
+        # |> IO.inspect(label: "der parsed")
         |> replace_args(args)
-        #|> IO.inspect(label: "replaced")
+
+      # |> IO.inspect(label: "replaced")
 
       (c = @compounds[search_name]) != nil ->
         c

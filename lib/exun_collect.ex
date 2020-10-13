@@ -266,7 +266,8 @@ defmodule Exun.Collect do
   defp mk({:mult, @muno, {:suma, a, {:mult, @muno, b}}}), do: {:rest, b, a}
   defp mk({:mult, {:suma, a, {:mult, @muno, b}}, @muno}), do: {:rest, b, a}
 
-  defp mk({:mult, {:elev, a, e1}, {:elev, a, e2}}), do: {:elev, mk(a), mk({:suma, mk(e1), mk(e2)})}
+  defp mk({:mult, {:elev, a, e1}, {:elev, a, e2}}),
+    do: {:elev, mk(a), mk({:suma, mk(e1), mk(e2)})}
 
   defp mk({:mult, {:numb, n1}, {:numb, n2}}), do: {:numb, n1 * n2}
   defp mk({:mult, {:unit, n2, a}, n = {:numb, _n1}}), do: {:unit, mk({:mult, n2, n}), mk(a)}
@@ -278,13 +279,14 @@ defmodule Exun.Collect do
   defp mk({:divi, _, @zero}), do: throw("Division by 0")
   defp mk({:divi, @zero, _}), do: @zero
   defp mk({:divi, a, @uno}), do: mk(a)
-  defp mk({:divi, a, a}) when a != @zero , do: @uno
+  defp mk({:divi, a, a}) when a != @zero, do: @uno
   defp mk({:divi, {:numb, n1}, {:numb, n2}}), do: {:numb, n1 / n2}
   defp mk({:divi, n = {:numb, _}, {:unit, nu, a}}), do: {:unit, mk({:divi, n, nu}), mk(chpow(a))}
   defp mk({:divi, {:unit, nu, a}, n = {:numb, _}}), do: {:unit, mk({:divi, nu, n}), mk(a)}
 
   defp mk({:divi, {:elev, a, e1}, {:elev, a, e2}}),
     do: {:elev, mk(a), mk({:rest, mk(e1), mk(e2)})}
+
   defp mk({:divi, {:elev, a, e1}, a}),
     do: {:elev, mk(a), mk({:rest, mk(e1), @uno})}
 
@@ -353,7 +355,8 @@ defmodule Exun.Collect do
   end
 
   defp mk({:fcall, name, lst}) when is_list(lst) do
-    Exun.Fun.fcall(name, lst |> Enum.map(&coll/1))
+    args = Enum.map(lst, &coll/1)
+    Exun.Fun.fcall(name, args)
   end
 
   defp mk({:deriv, a, {:vari, x}}) do

@@ -73,4 +73,8 @@ defmodule ExunTest do
   test "Sort of tree" do
     assert Exun.eval("(1+a)*(a+1)/(a+1)^3") == "1/(1+a)"
   end
+
+  test "derivate" do
+    assert Exun.eval("sin(f(x))'x") == "f(x)'x*cos(f(x))"
+  end
 end
