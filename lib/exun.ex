@@ -31,28 +31,21 @@ defmodule Exun do
   "name" => expression
   """
   def parse(txt, context \\ %{}) do
-    {ret, ctx} =
-      case Cyclic.check(context) do
-        {:ok, _deps} ->
-          tree = parse_text(txt)
+    case Cyclic.check(context) do
+      {:ok, _deps} ->
+        tree = parse_text(txt)
 
-          {tree,
-           for {func, defi} <- context, into: %{} do
-             subtree = parse_text(defi)
-             {func, subtree}
-           end}
+        {tree,
+         for {func, defi} <- context, into: %{} do
+           subtree = parse_text(defi)
+           {func, subtree}
+         end}
 
-        {:err, msg} ->
-          throw(msg)
+      {:err, msg} ->
+        throw(msg)
 
-        {:err, msg, _lst} ->
-          throw(msg)
-      end
-
-    if Map.equal?(context,%{}) do
-      ret
-    else
-      {ret,ctx}
+      {:err, msg, _lst} ->
+        throw(msg)
     end
   end
 
@@ -111,64 +104,76 @@ defmodule Exun do
     # |> IO.inspect(label: "tostr1,orig")
     |> Collect.denorm()
     # |> IO.inspect(label: "tostr2,denorm")
-    |> innertostr()
+    |> its()
   end
 
-  defp innertostr({:mult, {:numb, -1}, a}) do
-    "-" <> innertostr(a)
+  defp its({:mult, {:numb, -1}, a}) do
+    "-" <> its(a)
   end
 
-  defp innertostr({:mult, a, {:numb, -1}}) do
-    "-" <> innertostr(a)
+  defp its({:mult, a, {:numb, -1}}) do
+    "-" <> its(a)
   end
 
-  defp innertostr({:mult, {:divi, {:numb, 1}, a}, b}) do
-    innertostr({:divi, b, a})
+  defp its({:mult, {:divi, {:numb, 1}, a}, b}) do
+    its({:divi, b, a})
   end
 
-  defp innertostr({:mult, a, {:elev, b, {:numb, n}}}) when n < 0 do
-    innertostr({:divi, a, {:elev, b, {:numb, -n}}})
+  defp its({:mult, a, {:elev, b, {:numb, n}}}) when n < 0 do
+    its({:divi, a, {:elev, b, {:numb, -n}}})
   end
 
-  defp innertostr({:mult, {:elev, b, {:numb, n}}, a}) when n < 0 do
-    innertostr({:divi, a, {:elev, b, {:numb, -n}}})
+  defp its({:mult, {:elev, b, {:numb, n}}, a}) when n < 0 do
+    its({:divi, a, {:elev, b, {:numb, -n}}})
   end
 
-  defp innertostr({:mult, b, {:divi, {:numb, 1}, a}}) do
-    innertostr({:divi, b, a})
+  defp its({:mult, b, {:divi, {:numb, 1}, a}}) do
+    its({:divi, b, a})
   end
 
-  defp innertostr({:vari, var}) do
+  defp its({:vari, var}) do
     var
   end
 
-  defp innertostr({:fcall, name, args}) when is_list(args) do
+  defp its({:elev, a , {:numb, 1}}) do
+    its(a)
+  end
+
+  defp its({:elev, a , {:numb, -1}}) do
+    its({:divi, {:numb, 1}, a})
+  end
+
+  defp its({:fcall, name, args}) when is_list(args) do
     name <>
       "(" <>
       Enum.reduce(args, "", fn el, ac ->
         case ac do
-          "" -> innertostr(el)
-          _ -> ac <> ", " <> innertostr(el)
+          "" -> its(el)
+          _ -> ac <> ", " <> its(el)
         end
       end) <> ")"
   end
 
-  defp innertostr({:unit, n, tree}) do
-    innertostr(n) <> "[" <> innertostr(tree) <> "]"
+  defp its({:unit, n, tree}) do
+    its(n) <> "[" <> its(Collect.coll(tree)) <> "]"
   end
 
-  defp innertostr({:numb, n}) do
+  defp its({:numb, n}) do
     if n == floor(n), do: to_string(floor(n)), else: to_string(n)
   end
 
-  defp innertostr({op, l, r}) do
+  defp its({:deriv, a, {:vari, x}}) do
+    its(a) <> "'" <> x
+  end
+
+  defp its({op, l, r}) do
     # IO.inspect([op,l,r])
     {hpri, hstr} = @defop[op]
     {lpri, _} = @defop[l |> elem(0)]
     {rpri, _} = @defop[r |> elem(0)]
 
-    ltxt = innertostr(l)
-    rtxt = innertostr(r)
+    ltxt = its(l)
+    rtxt = its(r)
     conctostr(hpri, hstr, lpri, ltxt, rpri, rtxt)
   end
 
