@@ -68,7 +68,7 @@ defmodule Exun do
   """
   def eval_ast(txt, context \\ %{}) do
     {ast, pctx} = parse(txt, context)
-    |> IO.inspect(label: "ast and pctx")
+    #|> IO.inspect(label: "ast and pctx")
 
     case ast do
       {:error, {line, _app, list}} ->
@@ -224,8 +224,7 @@ defmodule Exun do
           |> Enum.filter(fn el -> elem(el, 0) == :fcall end)
           # |> IO.inspect(label: "user_function2")
           |> Enum.filter(fn el -> elem(el, 1) == name and length(elem(el, 2)) == arity end)
-
-        # |> IO.inspect(label: "user_function3")
+          #|> IO.inspect(label: "user_function3")
 
         cond do
           length(user_function) > 1 ->
