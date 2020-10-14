@@ -18,19 +18,6 @@ defmodule Exun do
     :deriv => {110, "'"}
   }
   @doc ~S"""
-  Parse a math expression, without context:
-  ```
-    iex(1)> Exun.parse "x*y^(1+x)"
-    {:mult, {:vari, "x"}, {:elev, {:vari, "y"}, {:suma, {:numb, 1}, {:vari, "x"}}}}
-
-  ```
-  """
-  def parse(txt) do
-    {t, _} = parse(txt, %{})
-    t
-  end
-
-  @doc ~S"""
   Parse a math expression, not a 'equality', with context definitions
   For example, express 'x' squared meters, and then define x to be 3.
   ```
@@ -43,22 +30,29 @@ defmodule Exun do
   parsed_context is a map whith all equalities (definitions) parsed as
   "name" => expression
   """
-  def parse(txt, context) do
-    case Cyclic.check(context) do
-      {:ok, _deps} ->
-        tree = parse_text(txt)
+  def parse(txt, context \\ %{}) do
+    {ret, ctx} =
+      case Cyclic.check(context) do
+        {:ok, _deps} ->
+          tree = parse_text(txt)
 
-        {tree,
-         for {func, defi} <- context, into: %{} do
-           subtree = parse_text(defi)
-           {func, subtree}
-         end}
+          {tree,
+           for {func, defi} <- context, into: %{} do
+             subtree = parse_text(defi)
+             {func, subtree}
+           end}
 
-      {:err, msg} ->
-        throw(msg)
+        {:err, msg} ->
+          throw(msg)
 
-      {:err, msg, _lst} ->
-        throw(msg)
+        {:err, msg, _lst} ->
+          throw(msg)
+      end
+
+    if Map.equal?(context,%{}) do
+      ret
+    else
+      {ret,ctx}
     end
   end
 
@@ -71,7 +65,7 @@ defmodule Exun do
 
   ```
   """
-  def eval(txt, context) do
+  def eval(txt, context \\ %{}) do
     eval_ast(txt, context)
     |> tostr()
   end
@@ -79,7 +73,7 @@ defmodule Exun do
   @doc """
   Same as eval but returns AST
   """
-  def eval_ast(txt, context) do
+  def eval_ast(txt, context \\ %{}) do
     {ast, pcontext} = parse(txt, context)
 
     case ast do
@@ -93,21 +87,6 @@ defmodule Exun do
         # |> IO.inspect(label: "eval02,Replaced")
         |> Collect.coll()
     end
-  end
-
-  @doc """
-  Same as eval but with empty context
-  """
-  def eval(txt) do
-    eval(txt, %{})
-  end
-
-  @doc """
-  Same as eval_ast but with empty context
-  """
-
-  def eval_ast(txt) do
-    eval_ast(txt, %{})
   end
 
   def parse_text(txt) do
@@ -147,12 +126,12 @@ defmodule Exun do
     innertostr({:divi, b, a})
   end
 
-  defp innertostr({:mult,a,{:elev,b,{:numb, n}}}) when n<0 do
-    innertostr({:divi, a, {:elev,b,{:numb, -n}}})
+  defp innertostr({:mult, a, {:elev, b, {:numb, n}}}) when n < 0 do
+    innertostr({:divi, a, {:elev, b, {:numb, -n}}})
   end
 
-  defp innertostr({:mult,{:elev,b,{:numb, n}},a}) when n<0 do
-    innertostr({:divi, a, {:elev,b,{:numb, -n}}})
+  defp innertostr({:mult, {:elev, b, {:numb, n}}, a}) when n < 0 do
+    innertostr({:divi, a, {:elev, b, {:numb, -n}}})
   end
 
   defp innertostr({:mult, b, {:divi, {:numb, 1}, a}}) do
