@@ -249,7 +249,7 @@ defmodule Exun.Unit do
   @doc """
   Sum of two units
   """
-  def sum(op, {:unit, {:numb, n1}, t1}, {:unit, {:numb, n2}, t2}, pcontext) do
+  def sum(op, {:unit, {:numb, n1}, t1}, {:unit, {:numb, n2}, t2}, pcontext \\ %{}) do
     {res1, exps1} = to_si({1, t1}, pcontext, 1, %{})
     {res2, exps2} = to_si({1, t2}, pcontext, 1, %{})
 
@@ -276,7 +276,7 @@ defmodule Exun.Unit do
   "300[cm]"
   ```
   """
-  def convert({:unit, {:numb, n1}, t1}, {:unit, {:numb, _n2}, t2}, pcontext) do
+  def convert_ast({:unit, {:numb, n1}, t1}, {:unit, {:numb, _n2}, t2}, pcontext \\ %{}) do
     {res1, exps1} = to_si({1, t1}, pcontext, 1, %{})
     {res2, exps2} = to_si({1, t2}, pcontext, 1, %{})
 
@@ -295,11 +295,12 @@ defmodule Exun.Unit do
     "33.333333333333336[m/s]"
   ```
   """
-  def convert(tu1, tu2) when is_binary(tu1) and is_binary(tu2) do
+
+  def convert(tu1, tu2, pcontext \\ %{}) when is_binary(tu1) and is_binary(tu2) do
     u1 = Exun.parse(tu1)
     u2 = Exun.parse("1[" <> tu2 <> "]")
 
-    case convert(u1, u2, %{}) do
+    case convert_ast(u1, u2, pcontext) do
       {:err, msg} -> throw(msg)
       {:ok, res} -> Exun.tostr(res)
     end
@@ -315,7 +316,7 @@ defmodule Exun.Unit do
             "7.566861148315854e-4[N*A]"
   ```
   """
-  def factorize({:unit, {:numb, n1}, t1}, {:unit, {:numb, _n2}, t2}, pcontext) do
+  def factorize_ast({:unit, {:numb, n1}, t1}, {:unit, {:numb, _n2}, t2}, pcontext) do
     # Divide t1 by t2, reduce to si and multiply by t2
     {nres, exps} = to_si({n1, {:divi, t1, t2}}, pcontext, 1, %{})
     "#{nres}[#{Exun.tostr(t2)}#{exps_tostr(exps)}]"
@@ -324,13 +325,16 @@ defmodule Exun.Unit do
   @doc """
   Factorize units, as text: factorize("2[N]","[Kg]")
   """
-  def factorize(e1, e2) do
-    factorize(e1 |> Exun.parse(), ("1"<>e2) |> Exun.parse(), %{})
+  def factorize(e1, e2, pcontext \\ %{}) do
+    factorize_ast(
+      e1 |> Exun.parse(),
+      ("1"<>e2) |> Exun.parse(),
+      pcontext)
   end
 
 
-  defp to_si({:unit, {:numb, n}, tree}) do
-    to_si({n, Collect.denorm(tree)}, %{}, 1, %{})
+  defp to_si({:unit, {:numb, n}, tree}, pcontext \\ %{}) do
+    to_si({n, Collect.denorm(tree)}, pcontext, 1, %{})
   end
 
 
