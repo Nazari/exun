@@ -9,13 +9,27 @@ defmodule Exun.Fun do
   @uno {:numb, 1}
 
   @base %{
+    "ln(F)" => {&:math.log/1, "F'x/F"},
+
     "sin(F)" => {&:math.sin/1, "F'x*cos(F)"},
     "cos(F)" => {&:math.cos/1, "-F'x*sin(F)"},
-    "ln(F)" => {&:math.log/1, "F'x/F"}
+    "tan(x)" => {&:math.tan/1, "F'x/cos(F)^2"},
+
+    "acos(F)" => {&:math.acos/1, "-F'x/(1-F^2)^0.5"},
+    "asin(F)" => {&:math.asin/1, "F'x/(1-F^2)^0.5"},
+    "atan(F)" => {&:math.atan/1, "F'x/(1+F^2)"},
+
+    "sinh(F)" => {&:math.sinh/1, "F'x*cosh(F)"},
+    "cosh(F)" => {&:math.cosh/1, "F'x*sinh(F)" },
+    "tanh(F)" => {&:math.tanh/1, "F'x/cosh(F)^2"},
+
+    "asinh(F)" => {&:math.asinh/1, "F'x/(F^2+1)^0.5" },
+    "acosh(F)" => {&:math.acosh/1, "F'x/(F^2-1)^0.5" },
+    "atanh(F)" => {&:math.atanh/1, "ln((1+F)/(1-F))/2"},
   }
 
   @compounds %{
-    "tan(F)" => "sin(F)/cos(F)"
+
   }
 
   def fcall(name, args) do
@@ -81,6 +95,10 @@ defmodule Exun.Fun do
     |> der({:vari, name})
   end
 
+  defp der({:deriv, fun, x1}, x2) do
+    der(der(fun, x1),x2)
+  end
+
   defp der({:fcall, name, args}, x) do
     search_name = name <> "(F)"
 
@@ -130,4 +148,5 @@ defmodule Exun.Fun do
     do:
       {:mult, y,
        {:suma, {:mult, der(g, x), {:fcall, "ln", [f]}}, {:mult, g, {:divi, der(f, x), f}}}}
+
 end
