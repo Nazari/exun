@@ -13,7 +13,8 @@ defmodule ExunTest do
 
   test "Parse x[me]/3[se]" do
     assert Exun.parse("x[me]/3[se]") ==
-             {:divi, {:unit, {:vari, "x"}, {:vari, "me"}}, {:unit, {:numb, 3}, {:vari, "se"}}}
+             {{:divi, {:unit, {:vari, "x"}, {:vari, "me"}}, {:unit, {:numb, 3}, {:vari, "se"}}},
+              %{}}
   end
 
   test "Parse x[me]/3[se] with %{x => \"7\", me => m^2, se => s^2}" do
@@ -28,13 +29,13 @@ defmodule ExunTest do
   end
 
   test "1[1/h^2]" do
-    u1 = Exun.parse("1[1/h^2]")
-    assert Exun.Unit.toSI(u1)|>Exun.tostr() == "7.71604938271605e-8[s^-2]"
+    {ast, _ctx} = Exun.parse("1[1/h^2]")
+    assert Exun.Unit.toSI(ast) |> Exun.tostr() == "7.71604938271605e-8[s^-2]"
   end
 
   test "1[slug/N]" do
-    u2 = Exun.parse("1[slug/N]")
-    assert Exun.Unit.toSI(u2)|>Exun.tostr() == "143.11732813057753[s^2/m]"
+    {u2, _ctx} = Exun.parse("1[slug/N]")
+    assert Exun.Unit.toSI(u2) |> Exun.tostr() == "143.11732813057753[s^2/m]"
   end
 
   test "1[m]+3[cm]+2[dm]+4[mm]" do
@@ -67,14 +68,18 @@ defmodule ExunTest do
 
   test "Context" do
     assert Exun.eval("(a+b)^2/c", %{"a" => "20[m]", "b" => "2[cm]", "c" => "3[s^2]"}) ==
-             "133.60013333333333[m^2*s^-2]"
+             "133.60013333333333[m^2/s^2]"
   end
 
   test "Sort of tree" do
     assert Exun.eval("(1+a)*(a+1)/(a+1)^3") == "1/(1+a)"
   end
 
-  test "derivate" do
+  test "der 1" do
     assert Exun.eval("sin(f(x))'x") == "f(x)'x*cos(f(x))"
+  end
+
+  test "der 2" do
+    assert Exun.eval("(x^2+x*y+y^2)'x'y") == "1"
   end
 end
