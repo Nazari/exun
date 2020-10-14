@@ -289,6 +289,8 @@ defmodule Exun.Collect do
 
   defp mk({:divi, {:elev, a, e1}, a}),
     do: {:elev, mk(a), mk({:rest, mk(e1), @uno})}
+  defp mk({:divi, a, {:elev, a, e1}}),
+    do: {:divi, @uno, mk({:rest, mk(e1), @uno})}
 
   defp mk({:divi, {:unit, n1, a1}, {:unit, n2, a2}}),
     do: {:unit, mk({:divi, n1, n2}), mk({:divi, a1, a2})}
@@ -298,7 +300,6 @@ defmodule Exun.Collect do
   defp mk({:elev, @uno, _}), do: @uno
   defp mk({:elev, {:elev, base, e1}, e2}), do: {:elev, mk(base), mk({:mult, e1, e2})}
   defp mk({:elev, {:numb, base}, {:numb, exp}}), do: {:numb, :math.pow(base, exp)}
-  defp mk({:elev, a, @muno}), do: {:divi, @uno, mk(a)}
 
   defp mk({:elev, {:unit, uv, ut}, expon}),
     do: {:unit, mk({:elev, uv, expon}), mk({:elev, ut, expon})}
