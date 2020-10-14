@@ -148,11 +148,11 @@ defmodule Exun do
   end
 
   defp innertostr({:mult,a,{:elev,b,{:numb, n}}}) when n<0 do
-    innertostr({:div, a, {:elev,b,{:numb, -n}}})
+    innertostr({:divi, a, {:elev,b,{:numb, -n}}})
   end
 
   defp innertostr({:mult,{:elev,b,{:numb, n}},a}) when n<0 do
-    innertostr({:div, a, {:elev,b,{:numb, -n}}})
+    innertostr({:divi, a, {:elev,b,{:numb, -n}}})
   end
 
   defp innertostr({:mult, b, {:divi, {:numb, 1}, a}}) do
