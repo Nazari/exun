@@ -7,11 +7,22 @@ defmodule Exun.Fun do
   @zero {:numb, 0}
   @uno {:numb, 1}
 
+  @doc """
+  base is a map that holds functions names and a tupla
+   <fname>(F) { <elixir function call reference for numbers>, "Deriv Abstract"}
+   For example:
+
+   ln(F) Function name is 'ln'
+   {&:math.log/1, "F'x/F"}
+
+   F'x is d(F)/dx
+
+  """
   @base %{
     "ln(F)" => {&:math.log/1, "F'x/F"},
     "sin(F)" => {&:math.sin/1, "F'x*cos(F)"},
     "cos(F)" => {&:math.cos/1, "-F'x*sin(F)"},
-    "tan(x)" => {&:math.tan/1, "F'x/cos(F)^2"},
+    "tan(F)" => {&:math.tan/1, "F'x/cos(F)^2"},
     "acos(F)" => {&:math.acos/1, "-F'x/(1-F^2)^0.5"},
     "asin(F)" => {&:math.asin/1, "F'x/(1-F^2)^0.5"},
     "atan(F)" => {&:math.atan/1, "F'x/(1+F^2)"},
@@ -20,7 +31,7 @@ defmodule Exun.Fun do
     "tanh(F)" => {&:math.tanh/1, "F'x/cosh(F)^2"},
     "asinh(F)" => {&:math.asinh/1, "F'x/(F^2+1)^0.5"},
     "acosh(F)" => {&:math.acosh/1, "F'x/(F^2-1)^0.5"},
-    "atanh(F)" => {&:math.atanh/1, "ln((1+F)/(1-F))/2"}
+    "atanh(F)" => {&:math.atanh/1, "F'x/(1-F^2)"}
   }
 
   @compounds %{
