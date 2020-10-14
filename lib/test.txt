@@ -9,17 +9,5 @@ To-Do
  7. Functions! Derivate! Integrate!
 
 
-t = {:mult, 
-      {:elev, 
-        {:vari, "x"}, 
-        {:numb, 2}}, 
-      {:suma, 
-        {:mult, 
-          {:numb, 0}, 
-          {:fcall, "ln", [vari: "x"]}},  
-        {:mult, 
-          {:numb, 2}, 
-          {:divi, 
-            {:numb, 1}, 
-            {:vari, "x"}}}}}
-
+ctx=%{"f"=>"3", "f(x)"=>"x^2"}
+Exun.eval_ast("f*f(1)",ctx)

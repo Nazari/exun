@@ -19,7 +19,9 @@ defmodule Exun.Cyclic do
     if length(invalid_defs) > 0 do
       {:err, invalid_defs}
     else
-      check_expand(maps_all(context), MapSet.new())
+      context
+      |> maps_all()
+      |> check_expand(MapSet.new())
     end
   end
 
@@ -32,8 +34,14 @@ defmodule Exun.Cyclic do
     end
     |> Enum.reduce([], fn {v, t}, acc ->
       case t do
-        {:vari, _} -> acc
-        _ -> ["Invalid definiton for #{v}" | acc]
+        {:vari, _} ->
+          acc
+
+        {:fcall, _, _} ->
+          acc
+
+        _ ->
+          ["Invalid definiton for #{v}" | acc]
       end
     end)
   end
@@ -80,7 +88,6 @@ defmodule Exun.Cyclic do
     end
   end
 
-
   defp maps_all(context) do
     for {var, def} <- context, into: %{} do
       with {:ok, tok, _} <- :exun_lex.string(def |> String.to_charlist()),
@@ -89,7 +96,6 @@ defmodule Exun.Cyclic do
       end
     end
   end
-
 
   defp extract_vars({_op, l, r}, acu) do
     MapSet.union(

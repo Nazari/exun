@@ -39,27 +39,26 @@ defmodule Exun.Fun do
   }
 
   def fcall(name, args) do
-    # IO.inspect({name, args}, label: "fcall")
+    IO.inspect({name, args}, label: "fcall")
     aau = allargs_numbers(args)
-    search_name = name <> "(F)"
 
     cond do
-      (bfunc = @base[search_name]) != nil ->
+      (bfunc = @base[name <> "(F)"]) != nil ->
         cond do
           aau -> {:numb, elem(bfunc, 0).(args |> List.first() |> elem(1))}
           true -> {:fcall, name, args}
         end
 
-      (cfunc = @compounds[search_name]) != nil ->
+      (cfunc = @compounds[name <> "(F)"]) != nil ->
         {ast, _ctx} = Exun.parse(cfunc)
-        replace_args(ast, args)
+        replace_args_internal(ast, args)
 
       true ->
         {:fcall, name, args}
     end
   end
 
-  defp replace_args(ast, args) do
+  defp replace_args_internal(ast, args) do
     case ast do
       {:vari, "F"} ->
         args |> List.first()
@@ -68,10 +67,10 @@ defmodule Exun.Fun do
         {:fcall, name, args}
 
       {:unit, uv, ut} ->
-        {:unit, replace_args(uv, args), ut}
+        {:unit, replace_args_internal(uv, args), ut}
 
       {op, l, r} ->
-        {op, replace_args(l, args), replace_args(r, args)}
+        {op, replace_args_internal(l, args), replace_args_internal(r, args)}
 
       _ ->
         ast
@@ -108,13 +107,13 @@ defmodule Exun.Fun do
 
     cond do
       (bfunc = @base[search_name]) != nil ->
-        {ast, _ctx} = Exun.parse(elem(bfunc,1))
-        replace_args(ast,args)
+        {ast, _ctx} = Exun.parse(elem(bfunc, 1))
+        replace_args_internal(ast, args)
 
       (cfunc = @compounds[search_name]) != nil ->
         {ast, _ctx} = Exun.parse(cfunc)
 
-        replace_args(ast, args)
+        replace_args_internal(ast, args)
         |> der(x)
 
       true ->

@@ -11,6 +11,7 @@ defmodule Exun do
     :divi => {90, "/"},
     :suma => {50, "+"},
     :rest => {50, "-"},
+    :equal => {20, "="},
     :numb => {200, nil},
     :unit => {200, nil},
     :vari => {200, nil},
@@ -37,8 +38,7 @@ defmodule Exun do
 
         {tree,
          for {func, defi} <- context, into: %{} do
-           subtree = parse_text(defi)
-           {func, subtree}
+           {parse_text(func), parse_text(defi)}
          end}
 
       {:err, msg} ->
@@ -67,7 +67,8 @@ defmodule Exun do
   Same as eval but returns AST
   """
   def eval_ast(txt, context \\ %{}) do
-    {ast, pcontext} = parse(txt, context)
+    {ast, pctx} = parse(txt, context)
+    |> IO.inspect(label: "ast and pctx")
 
     case ast do
       {:error, {line, _app, list}} ->
@@ -75,9 +76,9 @@ defmodule Exun do
 
       _ ->
         ast
-        # |> IO.inspect(label: "eval01,AST")
-        |> replace(pcontext)
-        # |> IO.inspect(label: "eval02,Replaced")
+        #|> IO.inspect(label: "eval01,AST")
+        |> replace(pctx)
+        #|> IO.inspect(label: "eval02,Replaced")
         |> Collect.coll()
     end
   end
@@ -135,11 +136,11 @@ defmodule Exun do
     var
   end
 
-  defp its({:elev, a , {:numb, 1}}) do
+  defp its({:elev, a, {:numb, 1}}) do
     its(a)
   end
 
-  defp its({:elev, a , {:numb, -1}}) do
+  defp its({:elev, a, {:numb, -1}}) do
     its({:divi, {:numb, 1}, a})
   end
 
@@ -208,22 +209,70 @@ defmodule Exun do
     end
   end
 
-  defp repl({:vari, var}, pc) do
-    Map.get(pc, var, {:vari, var})
+  defp repl(tree, pc) do
+    case tree do
+      {:vari, var} ->
+        Map.get(pc, {:vari, var}, {:vari, var})
+
+      {:fcall, name, args} ->
+        args = Enum.map(args, &repl(&1, pc))
+        arity = length(args)
+
+        user_function =
+          Map.keys(pc)
+          # |> IO.inspect(label: "user_function1")
+          |> Enum.filter(fn el -> elem(el, 0) == :fcall end)
+          # |> IO.inspect(label: "user_function2")
+          |> Enum.filter(fn el -> elem(el, 1) == name and length(elem(el, 2)) == arity end)
+
+        # |> IO.inspect(label: "user_function3")
+
+        cond do
+          length(user_function) > 1 ->
+            {_, dupe_name, _} = user_function |> List.first()
+            throw("Multiple definition for function #{dupe_name}")
+
+          length(user_function) == 1 ->
+            key = {:fcall, _, args_names} = user_function |> List.first()
+            ast = pc[key]
+
+            nv =
+              List.zip([args_names, args])
+              |> Enum.reduce(%{}, fn {n, v}, ac ->
+                Map.put(ac, n, v)
+              end)
+
+            replace_args(ast, nv)
+
+          true ->
+            {:fcall, name, args}
+        end
+
+      {op, l, r} ->
+        {op, replace(l, pc), replace(r, pc)}
+
+      _ ->
+        tree
+    end
   end
 
-  defp repl({op, l, r}, pc) do
-    {op, replace(l, pc), replace(r, pc)}
-  end
+  defp replace_args(ast, nv) do
+    case ast do
+      {:vari, v} ->
+        Map.get(nv, {:vari, v}, {:vari, v})
 
-  defp repl(lst, pc) when is_list(lst) do
-    Enum.map(lst, fn el ->
-      repl(el, pc)
-    end)
-  end
+      {:unit, un, ut} ->
+        {:unit, replace_args(un, nv), ut}
 
-  defp repl(other, _pc) do
-    other
+      {:fcall, subname, subargs} ->
+        {:fcall, subname, subargs |> Enum.map(&replace_args(&1, nv))}
+
+      {op, l, r} ->
+        {op, replace_args(l, nv), replace_args(r, nv)}
+
+      other ->
+        other
+    end
   end
 
   @doc """

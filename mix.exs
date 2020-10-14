@@ -4,7 +4,7 @@ defmodule Exun.MixProject do
   def project do
     [
       app: :exun,
-      version: "0.1.4",
+      version: "0.1.5",
       elixir: "~> 1.10",
       description: descripcion(),
       start_permanent: Mix.env() == :prod,
@@ -39,6 +39,5 @@ defmodule Exun.MixProject do
       licenses: ["Apache-2.0"],
       links: %{"GitHub" => "https://github.com/Nazari/exun"}
     ]
-
   end
 end

@@ -1,11 +1,14 @@
-Terminals  ',' '(' ')' '/' '*' '^' '+' '-' '[' ']' '\'' word number.
-Nonterminals expr uexpr variable function arg_list arguments signed_number.
-Rootsymbol expr.
+Terminals  ',' '(' ')' '/' '*' '^' '+' '-' '[' ']' '\'' '=' word number.
+Nonterminals main expr uexpr variable function arg_list arguments signed_number.
+Rootsymbol main.
 Right 900 '^'.
 Left 800 '['.
 Left 750 '*' '/'.
 Left 650 '+' '-'.
 Unary 0 variable.
+
+main -> expr : '$1' .
+main -> expr '=' expr : {equal, '$1', '$3' }.
 
 expr -> '(' expr ')' : '$2'.
 
