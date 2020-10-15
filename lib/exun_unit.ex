@@ -259,7 +259,7 @@ defmodule Exun.Unit do
       val =
         case op do
           :suma -> (n1 * res1 + n2 * res2) / res1
-          :resta -> (n1 * res1 - n2 * res2) / res1
+          :rest -> (n1 * res1 - n2 * res2) / res1
           _ -> throw("Unknown op for Exun.Units.sum")
         end
 
