@@ -261,7 +261,7 @@ defmodule Exun do
         Map.get(nv, {:vari, v}, {:vari, v})
 
       {:unit, un, ut} ->
-        {:unit, replace_args(un, nv), ut}
+        {:unit, replace_args(un, nv), replace_args(ut,nv)}
 
       {:fcall, subname, subargs} ->
         {:fcall, subname, subargs |> Enum.map(&replace_args(&1, nv))}

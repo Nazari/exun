@@ -39,7 +39,7 @@ defmodule Exun.Fun do
   }
 
   def fcall(name, args) do
-    IO.inspect({name, args}, label: "fcall")
+    #IO.inspect({name, args}, label: "fcall")
     aau = allargs_numbers(args)
 
     cond do
