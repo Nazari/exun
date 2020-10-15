@@ -4,10 +4,18 @@ Symbolic math library for Elixir, with unit support.
 Alpha state.
 
 TODO:
+ - Multiprocess, make reductions in parallell via Tasks 
  - Temperature unit conversions
- - Integration
+ - Integration, Summatory
  - Fractions, to avoid decimal ops
- - User functions definition
+ - Define equations, not only expressions: Isolate variables
+ - Add more testing and revise docs
+ 
+DONE:
+ + Derivate
+ + Units (factorize, conversion, operation, user definition)
+ + Context definition for vars and funcs
+ + Functions and User functions  
 
 run "iex -S mix" inside exun dir and type:
 ```
