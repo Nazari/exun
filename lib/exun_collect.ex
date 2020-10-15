@@ -289,6 +289,7 @@ defmodule Exun.Collect do
 
   defp mk({:divi, {:elev, a, e1}, a}),
     do: {:elev, mk(a), mk({:rest, mk(e1), @uno})}
+
   defp mk({:divi, a, {:elev, a, e1}}),
     do: {:divi, @uno, mk({:rest, mk(e1), @uno})}
 
@@ -516,22 +517,7 @@ defmodule Exun.Collect do
         List.first(lista)
 
       _ ->
-        [first, second | tail] = lista
-
-        {res, _} =
-          Enum.reduce(tail, {{op, first, second}, :left}, fn el, ac ->
-            {realac, _} = ac
-
-            case ac do
-              {{op, _a, _b}, :left} ->
-                {{op, realac, el}, :right}
-
-              {{op, _a, _b}, :right} ->
-                {{op, el, realac}, :left}
-            end
-          end)
-
-        res
+        balance(op,lista)
         # |> IO.inspect(label: "Denormed :m")
     end
   end
@@ -545,5 +531,25 @@ defmodule Exun.Collect do
   def denorm(tree) do
     tree
     # |> IO.inspect(label: "Not possible denorm")
+  end
+
+  defp balance(op, lst) do
+    cond do
+      length(lst) == 1 ->
+        lst |> List.first()
+
+      true ->
+        balance(
+          op,
+          Enum.chunk_every(lst, 2, 2, [:right])
+          |> Enum.map(fn [l, r] ->
+            if r != :right do
+              {op, l, r}
+            else
+              l
+            end
+          end)
+        )
+    end
   end
 end
