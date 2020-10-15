@@ -1,7 +1,7 @@
 defmodule Exun.Fun do
   @moduledoc """
-  Function management, not complete.
-  @base and  @compound will be the definitions of external functions.
+  Function management.
+  @base and  @compound are the definitions of external functions.
   """
 
   @zero {:numb, 0}
