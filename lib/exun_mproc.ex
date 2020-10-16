@@ -17,16 +17,20 @@ defmodule Exun.MProc do
   :timer.tc(fn -> mp {:timer.sleep(1000), :timer.sleep(1000), :timer.sleep(1000)} end)
   {1001001, {:ok, :ok, :ok}}
   """
-  defmacro parallel({:{}, _attrs, lista}) do
-    task_list =
-      lista
-      |> Enum.map(fn el ->
-        {{:., [], [{:__aliases__, [alias: false], [:Task]}, :async]}, [],
-         [{:fn, [], [{:->, [], [[], el]}]}]}
-      end)
+  defmacro parallel(comd = {:{}, _attrs, lista}, mkpar \\ true) do
+    if mkpar do
+      task_list =
+        lista
+        |> Enum.map(fn el ->
+          {{:., [], [{:__aliases__, [alias: false], [:Task]}, :async]}, [],
+           [{:fn, [], [{:->, [], [[], el]}]}]}
+        end)
 
-    quote do
-      unquote(task_list) |> Task.await_many() |> List.to_tuple()
+      quote do
+        unquote(task_list) |> Task.await_many() |> List.to_tuple()
+      end
+    else
+      comd
     end
   end
 

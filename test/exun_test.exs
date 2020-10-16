@@ -86,4 +86,8 @@ defmodule ExunTest do
   test "Convert unit" do
     assert Exun.Unit.convert("70[mi/h]", "Km/h") == "112.65408[Km/h]"
   end
+
+  test "Factorize" do
+    assert Exun.Unit.factorize("1[A*Kg*m/s^2]","[slug*cm]") == "6.852176585682164[slug*cm*A/s^2]"
+  end
 end

@@ -327,11 +327,9 @@ defmodule Exun.Unit do
   Factorize units, as text: factorize("2[N]","[Kg]")
   """
   def factorize(e1, e2, pcontext \\ %{}) do
-    factorize_ast(
-      e1 |> Exun.parse(),
-      ("1" <> e2) |> Exun.parse(),
-      pcontext
-    )
+    {u1, _} = Exun.parse(e1, pcontext)
+    {u2, _} = Exun.parse("1"<>e2, pcontext)
+    factorize_ast(u1, u2, pcontext)
   end
 
   defp to_si({:unit, {:numb, n}, tree}, pcontext \\ %{}) do
