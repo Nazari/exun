@@ -23,7 +23,7 @@ defmodule Exun do
   For example, express 'x' squared meters, and then define x to be 3.
   ```
     iex> Exun.parse( "x[m^2]", %{"x"=>"3"})
-    {{:unit, {:vari, "x"}, {:elev, {:vari, "m"}, {:numb, 2}}}, %{"x" => {:numb, 3}}}
+    {{:unit, {:vari, "x"}, {:elev, {:vari, "m"}, {:numb, 2}}}, %{{:vari, "x"} => {:numb, 3}}}
 
   ```
   returns a tuple {expression, parsed_conext} where
@@ -68,17 +68,22 @@ defmodule Exun do
   """
   def eval_ast(txt, context \\ %{}) do
     {ast, pctx} = parse(txt, context)
-    #|> IO.inspect(label: "ast and pctx")
+    # |> IO.inspect(label: "ast and pctx")
 
     case ast do
       {:error, {line, _app, list}} ->
         throw("Error line:#{line} #{list}")
 
       _ ->
+        # First Collect context
+        pctx = for {k,v} <- pctx, into: %{} do
+          {k, Collect.coll(v)}
+        end
+
         ast
-        #|> IO.inspect(label: "eval01,AST")
+        # |> IO.inspect(label: "eval01,AST")
         |> replace(pctx)
-        #|> IO.inspect(label: "eval02,Replaced")
+        # |> IO.inspect(label: "eval02,Replaced")
         |> Collect.coll()
     end
   end
@@ -96,7 +101,7 @@ defmodule Exun do
     iex(1)> {_tree, _deps} = Exun.parse "4*x^(y+1)/z",%{"z"=>"y+1"}
     {{:divi,
     {:mult, {:numb, 4}, {:elev, {:vari, "x"}, {:suma, {:vari, "y"}, {:numb, 1}}}},
-    {:vari, "z"}}, %{"z" => {:suma, {:vari, "y"}, {:numb, 1}}}}
+    {:vari, "z"}}, %{{:vari, "z"} => {:suma, {:vari, "y"}, {:numb, 1}}}}
 
   ```
   """
@@ -106,6 +111,17 @@ defmodule Exun do
     |> Collect.denorm()
     # |> IO.inspect(label: "tostr2,denorm")
     |> its()
+    |> aesthetic()
+  end
+
+  defp aesthetic(str) do
+    newstr = aest(str)
+    if str == newstr, do: newstr, else: aest(newstr)
+  end
+
+  defp aest(str) do
+    %{"+-" => "-", "-+" => "-", "--" => "+", "++" => "+"}
+    |> Enum.reduce(str, fn {k, v}, str -> String.replace(str, k, v) end)
   end
 
   defp its({:mult, {:numb, -1}, a}) do
@@ -195,7 +211,7 @@ defmodule Exun do
   end
 
   @doc """
-  Expand definitions in context into
+  Replace definitions in context into
   main tree expression until no more
   expansion is posssible
   """
@@ -224,7 +240,8 @@ defmodule Exun do
           |> Enum.filter(fn el -> elem(el, 0) == :fcall end)
           # |> IO.inspect(label: "user_function2")
           |> Enum.filter(fn el -> elem(el, 1) == name and length(elem(el, 2)) == arity end)
-          #|> IO.inspect(label: "user_function3")
+
+        # |> IO.inspect(label: "user_function3")
 
         cond do
           length(user_function) > 1 ->
@@ -261,7 +278,7 @@ defmodule Exun do
         Map.get(nv, {:vari, v}, {:vari, v})
 
       {:unit, un, ut} ->
-        {:unit, replace_args(un, nv), replace_args(ut,nv)}
+        {:unit, replace_args(un, nv), replace_args(ut, nv)}
 
       {:fcall, subname, subargs} ->
         {:fcall, subname, subargs |> Enum.map(&replace_args(&1, nv))}

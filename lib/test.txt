@@ -9,5 +9,19 @@ To-Do
  7. Functions! Derivate! Integrate!
 
 
-ctx=%{"f"=>"3", "f(x)"=>"x^2"}
-Exun.eval_ast("f*f(1)",ctx)
+:timer.tc(fn -> Exun.eval("(g(a^b,b^a)/g(b^a,a^b))'a", %{"g(x,y)"=>"(x^y/ln(sinh(y^x))+y^tanh(x)/cos(x*y))'x'y'x"}) end)
+
+:timer.tc( fn -> mp( {:timer.sleep(1000),:timer.sleep(1000),:timer.sleep(1000)} ) end)
+
+import Exun.MProc
+s=1000       
+tt=&:timer.sleep/1
+mp({tt.(s),tt.(s),tt.(s)})
+
+s = 100
+[:timer.tc(fn ->  {:ok, :timer.sleep(s), :timer.sleep(s)} end), 
+ :timer.tc(fn -> mp {:ok, :timer.sleep(s), :timer.sleep(s)} end)
+]
+
+{ast,_} = Exun.parse "1+a+2+3+4+5"
+:timer.tc( fn -> norm(ast) end)

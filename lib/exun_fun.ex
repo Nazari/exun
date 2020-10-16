@@ -1,4 +1,6 @@
 defmodule Exun.Fun do
+  import Exun.MProc
+
   @moduledoc """
   Function management.
   @base and  @compound are the definitions of external functions.
@@ -39,7 +41,7 @@ defmodule Exun.Fun do
   }
 
   def fcall(name, args) do
-    #IO.inspect({name, args}, label: "fcall")
+    # IO.inspect({name, args}, label: "fcall")
     aau = allargs_numbers(args)
 
     cond do
@@ -131,19 +133,24 @@ defmodule Exun.Fun do
     do: if(var == x, do: @uno, else: @zero)
 
   defp der({:suma, a, b}, x),
-    do: {:suma, der(a, x), der(b, x)}
+    do: parallel({:suma, der(a, x), der(b, x)})
 
   defp der({:rest, a, b}, x),
-    do: {:rest, der(a, x), der(b, x)}
+    do: parallel({:rest, der(a, x), der(b, x)})
 
   defp der({:mult, a, b}, x),
-    do: {:suma, {:mult, der(a, x), b}, {:mult, a, der(b, x)}}
+    do: parallel({:suma, {:mult, der(a, x), b}, {:mult, a, der(b, x)}})
 
   defp der({:divi, a, b}, x),
-    do: {:divi, {:rest, {:mult, b, der(a, x)}, {:mult, der(b, x), a}}, {:elev, b, {:numb, 2}}}
+    do:
+      parallel(
+        {:divi, {:rest, {:mult, b, der(a, x)}, {:mult, der(b, x), a}}, {:elev, b, {:numb, 2}}}
+      )
 
   defp der(y = {:elev, f, g}, x),
     do:
-      {:mult, y,
-       {:suma, {:mult, der(g, x), {:fcall, "ln", [f]}}, {:mult, g, {:divi, der(f, x), f}}}}
+      parallel(
+        {:mult, y,
+         {:suma, {:mult, der(g, x), {:fcall, "ln", [f]}}, {:mult, g, {:divi, der(f, x), f}}}}
+      )
 end

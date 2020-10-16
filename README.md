@@ -92,6 +92,13 @@ This library use an AST built with erlang's yecc parser and transformation in el
   def mk({:suma, {:numb, n1}, {:numb, n2}}), do: {:numb, n1 + n2}
   def mk({:suma, {:numb, _}, {:unit, _, _}}), do: throw(@invalid_unit_operation)
 ```
+
+Version 0.2.0 will be multiprocess. Base measurement for speed will be the brutal expression:
+```
+iex(5)> :timer.tc(Exun,:eval,["(g(a^b,b^a)/g(b^a,a^b))'a", %{"g(x,y)"=>"(x^y/ln(sinh(y^x))+y^tanh(x)/cos(x*y))'x'y'x"}])
+{5327979,
+ "(-(-4*(-2*(-a^b^(1+a)*b^a^(1+b)/sinh(b^a^(1+b))*cosh(b^a^(1+b))*ln(b" <> ...}
+ ```
 ## Installation
 
 If [available in Hex](https://hex.pm/docs/publish), the package can be installed

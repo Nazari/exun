@@ -82,4 +82,8 @@ defmodule ExunTest do
   test "der 2" do
     assert Exun.eval("(x^2+x*y+y^2)'x'y") == "1"
   end
+
+  test "Convert unit" do
+    assert Exun.Unit.convert("70[mi/h]", "Km/h") == "112.65408[Km/h]"
+  end
 end

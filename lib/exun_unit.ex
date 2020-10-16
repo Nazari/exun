@@ -1,5 +1,6 @@
 defmodule Exun.Unit do
   alias Exun.Collect
+
   @moduledoc """
   Handle Units, converts, sum, multiply, transform to SI and factorize
   """
@@ -297,8 +298,8 @@ defmodule Exun.Unit do
   """
 
   def convert(tu1, tu2, pcontext \\ %{}) when is_binary(tu1) and is_binary(tu2) do
-    u1 = Exun.parse(tu1)
-    u2 = Exun.parse("1[" <> tu2 <> "]")
+    {u1, _} = Exun.parse(tu1)
+    {u2, _} = Exun.parse("1[" <> tu2 <> "]")
 
     case convert_ast(u1, u2, pcontext) do
       {:err, msg} -> throw(msg)
@@ -328,15 +329,14 @@ defmodule Exun.Unit do
   def factorize(e1, e2, pcontext \\ %{}) do
     factorize_ast(
       e1 |> Exun.parse(),
-      ("1"<>e2) |> Exun.parse(),
-      pcontext)
+      ("1" <> e2) |> Exun.parse(),
+      pcontext
+    )
   end
-
 
   defp to_si({:unit, {:numb, n}, tree}, pcontext \\ %{}) do
     to_si({n, Collect.denorm(tree)}, pcontext, 1, %{})
   end
-
 
   defp to_si({n, {:mult, left, right}}, pcontext, curr_exp, exps) do
     {left_n, exps} = to_si({1, left}, pcontext, curr_exp, exps)
@@ -425,6 +425,7 @@ defmodule Exun.Unit do
       end
     end)
   end
+
   @doc """
   Converts unit to International System
   """

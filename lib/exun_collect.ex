@@ -523,9 +523,7 @@ defmodule Exun.Collect do
   end
 
   def denorm({op, l, r}) do
-    # IO.inspect([op, l, r], label: "Denorming...")
     {op, denorm(l), denorm(r)}
-    # |> IO.inspect(label: "Denormed #{op}")
   end
 
   def denorm(tree) do
