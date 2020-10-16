@@ -30,12 +30,12 @@ defmodule ExunTest do
 
   test "1[1/h^2]" do
     {ast, _ctx} = Exun.parse("1[1/h^2]")
-    assert Exun.Unit.toSI(ast) |> Exun.tostr() == "7.71604938271605e-8[s^-2]"
+    assert Exun.Unit.toSI(ast) |> Exun.UI.tostr() == "7.71604938271605e-8[s^-2]"
   end
 
   test "1[slug/N]" do
     {u2, _ctx} = Exun.parse("1[slug/N]")
-    assert Exun.Unit.toSI(u2) |> Exun.tostr() == "143.11732813057753[s^2/m]"
+    assert Exun.Unit.toSI(u2) |> Exun.UI.tostr() == "143.11732813057753[s^2/m]"
   end
 
   test "1[m]+3[cm]+2[dm]+4[mm]" do
@@ -90,4 +90,18 @@ defmodule ExunTest do
   test "Factorize" do
     assert Exun.Unit.factorize("1[A*Kg*m/s^2]","[slug*cm]") == "6.852176585682164[slug*cm*A/s^2]"
   end
+
+  test "Integrals" do
+    ["ln","sin","cos","tan","asin","acos","atan","sinh","cosh","atanh","asinh","acosh","atanh"]
+    |> Enum.map(fn name ->
+      integ_fun = "$"<>name<>"(x),x"
+      result_integ = Exun.eval integ_fun
+      deriv_fun = result_integ<>"'x"
+      result_deriv = Exun.eval(deriv_fun)
+
+      assert name<>"(x)" == result_deriv
+
+    end)
+  end
+
 end

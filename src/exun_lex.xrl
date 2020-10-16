@@ -18,6 +18,7 @@ DOT = \.
 COMMA = \,
 DERIV =\'
 EQUAL =\=
+INTEGRAL =\$
 
 SIGN = (\-|\+)
 
@@ -46,6 +47,7 @@ Rules.
 {COMMA} : {token, {',', TokenLine}}.
 {EQUAL} : {token, {'=', TokenLine}}.
 {DERIV} : {token, {'\'', TokenLine}}.
+{INTEGRAL} : {token, {'$', TokenLine}}.
 
 {WHITESPACE}+ : skip_token.
 

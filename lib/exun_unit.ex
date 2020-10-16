@@ -1,5 +1,7 @@
 defmodule Exun.Unit do
   alias Exun.Collect
+  alias Exun.Eq
+  import Exun.UI
 
   @moduledoc """
   Handle Units, converts, sum, multiply, transform to SI and factorize
@@ -127,7 +129,7 @@ defmodule Exun.Unit do
   }
 
   @doc """
-  Shows help about unit:
+  Shows help about unit
   Known Units prefixes:
         E = 1.0e18
         G = 1.0e9
@@ -248,14 +250,14 @@ defmodule Exun.Unit do
   end
 
   @doc """
-  Sum of two units
+  Sum or Rest of two units
   """
   def sum(op, {:unit, {:numb, n1}, t1}, {:unit, {:numb, n2}, t2}, pcontext \\ %{}) do
     {res1, exps1} = to_si({1, t1}, pcontext, 1, %{})
     {res2, exps2} = to_si({1, t2}, pcontext, 1, %{})
 
     if exps1 != exps2 do
-      {:err, "Inconsisten units " <> Exun.tostr(t1) <> " and " <> Exun.tostr(t2)}
+      {:err, "Inconsisten units " <> tostr(t1) <> " and " <> tostr(t2)}
     else
       val =
         case op do
@@ -282,7 +284,7 @@ defmodule Exun.Unit do
     {res2, exps2} = to_si({1, t2}, pcontext, 1, %{})
 
     if exps1 != exps2 do
-      {:err, "Inconsisten units " <> Exun.tostr(t1) <> " and " <> Exun.tostr(t2)}
+      {:err, "Inconsisten units " <> tostr(t1) <> " and " <> tostr(t2)}
     else
       {:ok, {:unit, {:numb, n1 * res1 / res2}, t2}}
     end
@@ -303,7 +305,7 @@ defmodule Exun.Unit do
 
     case convert_ast(u1, u2, pcontext) do
       {:err, msg} -> throw(msg)
-      {:ok, res} -> Exun.tostr(res)
+      {:ok, res} -> tostr(res)
     end
   end
 
@@ -320,7 +322,7 @@ defmodule Exun.Unit do
   def factorize_ast({:unit, {:numb, n1}, t1}, {:unit, {:numb, _n2}, t2}, pcontext) do
     # Divide t1 by t2, reduce to si and multiply by t2
     {nres, exps} = to_si({n1, {:divi, t1, t2}}, pcontext, 1, %{})
-    "#{nres}[#{Exun.tostr(t2)}#{exps_tostr(exps)}]"
+    "#{nres}[#{tostr(t2)}#{exps_tostr(exps)}]"
   end
 
   @doc """
@@ -333,7 +335,7 @@ defmodule Exun.Unit do
   end
 
   defp to_si({:unit, {:numb, n}, tree}, pcontext \\ %{}) do
-    to_si({n, Collect.denorm(tree)}, pcontext, 1, %{})
+    to_si({n, Eq.denorm(tree)}, pcontext, 1, %{})
   end
 
   defp to_si({n, {:mult, left, right}}, pcontext, curr_exp, exps) do
@@ -371,7 +373,7 @@ defmodule Exun.Unit do
 
   defp to_si({a, b}, _pcontext, _curr_exp, _exps) do
     # IO.inspect({:unit, {:numb, a}, b}, label: "For unit:")
-    throw("Invalid unit definition: " <> Exun.tostr({:unit, {:numb, a}, b}))
+    throw("Invalid unit definition: " <> tostr({:unit, {:numb, a}, b}))
   end
 
   defp get_def(name, pcontext) do

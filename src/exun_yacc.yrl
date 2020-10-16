@@ -1,6 +1,7 @@
-Terminals  ',' '(' ')' '/' '*' '^' '+' '-' '[' ']' '\'' '=' word number.
+Terminals  ',' '(' ')' '/' '*' '^' '+' '-' '[' ']' '\'' '=' '$' word number.
 Nonterminals main expr uexpr variable function arg_list arguments signed_number.
 Rootsymbol main.
+Right 950 '$'.
 Right 900 '^'.
 Left 800 '['.
 Left 750 '*' '/'.
@@ -38,6 +39,7 @@ arguments -> arguments ',' expr : ['$3'|'$1'] .
 uexpr -> expr '[' expr ']' : {unit, '$1', '$3'}.
 expr -> '-' expr : {mult, {numb, -1}, '$2'}.
 expr -> expr '\'' variable : {deriv, '$1', {vari, '$3'}}.
+expr -> '$' expr ',' variable : {integ, '$2', {vari, '$4'}}.
 expr -> uexpr : '$1'.
 
 Erlang code.

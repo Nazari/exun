@@ -6,13 +6,14 @@ Alpha state.
 TODO:
  - Multiprocess, make reductions in parallell via Tasks 
  - Temperature unit conversions
- - Integration, Summatory
+ - Summatory
  - Fractions, to avoid decimal ops
  - Define equations, not only expressions: Isolate variables
  - Add more testing and revise docs
  
 DONE:
  + Derivate
+ + Simple integration (pol, trig, ln), miss parts and subst
  + Units (factorize, conversion, operation, user definition)
  + Context definition for vars and funcs
  + Functions and User functions  
@@ -52,7 +53,7 @@ eval "(a+b)^2/c", %{"a"=>"20[m]","b"=>"2[cm]","c"=>"3[s^2]"}
 ```
 
 Version 0.1.2 can derivate and support some functions (trigonometrics, hyperbolics, ln):
-Operator ' is derivate, so "f'x" is df(x)/dx
+Operator ' is derivate, so "f'x" is df(x)/dx; rule "expr'var" means derivate 'expr' for 'var'. 
 ```
 eval "(1+x)^2'x"
 "2*(1+x)"
@@ -76,6 +77,25 @@ Exun.eval " f * f(x)'x * f(y)", %{"f"=>"3", "f(x)"=>"x^2"}
 ```
 
 
+Version 0.2.0 is multiprocess. Base measurement for speed will be the brutal expression:
+```
+iex(5)> :timer.tc(Exun,:eval,["(g(a^b,b^a)/g(b^a,a^b))'a", %{"g(x,y)"=>"(x^y/ln(sinh(y^x))+y^tanh(x)/cos(x*y))'x'y'x"}])
+{5327979,
+ "(-(-4*(-2*(-a^b^(1+a)*b^a^(1+b)/sinh(b^a^(1+b))*cosh(b^a^(1+b))*ln(b" <> ...}
+ ```
+
+ Version 0.2.1 can integrate simple expression, not yet implemented Parts or Subst methods. Symbol for integration is $, rule "$expr,var" means integrate 'expr' for 'var'
+```
+iex(1)> Exun.eval "$3*x^2+2*x+1,x"
+"x*(1+x*(1+x))"
+
+iex(5)> Exun.eval "$sin(x),x"     
+"-cos(x)"
+
+iex(6)> Exun.eval "$ln(f(x)),x"
+"-$x/f(x),x+x*ln(f(x))"
+```
+
 If you are interested in parsing, use 'parse' or 'eval_ast'
 ```
 parse "(a+b)^2/c"
@@ -93,12 +113,7 @@ This library use an AST built with erlang's yecc parser and transformation in el
   def mk({:suma, {:numb, _}, {:unit, _, _}}), do: throw(@invalid_unit_operation)
 ```
 
-Version 0.2.0 will be multiprocess. Base measurement for speed will be the brutal expression:
-```
-iex(5)> :timer.tc(Exun,:eval,["(g(a^b,b^a)/g(b^a,a^b))'a", %{"g(x,y)"=>"(x^y/ln(sinh(y^x))+y^tanh(x)/cos(x*y))'x'y'x"}])
-{5327979,
- "(-(-4*(-2*(-a^b^(1+a)*b^a^(1+b)/sinh(b^a^(1+b))*cosh(b^a^(1+b))*ln(b" <> ...}
- ```
+
 ## Installation
 
 If [available in Hex](https://hex.pm/docs/publish), the package can be installed

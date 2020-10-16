@@ -1,13 +1,8 @@
 defmodule Exun.Fun do
-  import Exun.MProc
-
   @moduledoc """
   Function management.
   @base and  @compound are the definitions of external functions.
   """
-
-  @zero {:numb, 0}
-  @uno {:numb, 1}
 
   @doc """
   base is a map that holds functions names and a tupla
@@ -20,59 +15,65 @@ defmodule Exun.Fun do
    F'x is d(F)/dx
 
   """
-  @base %{
-    "ln(F)" => {&:math.log/1, "F'x/F"},
-    "sin(F)" => {&:math.sin/1, "F'x*cos(F)"},
-    "cos(F)" => {&:math.cos/1, "-F'x*sin(F)"},
-    "tan(F)" => {&:math.tan/1, "F'x/cos(F)^2"},
-    "acos(F)" => {&:math.acos/1, "-F'x/(1-F^2)^0.5"},
-    "asin(F)" => {&:math.asin/1, "F'x/(1-F^2)^0.5"},
-    "atan(F)" => {&:math.atan/1, "F'x/(1+F^2)"},
-    "sinh(F)" => {&:math.sinh/1, "F'x*cosh(F)"},
-    "cosh(F)" => {&:math.cosh/1, "F'x*sinh(F)"},
-    "tanh(F)" => {&:math.tanh/1, "F'x/cosh(F)^2"},
-    "asinh(F)" => {&:math.asinh/1, "F'x/(F^2+1)^0.5"},
-    "acosh(F)" => {&:math.acosh/1, "F'x/(F^2-1)^0.5"},
-    "atanh(F)" => {&:math.atanh/1, "F'x/(1-F^2)"}
-  }
+  def base,
+    do: %{
+      "ln(F)" => {&:math.log/1, "F'x/F", "x*ln(F)-$(x/F),x"},
+      "sin(F)" => {&:math.sin/1, "F'x*cos(F)", nil},
+      "cos(F)" => {&:math.cos/1, "-F'x*sin(F)", nil},
+      "tan(F)" => {&:math.tan/1, "F'x/cos(F)^2", nil},
+      "acos(F)" => {&:math.acos/1, "-F'x/(1-F^2)^0.5", nil},
+      "asin(F)" => {&:math.asin/1, "F'x/(1-F^2)^0.5", nil},
+      "atan(F)" => {&:math.atan/1, "F'x/(1+F^2)", nil},
+      "sinh(F)" => {&:math.sinh/1, "F'x*cosh(F)", nil},
+      "cosh(F)" => {&:math.cosh/1, "F'x*sinh(F)", nil},
+      "tanh(F)" => {&:math.tanh/1, "F'x/cosh(F)^2", nil},
+      "asinh(F)" => {&:math.asinh/1, "F'x/(F^2+1)^0.5", nil},
+      "acosh(F)" => {&:math.acosh/1, "F'x/(F^2-1)^0.5", nil},
+      "atanh(F)" => {&:math.atanh/1, "F'x/(1-F^2)", nil}
+    }
 
-  @compounds %{
-    "sqrt(F)" => "F^0.5"
-  }
+  def compounds,
+    do: %{
+      "sqrt(F)" => "F^0.5",
+      "tan(F)"  => "sin(F)/cos(F)",
+    }
 
   def fcall(name, args) do
     # IO.inspect({name, args}, label: "fcall")
     aau = allargs_numbers(args)
 
     cond do
-      (bfunc = @base[name <> "(F)"]) != nil ->
+      (bfunc = base()[name <> "(F)"]) != nil ->
         cond do
           aau -> {:numb, elem(bfunc, 0).(args |> List.first() |> elem(1))}
           true -> {:fcall, name, args}
         end
 
-      (cfunc = @compounds[name <> "(F)"]) != nil ->
+      (cfunc = compounds()[name <> "(F)"]) != nil ->
         {ast, _ctx} = Exun.parse(cfunc)
-        replace_args_internal(ast, args)
+        replace_args_internal(ast, args, {:vari, "x"})
 
       true ->
         {:fcall, name, args}
     end
   end
 
-  defp replace_args_internal(ast, args) do
+  def replace_args_internal(ast, args, vari) do
     case ast do
       {:vari, "F"} ->
         args |> List.first()
+
+      {:vari, "x"} ->
+        vari
 
       {:fcall, name, [{:vari, "F"}]} ->
         {:fcall, name, args}
 
       {:unit, uv, ut} ->
-        {:unit, replace_args_internal(uv, args), ut}
+        {:unit, replace_args_internal(uv, args, vari), ut}
 
       {op, l, r} ->
-        {op, replace_args_internal(l, args), replace_args_internal(r, args)}
+        {op, replace_args_internal(l, args, vari), replace_args_internal(r, args, vari)}
 
       _ ->
         ast
@@ -84,73 +85,4 @@ defmodule Exun.Fun do
       ac and elem(el, 0) == :numb
     end)
   end
-
-  @doc """
-  Derive function txt for variable x, return string
-  """
-  def deriv(txt, x) when is_binary(txt) and is_binary(x) do
-    {ast, _ctx} = Exun.parse(txt)
-
-    deriv(ast, x)
-    # |> IO.inspect(label: "reduced")
-    |> Exun.tostr()
-  end
-
-  def deriv(ast, name) when is_tuple(ast) and is_binary(name) do
-    der(ast, {:vari, name})
-  end
-
-  defp der({:deriv, fun, x1}, x2) do
-    der(der(fun, x1), x2)
-  end
-
-  defp der({:fcall, name, args}, x) do
-    search_name = name <> "(F)"
-
-    cond do
-      (bfunc = @base[search_name]) != nil ->
-        {ast, _ctx} = Exun.parse(elem(bfunc, 1))
-        replace_args_internal(ast, args)
-
-      (cfunc = @compounds[search_name]) != nil ->
-        {ast, _ctx} = Exun.parse(cfunc)
-
-        replace_args_internal(ast, args)
-        |> der(x)
-
-      true ->
-        {:deriv, {:fcall, name, args}, x}
-    end
-  end
-
-  defp der({:numb, _}, _x),
-    do: @zero
-
-  defp der({:unit, _uv, _ut}, _x),
-    do: @zero
-
-  defp der({:vari, var}, {:vari, x}),
-    do: if(var == x, do: @uno, else: @zero)
-
-  defp der({:suma, a, b}, x),
-    do: parallel({:suma, der(a, x), der(b, x)})
-
-  defp der({:rest, a, b}, x),
-    do: parallel({:rest, der(a, x), der(b, x)})
-
-  defp der({:mult, a, b}, x),
-    do: parallel({:suma, {:mult, der(a, x), b}, {:mult, a, der(b, x)}})
-
-  defp der({:divi, a, b}, x),
-    do:
-      parallel(
-        {:divi, {:rest, {:mult, b, der(a, x)}, {:mult, der(b, x), a}}, {:elev, b, {:numb, 2}}}
-      )
-
-  defp der(y = {:elev, f, g}, x),
-    do:
-      parallel(
-        {:mult, y,
-         {:suma, {:mult, der(g, x), {:fcall, "ln", [f]}}, {:mult, g, {:divi, der(f, x), f}}}}
-      )
 end
