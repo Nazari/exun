@@ -1,5 +1,5 @@
 defmodule Exun.Integral do
-  import Exun.Simpl
+  import Exun.Collect
   import Exun.Fun
   import Exun
 
@@ -91,19 +91,18 @@ defmodule Exun.Integral do
     {:integ, c, v}
   end
 
-  def parts({:mult, a, b}, v) do
-    # Check if any is integrable
-    res =
-      case {mkrec({:integ, a, v}), mkrec({:integ, b, v})} do
-        {{:integ, _, _}, {:integ, _, _}} -> :fail
-        {any, {:integ, _, _}} -> {:a, a, any}
-        {_, anyb} -> {:b, b, anyb}
-      end
+  def parts({:mult, l, r}, x) do
+    # u=l, dv=r
+    v1 = coll({:integ, r, x})
+    sr1 = coll({:integ, {:mult, {:deriv, l, x}, v1}, x})
+    # u=r, dv=l
+    v2 = coll({:integ, l, x})
+    sr2 = coll({:integ, {:mult, {:deriv, r, x}, v2}, x})
 
-    case res do
-      :fail -> :fail
-      {:a, _, int_a} -> {:ok, doparts(b, int_a, v)}
-      {:b, _, int_b} -> {:ok, doparts(a, int_b, v)}
+    case {check_parts(v1, sr1), check_parts(v2, sr2)} do
+      {:ok, _} -> doparts(l, v1, sr1)
+      {_, :ok} -> doparts(r, v2, sr2)
+      _ -> :fail
     end
   end
 
@@ -111,7 +110,18 @@ defmodule Exun.Integral do
     {:fail}
   end
 
-  def doparts(u, v, var) do
-    {:rest, {:mult, u, v}, {:integ, {:mult, v, {:deriv, u, var}}, var}}
+  def check_parts(v, sr) do
+    {op1, _, _} = v
+    {op2, _, _} = sr
+
+    case {op1, op2} do
+      {:integ, _} -> :fail
+      {_, :integ} -> :fail
+      _ -> :ok
+    end
+  end
+
+  def doparts(u, v, sr) do
+    {:rest, {:mult, u, v}, sr}
   end
 end

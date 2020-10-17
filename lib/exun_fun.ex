@@ -15,6 +15,7 @@ defmodule Exun.Fun do
    F'x is d(F)/dx
 
   """
+  # name => Numeric implementation, Derivate, Integrate
   def base,
     do: %{
       "ln(F)" => {&:math.log/1, "F'x/F", "x*ln(F)-$(x/F),x"},
