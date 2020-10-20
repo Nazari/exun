@@ -289,7 +289,8 @@ defmodule Exun.Pattern do
       Enum.reduce(ssets, {0, nil}, fn el, {count, lastel} ->
         {if(lastel != el, do: count + 1, else: count), el}
       end)
-    uninner(res, inners-2)
+
+    uninner(res, inners - 2)
   end
 
   def uninner(lst, n) when n <= 0, do: lst
@@ -316,26 +317,34 @@ defmodule Exun.Pattern do
 
         reduced_ssets = Enum.slice(ssets, unos, length(ssets))
 
-        List.zip([remain, toset])
-        |> Enum.map(fn {rem, fe} ->
-          rcombin(reduced_ssets, rem, fe)
-        end)
+        result =
+          List.zip([remain, toset])
+          |> Enum.map(fn {rem, fe} ->
+            rcombin(reduced_ssets, rem, fe)
+          end)
+
+        [_hhs | tts] = ts
+        if tts != [], do: concatlist(result), else: result
 
       true ->
         disperse = takeany([], list, hs)
         remain = Enum.map(disperse, &(list -- &1))
         toset = Enum.map(disperse, &(presolution ++ [&1]))
 
-        List.zip([remain, toset])
-        |> Enum.map(fn {rem, fe} ->
-          rcombin(ts, rem, fe)
-        end)
+        result =
+          List.zip([remain, toset])
+          |> Enum.map(fn {rem, fe} ->
+            rcombin(ts, rem, fe)
+          end)
+
+        [_hhs | tts] = ts
+        if tts != [], do: concatlist(result), else: result
     end
   end
 
   def concatlist(lol) do
     Enum.reduce(lol, [], fn el, ac ->
-      ac ++ el
+      el ++ ac
     end)
   end
 
