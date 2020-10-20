@@ -283,14 +283,8 @@ defmodule Exun.Pattern do
   Get any combination from list that supports ssets spec
   """
   def combin(ssets, list) do
-    res = rcombin(ssets, list, [])
-
-    {_, inners} =
-      Enum.reduce(ssets, {0, nil}, fn el, {count, lastel} ->
-        {if(lastel != el, do: count + 1, else: count), el}
-      end)
-
-    uninner(res, inners - 2)
+    rcombin(ssets, list, [])
+    |> Enum.reverse()
   end
 
   def uninner(lst, n) when n <= 0, do: lst
