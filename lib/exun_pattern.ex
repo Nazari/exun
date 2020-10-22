@@ -2,7 +2,9 @@ defmodule Exun.Pattern do
   @moduledoc """
   Match ASTs
   """
-
+  @doc """
+  User function, try to match and prints
+  """
   def umatch(taast, texpr, tconditions \\ []) do
     match(taast, texpr, %{}, tconditions)
     |> Enum.each(fn {res, map} ->
@@ -36,18 +38,13 @@ defmodule Exun.Pattern do
       [] ->
         [{:nomatch, %{}}]
 
-      lossol ->
-        Enum.map(lossol, fn {res, map} ->
-          case res do
-            :ok ->
-              if check_conds(map, conditions) do
-                {:ok, map}
-              else
-                {:nocond, map}
-              end
-
-            :ko ->
-              {:ko, map}
+      list_of_matches ->
+        list_of_matches
+        |> Enum.map(fn {_, map} ->
+          if check_conds(map, conditions) do
+            {:ok, map}
+          else
+            {:nocond, map}
           end
         end)
     end
@@ -119,10 +116,17 @@ defmodule Exun.Pattern do
     combin(aast, east)
     # |> IO.inspect(label: "Combined")
     # Combine order for each set, mult and sum are commutative
+    # Elevate list of a single element to the element [e] -> e
+    |> Enum.map(fn sl ->
+      Enum.map(sl, fn el ->
+        if length(el) == 1, do: List.first(el), else: el
+      end)
+    end)
+    # |> IO.inspect(label: "Elevate list of single element")
     |> Enum.reduce([], fn el, ac ->
       expand_order(el) ++ ac
     end)
-    |> IO.inspect(label: "Order Expanded")
+    # |> IO.inspect(label: "Order Expanded")
     # zip abstract and expresion ans try to match with mnode
     |> Enum.reduce([], fn set, acc ->
       (List.zip([lsta, set])
@@ -161,6 +165,8 @@ defmodule Exun.Pattern do
     [[c,b],a,d], [[c,b],d,a],
   ]
   """
+  def expand_order([a]), do: [a]
+
   def expand_order(list) when is_list(list) do
     list
     |> Enum.map(&single_expand_order(&1))
@@ -175,14 +181,21 @@ defmodule Exun.Pattern do
       |> single_expand_order()
     end)
     |> List.flatten()
-    |> Enum.chunk_every(length(list))
-    |> Enum.map(fn sublist ->
-      Enum.map(sublist, fn item ->
-        if is_tuple(item), do: Tuple.to_list(item), else: item
-      end)
+    |> Enum.map(fn el ->
+      if is_tuple(el) and is_tuple(elem(el, 0)) do
+        Tuple.to_list(el)
+      else
+        el
+      end
     end)
+    |> Enum.chunk_every(length(list))
   end
 
+  @doc """
+  Expand sublists taking one lement from each and building a new list
+  [[a], [b,c]] -> [[a,b],[a,c]]
+  [[a,b]] -> [a,b]
+  """
   def subpermute([a]), do: a
 
   def subpermute(list) when is_list(list) do
@@ -360,23 +373,6 @@ defmodule Exun.Pattern do
     res |> Enum.reverse()
   end
 
-  @doc """
-  Rotate list keeping sizes
-  rotate [[1],[2,3],[4,5]] -> [[2],[3,4],[5,1]]
-  """
-  def rotate(l) do
-    sizes = Enum.map(l, &length(&1))
-    [h | t] = l |> List.flatten()
-    extract(t ++ [h], sizes)
-  end
-
-  def rotate(l = [h | t], n) do
-    case n do
-      0 -> l
-      _ -> rotate(t ++ [h], n - 1)
-    end
-  end
-
   def sfi(number, 1, _), do: [[number]]
   def sfi(number, 2, _), do: for(k <- 1..floor(number / 2), do: [k, number - k])
 
@@ -438,9 +434,6 @@ defmodule Exun.Pattern do
     end)
     |> Enum.reverse()
   end
-
-  def uninner(lst, n) when n <= 0, do: lst
-  def uninner(lst, n), do: uninner(concatlist(lst), n - 1)
 
   def rcombin(ssets = [hs | ts], list, presolution) when is_number(hs) do
     cond do
