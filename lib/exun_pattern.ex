@@ -3,9 +3,24 @@ defmodule Exun.Pattern do
   Match ASTs
   """
 
+  def umatch(taast, texpr, tconditions \\ []) do
+    match(taast, texpr, %{}, tconditions)
+    |> Enum.each(fn {res, map} ->
+      IO.puts("Match group #{res}")
+
+      map
+      |> Enum.each(fn {name, value} ->
+        IO.puts("  #{name}\t=> " <> Exun.UI.tostr(value))
+      end)
+    end)
+  end
+
   def match(taast, texpr, context, tconditions \\ []) do
-    {expr, _} = Exun.parse(texpr, context)
-    {aast, _} = Exun.parse(taast)
+    {naast, _} = Exun.parse(taast)
+    {nexpr, _} = Exun.parse(texpr, context)
+
+    aast = Exun.Eq.norm(naast)
+    expr = Exun.Eq.norm(nexpr)
 
     conditions =
       Enum.map(tconditions, fn cnd ->
@@ -17,51 +32,75 @@ defmodule Exun.Pattern do
   end
 
   def match_ast(aast, expr, conditions \\ []) do
-    case m(aast, expr, %{}) do
-      {:ok, mapdef} ->
-        check_conds(mapdef, conditions)
+    case mnode(aast, expr, %{}) do
+      [] ->
+        [{:nomatch, %{}}]
 
-      _ ->
-        {:nomatch}
+      lossol ->
+        Enum.map(lossol, fn {res, map} ->
+          case res do
+            :ok ->
+              if check_conds(map, conditions) do
+                {:ok, map}
+              else
+                {:nocond, map}
+              end
+
+            :ko ->
+              {:ko, map}
+          end
+        end)
     end
   end
 
   @doc """
   General matching function
+  Try to match an abstract expresion agains real expression, for example
+  abstract expression: u(x)*v(x)'x
+  real expression: sin(x)^2
+
+  match u(x) = sin(x) and v(x)'x= sin(x)
+  so v(x)=-cos(x)
+
+  u and v will be return in a map:
+  %{"u(x)"=>"sin(x)", "v(x)"=>"-cos(x)"}
+
+  return a list of tuples {:ok, matched_defs} or {:ko, matched_defs}
+  matched_defs is a map that holds definitions
   """
-  def m(aast, expr, map) do
+  def mnode(aast, expr, map) do
     case {aast, expr} do
       # Two numbers must match exactly
       {{:numb, n}, {:numb, n}} ->
-        {:ok, map}
+        [{:ok, map}]
 
       # Base and expon must match
       {{:elev, a, b}, {:elev, c, d}} ->
         mpair({a, c}, {b, d}, map)
 
       # Function def from abstract ast match if vars are used in expr
-      {{:fdef, name, args}, expr} ->
-        mfdef(name, args, expr, map)
+      {a = {:fcall, _name, _args}, expr} ->
+        mfdef(a, expr, map)
 
       # see mderiv
-      {{:deriv, name, var}, expr} ->
-        mderiv(name, var, expr, map)
+      {der = {:deriv, {:vari, _}, {:vari, _}}, expr} ->
+        mderiv(der, expr, map)
 
       # see minteg
-      {{:integ, name, _var}, expr} ->
+      {{:integ, {:vari, name}, _var}, expr} ->
         checkmap(map, name, expr)
 
       # Multiple sum or product. This can produce multiple tries for matching
       # We *must* check all of them,
-      {{{:m, op}, lstaast}, {{:m, op}, lstexpr}} ->
-        mm(op, lstaast, lstexpr, map)
+      {a = {{:m, op}, _l1}, b = {{:m, op}, _l2}} ->
+        mmult(a, b, map)
 
       # General match
       {{:vari, a}, expr} ->
         checkmap(map, a, expr)
 
       _ ->
-        {:ko, map}
+        [{:ko, map}]
     end
   end
 
@@ -75,14 +114,116 @@ defmodule Exun.Pattern do
     # For now, try direct match; sin florituras
   """
 
-  def mm(op, lsta, lste, map) do
-    ssets = sizesets(length(lste), length(lsta))
+  def mmult(aast = {{:m, op}, lsta}, east = {{:m, op}, _lste}, map) do
+    # Get n sets (size of abstract list) from a list of m size (expression)
+    combin(aast, east)
+    # |> IO.inspect(label: "Combined")
+    # Combine order for each set, mult and sum are commutative
+    |> Enum.reduce([], fn el, ac ->
+      expand_order(el) ++ ac
+    end)
+    |> IO.inspect(label: "Order Expanded")
+    # zip abstract and expresion ans try to match with mnode
+    |> Enum.reduce([], fn set, acc ->
+      (List.zip([lsta, set])
+       # |> IO.inspect(label: "Zipped")
+       |> Enum.reduce([{:ok, map}], fn {abs, exp}, [{res, map}] ->
+         cond do
+           res == :ok and is_list(exp) and length(exp) > 1 ->
+             mnode(abs, {{:m, op}, exp}, map)
 
-    for ss <- ssets do
-      IO.inspect(ss, label: "Sizeset")
-      combin(ss, lste) |> IO.inspect(label: "Combined")
+           res == :ok and is_list(exp) ->
+             [sub] = exp
+             mnode(abs, sub, map)
+
+           res == :ok ->
+             mnode(abs, exp, map)
+
+           true ->
+             [{res, map}]
+         end
+
+         # |> IO.inspect(label: "cond do")
+       end)) ++ acc
+    end)
+    |> Enum.reject(fn {res, _} -> res == :ko end)
+  end
+
+  @doc """
+  take a list an generate all possible list varying order of elements
+  list can be of tye [a, [b,c],d] but b and c cannot be lists
+  must produce
+  [
+    [a,[b,c],d], [a,[c,b],d],
+    [a,d,[b,c]], [a,d,[c,b]],
+    [d,a,[b,c]], [d,a,[c,b]],
+    [[b,c],a,d], [[b,c],d,a],
+    [[c,b],a,d], [[c,b],d,a],
+  ]
+  """
+  def expand_order(list) when is_list(list) do
+    list
+    |> Enum.map(&single_expand_order(&1))
+    |> permute()
+  end
+
+  def permute(list) do
+    subpermute(list)
+    |> Enum.map(fn el ->
+      el
+      |> Enum.map(fn item -> if is_list(item), do: List.to_tuple(item), else: item end)
+      |> single_expand_order()
+    end)
+    |> List.flatten()
+    |> Enum.chunk_every(length(list))
+    |> Enum.map(fn sublist ->
+      Enum.map(sublist, fn item ->
+        if is_tuple(item), do: Tuple.to_list(item), else: item
+      end)
+    end)
+  end
+
+  def subpermute([a]), do: a
+
+  def subpermute(list) when is_list(list) do
+    sizes = Enum.map(list, &length(&1))
+    cycles = Enum.reduce(sizes, 1, &(&1 * &2))
+
+    for n <- 0..(cycles - 1) do
+      mklist_byindex(list, mknumber(n, sizes))
     end
   end
+
+  def mknumber(n, [_a]), do: [n]
+
+  def mknumber(n, [h | t]) do
+    [rem(n, h)] ++ mknumber(floor(n / h), t)
+  end
+
+  def mklist_byindex(list, indexes) do
+    Enum.zip([list, indexes])
+    |> Enum.map(fn {sublist, index} ->
+      Enum.at(sublist, index)
+    end)
+  end
+
+  def single_expand_order(list) when is_list(list) do
+    case list do
+      [a, b] ->
+        [[a, b], [b, a]]
+
+      _ ->
+        for item <- list do
+          remain = List.delete(list, item)
+          seo_remain = single_expand_order(remain)
+          Enum.map(seo_remain, &([item] ++ &1))
+        end
+        |> List.flatten()
+        |> Enum.chunk_every(length(list))
+    end
+  end
+
+  def single_expand_order(a), do: [a]
 
   @doc """
   deriv match in two situations: if name is yet in map, its definition must be equal
@@ -90,8 +231,15 @@ defmodule Exun.Pattern do
   integration, but if in conditions name is used without deriv, the condition will no
   be true if we can not integrate it.
   """
-  def mderiv(name, _var, expr, map) do
-    checkmap(map, name, expr)
+  def mderiv({:deriv, {:vari, func}, {:vari, var}}, expr, map) do
+    case checkmap(map, func <> "'" <> var, expr) do
+      [{:ok, map}] ->
+        integral = Exun.Collect.coll({:integ, expr, {:vari, var}})
+        checkmap(map, func, integral)
+
+      a ->
+        a
+    end
   end
 
   @doc """
@@ -99,65 +247,57 @@ defmodule Exun.Pattern do
   so put in map the match f=x*y if f is not yet defined or it is
   and equals x*y
   """
-  def mfdef(name, args, expr, map) do
-    vie = vars_of(expr)
+  def mfdef({:fcall, name, args}, expr, map) do
+    vie = vars_of_expr(expr)
+
     # Suppose args holds list of simple variables that *must* be uses in expression
     res =
       Enum.reduce(args, true, fn var, res ->
         res and var in vie
       end)
 
-    if not res do
-      {:ko, map}
-    else
-      case Map.fetch(map, name) do
-        {:ok, val} ->
-          if Exun.Eq.eq(val, expr) do
-            {:ok, map}
-          else
-            {:ko, map}
-          end
-
-        :error ->
-          {:ok, Map.put(map, name, expr)}
-      end
-    end
+    if res, do: checkmap(map, name, expr), else: [{:ko, map}]
   end
 
+  # May be the order is important
   def mpair({a1, e1}, {a2, e2}, map) do
-    # May be the order is important
-    case m(a1, e1, map) do
-      {:ok, map} ->
-        m(a2, e2, map)
+    mpair_uni({a1, e1}, {a2, e2}, map) ++
+      mpair_uni({a2, e2}, {a1, e1}, map)
+  end
 
-      {:ko, map} ->
-        case m(a2, e2, map) do
-          {:ok, map} ->
-            m(a1, e1, map)
+  def mpair_uni({a1, e1}, {a2, e2}, map) do
+    mnode(a1, e1, map)
+    |> Enum.reduce([], fn {res, rmap}, acc ->
+      case res do
+        :ok ->
+          mnode(a2, e2, rmap)
+          |> Enum.reduce(acc, fn {res2, rmap2}, acc2 ->
+            [{res2, rmap2} | acc2]
+          end)
 
-          _ ->
-            {:ko, map}
-        end
-    end
+        :ko ->
+          acc
+      end
+    end)
   end
 
   def checkmap(map, key, val) do
     case Map.fetch(map, key) do
       {:ok, mapval} ->
         if Exun.Eq.eq(val, mapval) do
-          {:ok, map}
+          [{:ok, map}]
         else
-          {:ko, map}
+          [{:ko, map}]
         end
 
       _ ->
-        {:ok, Map.put(map, key, val)}
+        [{:ok, Map.put(map, key, val)}]
     end
   end
 
   def check_conds(map, cnd) do
     Enum.reduce(cnd, true, fn el, ac ->
-      check_cond(map, el) and ac
+      ac and check_cond(map, el)
     end)
   end
 
@@ -168,33 +308,42 @@ defmodule Exun.Pattern do
   @doc """
   Find vars of an expression
   """
-  def vars_of(ast) do
-    rvars_of(ast, MapSet.new())
+  def vars_of_expr(ast) when is_tuple(ast) do
+    vars_of_expr(MapSet.new(), ast)
   end
 
-  def rvars_of(ast, mapset) when is_tuple(ast) do
+  def vars_of_expr(mapset, ast) when is_tuple(ast) do
     case ast do
       {:vari, _} ->
         MapSet.put(mapset, ast)
 
       {{:m, _}, lst} ->
-        rvars_of(lst, mapset)
+        vars_of_expr(mapset, lst)
 
       {:fcall, name, args} ->
-        rvars_of(args, MapSet.put(mapset, {:fdef, name, args}))
+        throw("Not yet")
+
+      {:numb, _} ->
+        mapset
+
+      {:unit, _, _} ->
+        mapset
 
       {_, a, b} ->
-        mapset = rvars_of(a, mapset)
-        rvars_of(b, mapset)
+        mapset
+        |> vars_of_expr(a)
+        |> vars_of_expr(b)
 
       {_, a} ->
-        rvars_of(a, mapset)
+        mapset
+        |> vars_of_expr(a)
     end
   end
 
-  def rvars_of(list, mapset) when is_list(list) do
-    Enum.reduce(list, mapset, fn el, ac ->
-      rvars_of(el, ac)
+  def vars_of_expr(mapset, list) when is_list(list) do
+    list
+    |> Enum.reduce(mapset, fn el, ac ->
+      vars_of_expr(ac, el)
     end)
   end
 
@@ -282,15 +431,18 @@ defmodule Exun.Pattern do
   @doc """
   Get any combination from list that supports ssets spec
   """
-  def combin(ssets, list) do
-    rcombin(ssets, list, [])
+  def combin({{:m, op}, l1}, {{:m, op}, l2}) do
+    sizesets(length(l2), length(l1))
+    |> Enum.reduce([], fn el, ac ->
+      ac ++ rcombin(el, l2, [])
+    end)
     |> Enum.reverse()
   end
 
   def uninner(lst, n) when n <= 0, do: lst
   def uninner(lst, n), do: uninner(concatlist(lst), n - 1)
 
-  def rcombin(ssets = [hs | ts], list, presolution) do
+  def rcombin(ssets = [hs | ts], list, presolution) when is_number(hs) do
     cond do
       allones?(ssets) ->
         [list]
@@ -317,10 +469,10 @@ defmodule Exun.Pattern do
             rcombin(reduced_ssets, rem, fe)
           end)
 
-        [_hhs | tts] = ts
+        [_hhs | tts] = reduced_ssets
         if tts != [], do: concatlist(result), else: result
 
-      true ->
+      hs > 1 ->
         disperse = takeany([], list, hs)
         remain = Enum.map(disperse, &(list -- &1))
         toset = Enum.map(disperse, &(presolution ++ [&1]))
