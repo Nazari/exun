@@ -17,6 +17,7 @@ defmodule Exun.Integral do
   def integ({:mult, n = {:numb, _}, a}, v), do: {:mult, n, integ(a, v)}
   def integ({:mult, a, n = {:numb, _}}, v), do: {:mult, n, integ(a, v)}
   def integ({:deriv, f, x}, x), do: f
+  def integ({:vari, a}, v), do: {:mult, {:vari, a}, v}
 
   def integ({:elev, {:vari, v}, expon = {:numb, _}}, {:vari, v}) do
     newexp = {:suma, expon, @uno}
@@ -84,6 +85,10 @@ defmodule Exun.Integral do
       _ ->
         {:integ, {:fcall, name, args}, v}
     end
+  end
+
+  def integ({{:m, op}, lst}, v) do
+    {{:m, op}, Enum.map(lst, &integ(&1, v))}
   end
 
   # Fallthrough
