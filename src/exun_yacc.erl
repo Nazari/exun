@@ -1,6 +1,6 @@
 -module(exun_yacc).
 -export([parse/1, parse_and_scan/1, format_error/1]).
--file("src/exun_yacc.yrl", 45).
+-file("src/exun_yacc.yrl", 46).
 extract_token({_Token, _Line, Value}) -> Value.
 
 -file("/usr/local/Cellar/erlang/23.1.1/lib/erlang/lib/parsetools-2.2/include/yeccpre.hrl", 0).
@@ -358,6 +358,8 @@ yeccpars2_12(_S, Cat, Ss, Stack, T, Ts, Tzr) ->
  NewStack = yeccpars2_12_(Stack),
  yeccgoto_variable(hd(Ss), Cat, Ss, NewStack, T, Ts, Tzr).
 
+yeccpars2_13(S, '\'', Ss, Stack, T, Ts, Tzr) ->
+ yeccpars1(S, 15, Ss, Stack, T, Ts, Tzr);
 yeccpars2_13(S, '*', Ss, Stack, T, Ts, Tzr) ->
  yeccpars1(S, 16, Ss, Stack, T, Ts, Tzr);
 yeccpars2_13(S, '/', Ss, Stack, T, Ts, Tzr) ->
@@ -394,6 +396,8 @@ yeccpars2_15(_, _, _, _, T, _, _) ->
 
 %% yeccpars2_21: see yeccpars2_0
 
+yeccpars2_22(S, '\'', Ss, Stack, T, Ts, Tzr) ->
+ yeccpars1(S, 15, Ss, Stack, T, Ts, Tzr);
 yeccpars2_22(S, '^', Ss, Stack, T, Ts, Tzr) ->
  yeccpars1(S, 21, Ss, Stack, T, Ts, Tzr);
 yeccpars2_22(_S, Cat, Ss, Stack, T, Ts, Tzr) ->
@@ -429,6 +433,8 @@ yeccpars2_24(_S, Cat, Ss, Stack, T, Ts, Tzr) ->
  NewStack = yeccpars2_24_(Stack),
  yeccgoto_uexpr(hd(Nss), Cat, Nss, NewStack, T, Ts, Tzr).
 
+yeccpars2_25(S, '\'', Ss, Stack, T, Ts, Tzr) ->
+ yeccpars1(S, 15, Ss, Stack, T, Ts, Tzr);
 yeccpars2_25(S, '[', Ss, Stack, T, Ts, Tzr) ->
  yeccpars1(S, 20, Ss, Stack, T, Ts, Tzr);
 yeccpars2_25(S, '^', Ss, Stack, T, Ts, Tzr) ->
@@ -438,6 +444,8 @@ yeccpars2_25(_S, Cat, Ss, Stack, T, Ts, Tzr) ->
  NewStack = yeccpars2_25_(Stack),
  yeccgoto_expr(hd(Nss), Cat, Nss, NewStack, T, Ts, Tzr).
 
+yeccpars2_26(S, '\'', Ss, Stack, T, Ts, Tzr) ->
+ yeccpars1(S, 15, Ss, Stack, T, Ts, Tzr);
 yeccpars2_26(S, '*', Ss, Stack, T, Ts, Tzr) ->
  yeccpars1(S, 16, Ss, Stack, T, Ts, Tzr);
 yeccpars2_26(S, '/', Ss, Stack, T, Ts, Tzr) ->
@@ -451,6 +459,8 @@ yeccpars2_26(_S, Cat, Ss, Stack, T, Ts, Tzr) ->
  NewStack = yeccpars2_26_(Stack),
  yeccgoto_expr(hd(Nss), Cat, Nss, NewStack, T, Ts, Tzr).
 
+yeccpars2_27(S, '\'', Ss, Stack, T, Ts, Tzr) ->
+ yeccpars1(S, 15, Ss, Stack, T, Ts, Tzr);
 yeccpars2_27(S, '*', Ss, Stack, T, Ts, Tzr) ->
  yeccpars1(S, 16, Ss, Stack, T, Ts, Tzr);
 yeccpars2_27(S, '/', Ss, Stack, T, Ts, Tzr) ->
@@ -464,6 +474,8 @@ yeccpars2_27(_S, Cat, Ss, Stack, T, Ts, Tzr) ->
  NewStack = yeccpars2_27_(Stack),
  yeccgoto_expr(hd(Nss), Cat, Nss, NewStack, T, Ts, Tzr).
 
+yeccpars2_28(S, '\'', Ss, Stack, T, Ts, Tzr) ->
+ yeccpars1(S, 15, Ss, Stack, T, Ts, Tzr);
 yeccpars2_28(S, '[', Ss, Stack, T, Ts, Tzr) ->
  yeccpars1(S, 20, Ss, Stack, T, Ts, Tzr);
 yeccpars2_28(S, '^', Ss, Stack, T, Ts, Tzr) ->
@@ -754,7 +766,7 @@ yeccgoto_variable(44, Cat, Ss, Stack, T, Ts, Tzr) ->
  yeccpars2_1(1, Cat, Ss, Stack, T, Ts, Tzr).
 
 -compile({inline,yeccpars2_1_/1}).
--file("src/exun_yacc.yrl", 21).
+-file("src/exun_yacc.yrl", 22).
 yeccpars2_1_(__Stack0) ->
  [__1 | __Stack] = __Stack0,
  [begin
@@ -762,7 +774,7 @@ yeccpars2_1_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,yeccpars2_3_/1}).
--file("src/exun_yacc.yrl", 20).
+-file("src/exun_yacc.yrl", 21).
 yeccpars2_3_(__Stack0) ->
  [__1 | __Stack] = __Stack0,
  [begin
@@ -770,7 +782,7 @@ yeccpars2_3_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,yeccpars2_11_/1}).
--file("src/exun_yacc.yrl", 19).
+-file("src/exun_yacc.yrl", 20).
 yeccpars2_11_(__Stack0) ->
  [__1 | __Stack] = __Stack0,
  [begin
@@ -778,7 +790,7 @@ yeccpars2_11_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,yeccpars2_12_/1}).
--file("src/exun_yacc.yrl", 27).
+-file("src/exun_yacc.yrl", 28).
 yeccpars2_12_(__Stack0) ->
  [__1 | __Stack] = __Stack0,
  [begin
@@ -786,7 +798,7 @@ yeccpars2_12_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,yeccpars2_13_/1}).
--file("src/exun_yacc.yrl", 36).
+-file("src/exun_yacc.yrl", 37).
 yeccpars2_13_(__Stack0) ->
  [__2,__1 | __Stack] = __Stack0,
  [begin
@@ -794,7 +806,7 @@ yeccpars2_13_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,yeccpars2_14_/1}).
--file("src/exun_yacc.yrl", 25).
+-file("src/exun_yacc.yrl", 26).
 yeccpars2_14_(__Stack0) ->
  [__2,__1 | __Stack] = __Stack0,
  [begin
@@ -802,7 +814,7 @@ yeccpars2_14_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,yeccpars2_22_/1}).
--file("src/exun_yacc.yrl", 12).
+-file("src/exun_yacc.yrl", 13).
 yeccpars2_22_(__Stack0) ->
  [__3,__2,__1 | __Stack] = __Stack0,
  [begin
@@ -810,7 +822,7 @@ yeccpars2_22_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,yeccpars2_24_/1}).
--file("src/exun_yacc.yrl", 35).
+-file("src/exun_yacc.yrl", 36).
 yeccpars2_24_(__Stack0) ->
  [__4,__3,__2,__1 | __Stack] = __Stack0,
  [begin
@@ -818,7 +830,7 @@ yeccpars2_24_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,yeccpars2_25_/1}).
--file("src/exun_yacc.yrl", 13).
+-file("src/exun_yacc.yrl", 14).
 yeccpars2_25_(__Stack0) ->
  [__3,__2,__1 | __Stack] = __Stack0,
  [begin
@@ -826,7 +838,7 @@ yeccpars2_25_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,yeccpars2_26_/1}).
--file("src/exun_yacc.yrl", 16).
+-file("src/exun_yacc.yrl", 17).
 yeccpars2_26_(__Stack0) ->
  [__3,__2,__1 | __Stack] = __Stack0,
  [begin
@@ -834,7 +846,7 @@ yeccpars2_26_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,yeccpars2_27_/1}).
--file("src/exun_yacc.yrl", 15).
+-file("src/exun_yacc.yrl", 16).
 yeccpars2_27_(__Stack0) ->
  [__3,__2,__1 | __Stack] = __Stack0,
  [begin
@@ -842,7 +854,7 @@ yeccpars2_27_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,yeccpars2_28_/1}).
--file("src/exun_yacc.yrl", 14).
+-file("src/exun_yacc.yrl", 15).
 yeccpars2_28_(__Stack0) ->
  [__3,__2,__1 | __Stack] = __Stack0,
  [begin
@@ -850,7 +862,7 @@ yeccpars2_28_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,yeccpars2_29_/1}).
--file("src/exun_yacc.yrl", 37).
+-file("src/exun_yacc.yrl", 38).
 yeccpars2_29_(__Stack0) ->
  [__3,__2,__1 | __Stack] = __Stack0,
  [begin
@@ -858,7 +870,7 @@ yeccpars2_29_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,yeccpars2_30_/1}).
--file("src/exun_yacc.yrl", 24).
+-file("src/exun_yacc.yrl", 25).
 yeccpars2_30_(__Stack0) ->
  [__2,__1 | __Stack] = __Stack0,
  [begin
@@ -866,7 +878,7 @@ yeccpars2_30_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,yeccpars2_32_/1}).
--file("src/exun_yacc.yrl", 10).
+-file("src/exun_yacc.yrl", 11).
 yeccpars2_32_(__Stack0) ->
  [__3,__2,__1 | __Stack] = __Stack0,
  [begin
@@ -874,7 +886,7 @@ yeccpars2_32_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,yeccpars2_35_/1}).
--file("src/exun_yacc.yrl", 38).
+-file("src/exun_yacc.yrl", 39).
 yeccpars2_35_(__Stack0) ->
  [__4,__3,__2,__1 | __Stack] = __Stack0,
  [begin
@@ -882,7 +894,7 @@ yeccpars2_35_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,yeccpars2_37_/1}).
--file("src/exun_yacc.yrl", 8).
+-file("src/exun_yacc.yrl", 9).
 yeccpars2_37_(__Stack0) ->
  [__3,__2,__1 | __Stack] = __Stack0,
  [begin
@@ -890,7 +902,7 @@ yeccpars2_37_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,yeccpars2_38_/1}).
--file("src/exun_yacc.yrl", 29).
+-file("src/exun_yacc.yrl", 30).
 yeccpars2_38_(__Stack0) ->
  [__2,__1 | __Stack] = __Stack0,
  [begin
@@ -898,7 +910,7 @@ yeccpars2_38_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,yeccpars2_40_/1}).
--file("src/exun_yacc.yrl", 32).
+-file("src/exun_yacc.yrl", 33).
 yeccpars2_40_(__Stack0) ->
  [__1 | __Stack] = __Stack0,
  [begin
@@ -906,7 +918,7 @@ yeccpars2_40_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,yeccpars2_42_/1}).
--file("src/exun_yacc.yrl", 30).
+-file("src/exun_yacc.yrl", 31).
 yeccpars2_42_(__Stack0) ->
  [__2,__1 | __Stack] = __Stack0,
  [begin
@@ -914,7 +926,7 @@ yeccpars2_42_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,yeccpars2_43_/1}).
--file("src/exun_yacc.yrl", 31).
+-file("src/exun_yacc.yrl", 32).
 yeccpars2_43_(__Stack0) ->
  [__3,__2,__1 | __Stack] = __Stack0,
  [begin
@@ -922,7 +934,7 @@ yeccpars2_43_(__Stack0) ->
   end | __Stack].
 
 -compile({inline,yeccpars2_45_/1}).
--file("src/exun_yacc.yrl", 33).
+-file("src/exun_yacc.yrl", 34).
 yeccpars2_45_(__Stack0) ->
  [__3,__2,__1 | __Stack] = __Stack0,
  [begin
@@ -930,4 +942,4 @@ yeccpars2_45_(__Stack0) ->
   end | __Stack].
 
 
--file("src/exun_yacc.yrl", 47).
+-file("src/exun_yacc.yrl", 48).
