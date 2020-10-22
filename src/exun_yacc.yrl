@@ -2,6 +2,7 @@ Terminals  ',' '(' ')' '/' '*' '^' '+' '-' '[' ']' '\'' '=' '$' word number.
 Nonterminals main expr uexpr variable function arg_list arguments signed_number.
 Rootsymbol main.
 Right 950 '$'.
+Left 950 '\''.
 Right 900 '^'.
 Left 800 '['.
 Left 750 '*' '/'.
