@@ -76,8 +76,12 @@ defmodule Exun.Der do
          {:suma, {:mult, der(g, x), {:fcall, "ln", [f]}}, {:mult, g, {:divi, der(f, x), f}}}
        )}
 
-  defp der({:integ, f, x}, x) do
-    f
+  defp der({:integ, f, x}, x), do: f
+
+  defp der({{:m, :suma}, lst}, x), do: {{:m, :suma}, Enum.map(lst, &der(&1, x))}
+
+  defp der(a = {{:m, :mult}, _lst}, x) do
+    der(Exun.Eq.denorm(a), x)
   end
 
   defp der(f, x) do
