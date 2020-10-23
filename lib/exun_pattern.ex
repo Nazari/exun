@@ -1,4 +1,7 @@
 defmodule Exun.Pattern do
+  import Exun.UI
+  import Exun.Eq
+
   @moduledoc """
   Match ASTs
   """
@@ -12,9 +15,10 @@ defmodule Exun.Pattern do
       Enum.each(los, fn {res, map} ->
         IO.puts("Match group #{res}")
 
-        map
-        |> Enum.each(fn {name, value} ->
-          IO.puts("  #{name}\t=> " <> Exun.UI.tostr(value))
+        Enum.each(map, fn {name, value} ->
+          n = tostr(name)
+          v = tostr(value)
+          IO.puts("  #{n}\t=> #{v}")
         end)
       end)
     else
@@ -65,6 +69,10 @@ defmodule Exun.Pattern do
   matched_defs is a map that holds definitions
   """
   def mnode(aast, expr, map) do
+    #IO.inspect(aast, label: "MNode AST")
+    #IO.inspect(expr, label: "MNode Exp")
+    #IO.inspect(map,  label: "MNode Map")
+    #IO.puts(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
     case {aast, expr} do
       # Two numbers must match exactly
       {{:numb, n}, {:numb, n}} ->
@@ -84,7 +92,7 @@ defmodule Exun.Pattern do
 
       # see minteg
       {{:integ, {:vari, name}, _var}, expr} ->
-        [checkmap(map, name, expr)]
+        [checkmap(map, {:vari, name}, expr)]
 
       # Multiple sum or product. This can produce multiple tries for matching
       # We *must* check all of them,
@@ -93,11 +101,13 @@ defmodule Exun.Pattern do
 
       # General match
       {{:vari, a}, expr} ->
-        [checkmap(map, a, expr)]
+        [checkmap(map, {:vari, a}, expr)]
 
       _ ->
         [{:ko, map}]
     end
+    #|> IO.inspect(label: "MNode Ret<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<")
+
   end
 
   @doc """
@@ -117,7 +127,6 @@ defmodule Exun.Pattern do
         unity = if op == :suma, do: {:numb, 0}, else: {:numb, 1}
 
         {{:m, op}, lste ++ List.duplicate(unity, length(lsta) - length(lste))}
-        |> IO.inspect(label: "Expanded")
       else
         east
       end
@@ -174,12 +183,12 @@ defmodule Exun.Pattern do
   integration, but if in conditions name is used without deriv, the condition will no
   be true if we can not integrate it.
   """
-  def mderiv({:deriv, {:vari, func}, {:vari, var}}, expr, map) do
-    {res, newmap} = checkmap(map, "#{func}'", expr)
+  def mderiv(dr={:deriv, {:vari, func}, {:vari, var}}, expr, map) do
+    {res, newmap} = checkmap(map, dr, expr)
 
     if res == :ok do
       integral = Exun.Collect.coll({:integ, expr, {:vari, var}})
-      [checkmap(newmap, func, integral)]
+      [checkmap(newmap, {:vari, func}, integral)]
     else
       [{:ko, map}]
     end
@@ -188,12 +197,12 @@ defmodule Exun.Pattern do
   @doc """
   Match integral, only allowed as abstract form "$f,x"
   """
-  def minteg({:integ, {:vari, n}, {:vari, var}}, expr, map) do
-    {res, newmap} = checkmap(map, "$#{n},#{var}", expr)
+  def minteg(itr={:integ, {:vari, n}, {:vari, var}}, expr, map) do
+    {res, newmap} = checkmap(map, itr, expr)
 
     if res == :ok do
       deriv = Exun.Collect.coll({:deriv, expr, {:vari, var}})
-      [checkmap(newmap, n, deriv)]
+      [checkmap(newmap, {:vari, n}, deriv)]
     else
       [{:ko, map}]
     end
@@ -202,9 +211,10 @@ defmodule Exun.Pattern do
   @doc """
   Match a function definition as matching f(x,y) <-> "x*y",
   so put in map the match f=x*y if f is not yet defined or it is
-  and equals x*y
+  and equals x*y  If we use a pattern like f(x) then x must be in the expression expr
+  in any way. If we use f(g(x)) then g(x) must be in the expression also
   """
-  def mfdef({:fcall, n1, a1}, {:fcall, n2, a2}, map) do
+  def mfdef(acall1={:fcall, _, a1}, acall2={:fcall, _, a2}, map) do
     if(length(a1) != length(a2)) do
       [{:ko, map}]
     else
@@ -212,21 +222,33 @@ defmodule Exun.Pattern do
       mlist(a1, a2, map)
       # Set fname in all matching maps
       |> Enum.map(fn {_, smap} ->
-        checkmap(smap, n1, {:vari, n2})
+        checkmap(smap, acall1, acall2)
       end)
     end
   end
 
   def mfdef({:fcall, name, args}, expr, map) do
     vie = vars_of_expr(expr)
-
     # Suppose args holds list of simple variables that *must* be used in expression
-    res =
-      Enum.reduce(args, true, fn var, res ->
-        res and var in vie
+    if Enum.all?(args, &(&1 in vie)) do
+      # args of pattern will be matched this way applying sum and product of
+      # them and try to match. Try to identify f is a huge problem. For example
+      # f(g(x),y) :: x^y+x you cannot identify g, but in
+      # f(g(x),y) :: x^2+y then g(x)=x^2 so f(g(x),y)=g(x)+y
+      # May be trying to expand_order from + and * over all arguments of f
+      # and try match each set with the expression would help
+      # Try with sum and product for now:
+      sum_try = mnode({{:m, :suma}, args}, expr, map)
+      mul_try = mnode({{:m, :mult}, args}, expr, map)
+      # And then check aginst definition of fcall, name
+      (sum_try ++ mul_try)
+      |> Enum.reject(fn {res, _map} -> res != :ok end)
+      |> Enum.map(fn {_res, map} ->
+        checkmap(map, {:fcall, name, args}, expr)
       end)
-
-    if res, do: [checkmap(map, name, expr)], else: [{:ko, map}]
+    else
+      [{:ko, map}]
+    end
   end
 
   def mlist(a1, a2, map) when is_list(a1) and is_list(a2) do
@@ -282,8 +304,8 @@ defmodule Exun.Pattern do
       {{:m, _}, lst} ->
         vars_of_expr(mapset, lst)
 
-      {:fcall, name, args} ->
-        throw("Not yet")
+      {:fcall, _name, args} ->
+        vars_of_expr(mapset, args)
 
       {:numb, _} ->
         mapset
@@ -461,13 +483,13 @@ defmodule Exun.Pattern do
   def permute(list) do
     subpermute(list)
     |> Enum.map(fn el ->
-      el
-      |> Enum.map(fn item -> if is_list(item), do: List.to_tuple(item), else: item end)
+      Enum.map(el, fn item -> if is_list(item), do: List.to_tuple(item), else: item end)
       |> single_expand_order()
     end)
     |> List.flatten()
     |> Enum.map(fn el ->
-      if is_tuple(el) and is_tuple(elem(el, 0)) do
+      # Very, very ugly code...
+      if is_tuple(el) and is_tuple(elem(el, 0)) and :m != elem(elem(el, 0), 0) do
         Tuple.to_list(el)
       else
         el
@@ -522,4 +544,26 @@ defmodule Exun.Pattern do
   end
 
   def single_expand_order(a), do: [a]
+
+  @doc """
+  Split expression in two ast, one of them without vari x
+  These two ast only can be {:m,sum} or {:m,:mult} for now
+  """
+  def split({{:m, op}, lst}, var = {:vari, _c}) do
+    {wv, wov} =
+      Enum.map(lst, fn subexp ->
+        {subexp, var in vars_of_expr(subexp)}
+      end)
+      |> Enum.reduce({[], []}, fn {subexp, res}, {withvar, withoutvar} ->
+        case res do
+          true -> {[subexp | withvar], withoutvar}
+          false -> {withvar, [subexp | withoutvar]}
+        end
+      end)
+
+    [
+      {{:m, op}, wv},
+      {{:m, op}, wov}
+    ]
+  end
 end
