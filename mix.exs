@@ -4,7 +4,7 @@ defmodule Exun.MixProject do
   def project do
     [
       app: :exun,
-      version: "0.2.1",
+      version: "0.3.0",
       elixir: "~> 1.10",
       description: descripcion(),
       start_permanent: Mix.env() == :prod,

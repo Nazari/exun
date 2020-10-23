@@ -4,7 +4,6 @@ Symbolic math library for Elixir, with unit support.
 Alpha state.
 
 TODO:
- - Multiprocess, make reductions in parallell via Tasks 
  - Temperature unit conversions
  - Summatory
  - Fractions, to avoid decimal ops
@@ -12,11 +11,13 @@ TODO:
  - Add more testing and revise docs
  
 DONE:
+ + Symbolic math pattern match expressions
  + Derivate
  + Simple integration (pol, trig, ln), miss parts and subst
  + Units (factorize, conversion, operation, user definition)
  + Context definition for vars and funcs
  + Functions and User functions  
+ + Partially implemented Multiprocess, make reductions in parallell via Tasks 
 
 run "iex -S mix" inside exun dir and type:
 ```
@@ -42,7 +43,6 @@ eval "25[Km/h]+14[myunit^2]", %{ "myunit" => "(m/s)^0.5" }
 "20.94444444444444[m/s]"
 ```
 
-
 You can put 'context' also, passing a map that defines values for variables:
 ```
 eval "(a+1)^2/b", %{"b"=>"a+1"}
@@ -52,7 +52,7 @@ eval "(a+b)^2/c", %{"a"=>"20[m]","b"=>"2[cm]","c"=>"3[s^2]"}
 "133.60013333333333[m^2/s^2]"
 ```
 
-Version 0.1.2 can derivate and support some functions (trigonometrics, hyperbolics, ln):
+Derivate and support some functions (trigonometrics, hyperbolics, ln):
 Operator ' is derivate, so "f'x" is df(x)/dx; rule "expr'var" means derivate 'expr' for 'var'. 
 ```
 eval "(1+x)^2'x"
@@ -65,7 +65,7 @@ eval "(x^2+x)'x+1"
 "2*x+2"
 ```
 
-Version 0.1.5: Define functions in context (previously only values)
+Define functions in context
 Vars and functions can be named with the same name, like in elixir, arity in a name makes it different so:
 ```
 Exun.eval "f*f(y)*f(y,3)", %{"f"=>"3", "f(x)"=>"x^2", "f(a,b)"=>"a^2+a*b+b^2"}
@@ -76,15 +76,14 @@ Exun.eval " f * f(x)'x * f(y)", %{"f"=>"3", "f(x)"=>"x^2"}
 
 ```
 
-
-Version 0.2.0 is multiprocess. Base measurement for speed will be the brutal expression:
+Multiprocess. Base measurement for speed will be the brutal expression:
 ```
 iex(5)> :timer.tc(Exun,:eval,["(g(a^b,b^a)/g(b^a,a^b))'a", %{"g(x,y)"=>"(x^y/ln(sinh(y^x))+y^tanh(x)/cos(x*y))'x'y'x"}])
 {5327979,
  "(-(-4*(-2*(-a^b^(1+a)*b^a^(1+b)/sinh(b^a^(1+b))*cosh(b^a^(1+b))*ln(b" <> ...}
  ```
 
- Version 0.2.1 can integrate simple expression, not yet implemented Parts or Subst methods. Symbol for integration is $, rule "$expr,var" means integrate 'expr' for 'var'
+ Integrate simple expression, not yet implemented Parts or Subst methods. Symbol for integration is $, rule "$expr,var" means integrate 'expr' for 'var'
 ```
 iex(1)> Exun.eval "$3*x^2+2*x+1,x"
 "x*(1+x*(1+x))"
@@ -95,6 +94,63 @@ iex(5)> Exun.eval "$sin(x),x"
 iex(6)> Exun.eval "$ln(f(x)),x"
 "-$x/f(x),x+x*ln(f(x))"
 ```
+
+Pattern Match expressions in module Pattern:
+```
+import Exun.Pattern
+
+umatch "u*v'x","x*cos(x)"
+Match group ok
+  u     => cos(x)
+  v     => 0.5*x^2
+  v'    => x
+Match group ok
+  u     => x
+  v     => sin(x)
+  v'    => cos(x)
+
+umatch("u*v'x","x")
+Match group ok
+  u     => 1
+  v     => 0.5*x^2
+  v'    => x
+Match group ok
+  u     => x
+  v     => x
+  v'    => 1
+
+umatch("g(y)+f'x","1+x+y")
+Match group ok
+  f     => x+0.5*x^2
+  f'    => x+1
+  g     => y
+Match group ok
+  f     => x+0.5*x^2
+  f'    => 1+x
+  g     => y
+Match group ok
+  f     => 0.5*x^2
+  f'    => x
+  g     => y+1
+Match group ok
+  f     => 0.5*x^2
+  f'    => x
+  g     => 1+y
+Match group ok
+  f     => x
+  f'    => 1
+  g     => y+x
+Match group ok
+  f     => x
+  f'    => 1
+  g     => x+y
+
+umatch("f(2*x)","sin(2*x)")
+Match group ok
+  f     => sin
+  x     => x
+```
+
 
 If you are interested in parsing, use 'parse' or 'eval_ast'
 ```

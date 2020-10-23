@@ -9,42 +9,14 @@ To-Do
  7. Functions! Derivate! Integrate!
 
 
-{:integ,
-    {:mult,
-        {:suma,
-            {:suma, 
-                {:vari, "x"},
-                {:mult, 
-                    {:numb, 2}, 
-                    {:divi, 
-                        {:elev, 
-                            {:vari, "x"}, 
-                            {:numb, 3}
-                        }, 
-                        {:numb, 3}
-                    }                
-                }
-            },
-            {:divi, 
-                {:elev, 
-                    {:vari, "x"}, 
-                    {:numb, 3}
-                }, 
-                {:numb, 3}
-            }
-        },
-        {:deriv,
-            {:elev, 
-                {:suma, 
-                    {:numb, 1}, 
-                    {:elev, 
-                        {:vari, "x"}, 
-                        {:numb, 2}
-                    }
-                }, 
-                {:numb, -1}
-            },
-           {:vari, "x"}
-        }
-    }
-}
+import Exun.Pattern
+import Exun
+import Exun.
+
+umatch "f(g(x))*g'x","cos(sin(x))*cos(x)"
+umatch "u*v'x","x*cos(x)"
+umatch("u*v'x","x")
+umatch("g(y)+f'x","1+x+y")
+umatch("f(x)","sin(x)")
+umatch("f(2*x)","sin(2*x)")
+
