@@ -47,6 +47,10 @@ defmodule Exun.Eq do
     end
   end
 
+  def norm({:fcall, name, args}) do
+    {:fcall, name, args |> Enum.map(&norm(&1))}
+  end
+
   def norm({op, a, b}) do
     {op, norm(a), norm(b)}
   end
