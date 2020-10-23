@@ -12,6 +12,7 @@ defmodule Exun.Eq do
   def eq(t1, t2) do
     norm(t1) == norm(t2)
   end
+
   @moduledoc """
   Compares two expressions
   """
@@ -73,9 +74,13 @@ defmodule Exun.Eq do
         List.first(lista)
 
       _ ->
-        balance(op,lista)
+        balance(op, lista)
         # |> IO.inspect(label: "Denormed :m")
     end
+  end
+
+  def denorm({:fcall, name, args}) do
+    {:fcall, name, Enum.map(args, &denorm(&1))}
   end
 
   def denorm({op, l, r}) do
@@ -106,5 +111,4 @@ defmodule Exun.Eq do
         )
     end
   end
-
 end
