@@ -20,7 +20,7 @@ defmodule Exun do
     {{:unit, {:vari, "x"}, {:elev, {:vari, "m"}, {:numb, 2}}}, %{{:vari, "x"} => {:numb, 3}}}
 
   ```
-  returns a tuple {expression, parsed_conext} where
+  returns a tuple {expression, parsed_context} where
   expression is a tuple that holds math AST and
   parsed_context is a map whith all equalities (definitions) parsed as
   "name" => expression
