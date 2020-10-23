@@ -6,15 +6,20 @@ defmodule Exun.Pattern do
   User function, try to match and prints
   """
   def umatch(taast, texpr, tconditions \\ []) do
-    match(taast, texpr, %{}, tconditions)
-    |> Enum.each(fn {res, map} ->
-      IO.puts("Match group #{res}")
+    los = match(taast, texpr, %{}, tconditions)
 
-      map
-      |> Enum.each(fn {name, value} ->
-        IO.puts("  #{name}\t=> " <> Exun.UI.tostr(value))
+    if los != [] do
+      Enum.each(los, fn {res, map} ->
+        IO.puts("Match group #{res}")
+
+        map
+        |> Enum.each(fn {name, value} ->
+          IO.puts("  #{name}\t=> " <> Exun.UI.tostr(value))
+        end)
       end)
-    end)
+    else
+      IO.puts("Cannot match")
+    end
   end
 
   def match(taast, texpr, context, tconditions \\ []) do
@@ -34,20 +39,14 @@ defmodule Exun.Pattern do
   end
 
   def match_ast(aast, expr, conditions \\ []) do
-    case mnode(aast, expr, %{}) do
-      [] ->
-        [{:nomatch, %{}}]
-
-      list_of_matches ->
-        list_of_matches
-        |> Enum.map(fn {_, map} ->
-          if check_conds(map, conditions) do
-            {:ok, map}
-          else
-            {:nocond, map}
-          end
-        end)
-    end
+    mnode(aast, expr, %{})
+    |> Enum.reject(fn {res, map} ->
+      res != :ok or map == %{}
+    end)
+    |> Enum.map(fn {:ok, map} ->
+      res = if check_conds(map, conditions), do: :ok, else: :nocond
+      {res, map}
+    end)
   end
 
   @doc """
@@ -73,7 +72,7 @@ defmodule Exun.Pattern do
 
       # Base and expon must match
       {{:elev, a, b}, {:elev, c, d}} ->
-        mpair({a, c}, {b, d}, map)
+        mlist([a, b], [c, d], map)
 
       # Function def from abstract ast match if vars are used in expr
       {a = {:fcall, _name, _args}, expr} ->
@@ -85,16 +84,16 @@ defmodule Exun.Pattern do
 
       # see minteg
       {{:integ, {:vari, name}, _var}, expr} ->
-        checkmap(map, name, expr)
+        [checkmap(map, name, expr)]
 
       # Multiple sum or product. This can produce multiple tries for matching
       # We *must* check all of them,
-      {a = {{:m, op}, _l1}, b = {{:m, op}, _l2}} ->
-        mmult(a, b, map)
+      {a = {{:m, _op}, _l1}, expr} ->
+        mmult(a, expr, map)
 
       # General match
       {{:vari, a}, expr} ->
-        checkmap(map, a, expr)
+        [checkmap(map, a, expr)]
 
       _ ->
         [{:ko, map}]
@@ -111,7 +110,18 @@ defmodule Exun.Pattern do
     # For now, try direct match; sin florituras
   """
 
-  def mmult(aast = {{:m, op}, lsta}, east = {{:m, op}, _lste}, map) do
+  def mmult(aast = {{:m, op}, lsta}, east = {{:m, op}, lste}, map) do
+    # if more left matchin elements than right, complete right with unity elements
+    east =
+      if length(lsta) > length(lste) do
+        unity = if op == :suma, do: {:numb, 0}, else: {:numb, 1}
+
+        {{:m, op}, lste ++ List.duplicate(unity, length(lsta) - length(lste))}
+        |> IO.inspect(label: "Expanded")
+      else
+        east
+      end
+
     # Get n sets (size of abstract list) from a list of m size (expression)
     combin(aast, east)
     # |> IO.inspect(label: "Combined")
@@ -119,7 +129,7 @@ defmodule Exun.Pattern do
     # Elevate list of a single element to the element [e] -> e
     |> Enum.map(fn sl ->
       Enum.map(sl, fn el ->
-        if length(el) == 1, do: List.first(el), else: el
+        if is_list(el) and length(el) == 1, do: List.first(el), else: el
       end)
     end)
     # |> IO.inspect(label: "Elevate list of single element")
@@ -153,90 +163,10 @@ defmodule Exun.Pattern do
     |> Enum.reject(fn {res, _} -> res == :ko end)
   end
 
-  @doc """
-  take a list an generate all possible list varying order of elements
-  list can be of tye [a, [b,c],d] but b and c cannot be lists
-  must produce
-  [
-    [a,[b,c],d], [a,[c,b],d],
-    [a,d,[b,c]], [a,d,[c,b]],
-    [d,a,[b,c]], [d,a,[c,b]],
-    [[b,c],a,d], [[b,c],d,a],
-    [[c,b],a,d], [[c,b],d,a],
-  ]
-  """
-  def expand_order([a]), do: [a]
-
-  def expand_order(list) when is_list(list) do
-    list
-    |> Enum.map(&single_expand_order(&1))
-    |> permute()
+  def mmult(aast = {{:m, op}, _lsta}, expr, map) do
+    unity = if op == :suma, do: {:numb, 0}, else: {:numb, 1}
+    mmult(aast, {{:m, op}, [expr, unity]}, map)
   end
-
-  def permute(list) do
-    subpermute(list)
-    |> Enum.map(fn el ->
-      el
-      |> Enum.map(fn item -> if is_list(item), do: List.to_tuple(item), else: item end)
-      |> single_expand_order()
-    end)
-    |> List.flatten()
-    |> Enum.map(fn el ->
-      if is_tuple(el) and is_tuple(elem(el, 0)) do
-        Tuple.to_list(el)
-      else
-        el
-      end
-    end)
-    |> Enum.chunk_every(length(list))
-  end
-
-  @doc """
-  Expand sublists taking one lement from each and building a new list
-  [[a], [b,c]] -> [[a,b],[a,c]]
-  [[a,b]] -> [a,b]
-  """
-  def subpermute([a]), do: a
-
-  def subpermute(list) when is_list(list) do
-    sizes = Enum.map(list, &length(&1))
-    cycles = Enum.reduce(sizes, 1, &(&1 * &2))
-
-    for n <- 0..(cycles - 1) do
-      mklist_byindex(list, mknumber(n, sizes))
-    end
-  end
-
-  def mknumber(n, [_a]), do: [n]
-
-  def mknumber(n, [h | t]) do
-    [rem(n, h)] ++ mknumber(floor(n / h), t)
-  end
-
-  def mklist_byindex(list, indexes) do
-    Enum.zip([list, indexes])
-    |> Enum.map(fn {sublist, index} ->
-      Enum.at(sublist, index)
-    end)
-  end
-
-  def single_expand_order(list) when is_list(list) do
-    case list do
-      [a, b] ->
-        [[a, b], [b, a]]
-
-      _ ->
-        for item <- list do
-          remain = List.delete(list, item)
-          seo_remain = single_expand_order(remain)
-          Enum.map(seo_remain, &([item] ++ &1))
-        end
-        |> List.flatten()
-        |> Enum.chunk_every(length(list))
-    end
-  end
-
-  def single_expand_order(a), do: [a]
 
   @doc """
   deriv match in two situations: if name is yet in map, its definition must be equal
@@ -245,13 +175,27 @@ defmodule Exun.Pattern do
   be true if we can not integrate it.
   """
   def mderiv({:deriv, {:vari, func}, {:vari, var}}, expr, map) do
-    case checkmap(map, func <> "'" <> var, expr) do
-      [{:ok, map}] ->
-        integral = Exun.Collect.coll({:integ, expr, {:vari, var}})
-        checkmap(map, func, integral)
+    {res, newmap} = checkmap(map, "#{func}'", expr)
 
-      a ->
-        a
+    if res == :ok do
+      integral = Exun.Collect.coll({:integ, expr, {:vari, var}})
+      [checkmap(newmap, func, integral)]
+    else
+      [{:ko, map}]
+    end
+  end
+
+  @doc """
+  Match integral, only allowed as abstract form "$f,x"
+  """
+  def minteg({:integ, {:vari, n}, {:vari, var}}, expr, map) do
+    {res, newmap} = checkmap(map, "$#{n},#{var}", expr)
+
+    if res == :ok do
+      deriv = Exun.Collect.coll({:deriv, expr, {:vari, var}})
+      [checkmap(newmap, n, deriv)]
+    else
+      [{:ko, map}]
     end
   end
 
@@ -260,51 +204,56 @@ defmodule Exun.Pattern do
   so put in map the match f=x*y if f is not yet defined or it is
   and equals x*y
   """
+  def mfdef({:fcall, n1, a1}, {:fcall, n2, a2}, map) do
+    if(length(a1) != length(a2)) do
+      [{:ko, map}]
+    else
+      # Try match arguments in same order
+      mlist(a1, a2, map)
+      # Set fname in all matching maps
+      |> Enum.map(fn {_, smap} ->
+        checkmap(smap, n1, {:vari, n2})
+      end)
+    end
+  end
+
   def mfdef({:fcall, name, args}, expr, map) do
     vie = vars_of_expr(expr)
 
-    # Suppose args holds list of simple variables that *must* be uses in expression
+    # Suppose args holds list of simple variables that *must* be used in expression
     res =
       Enum.reduce(args, true, fn var, res ->
         res and var in vie
       end)
 
-    if res, do: checkmap(map, name, expr), else: [{:ko, map}]
+    if res, do: [checkmap(map, name, expr)], else: [{:ko, map}]
   end
 
-  # May be the order is important
-  def mpair({a1, e1}, {a2, e2}, map) do
-    mpair_uni({a1, e1}, {a2, e2}, map) ++
-      mpair_uni({a2, e2}, {a1, e1}, map)
-  end
-
-  def mpair_uni({a1, e1}, {a2, e2}, map) do
-    mnode(a1, e1, map)
-    |> Enum.reduce([], fn {res, rmap}, acc ->
-      case res do
-        :ok ->
-          mnode(a2, e2, rmap)
-          |> Enum.reduce(acc, fn {res2, rmap2}, acc2 ->
-            [{res2, rmap2} | acc2]
-          end)
-
-        :ko ->
-          acc
-      end
+  def mlist(a1, a2, map) when is_list(a1) and is_list(a2) do
+    List.zip([a1, a2])
+    |> Enum.reduce([{:ok, map}], fn {ast, exp}, lssol ->
+      Enum.reduce(lssol, [], fn {res, smap}, acu ->
+        if res == :ok do
+          mnode(ast, exp, smap) ++ acu
+        else
+          acu
+        end
+      end)
     end)
+    |> Enum.reject(fn {a, _} -> a != :ok end)
   end
 
   def checkmap(map, key, val) do
     case Map.fetch(map, key) do
       {:ok, mapval} ->
         if Exun.Eq.eq(val, mapval) do
-          [{:ok, map}]
+          {:ok, map}
         else
-          [{:ko, map}]
+          {:ko, map}
         end
 
       _ ->
-        [{:ok, Map.put(map, key, val)}]
+        {:ok, Map.put(map, key, val)}
     end
   end
 
@@ -488,4 +437,89 @@ defmodule Exun.Pattern do
   end
 
   def allones?(list), do: Enum.reduce(list, true, &(&2 and &1 == 1))
+
+  @doc """
+  take a list an generate all possible list varying order of elements
+  list can be of tye [a, [b,c],d] but b and c cannot be lists
+  must produce
+  [
+    [a,[b,c],d], [a,[c,b],d],
+    [a,d,[b,c]], [a,d,[c,b]],
+    [d,a,[b,c]], [d,a,[c,b]],
+    [[b,c],a,d], [[b,c],d,a],
+    [[c,b],a,d], [[c,b],d,a],
+  ]
+  """
+  def expand_order([a]), do: [a]
+
+  def expand_order(list) when is_list(list) do
+    list
+    |> Enum.map(&single_expand_order(&1))
+    |> permute()
+  end
+
+  def permute(list) do
+    subpermute(list)
+    |> Enum.map(fn el ->
+      el
+      |> Enum.map(fn item -> if is_list(item), do: List.to_tuple(item), else: item end)
+      |> single_expand_order()
+    end)
+    |> List.flatten()
+    |> Enum.map(fn el ->
+      if is_tuple(el) and is_tuple(elem(el, 0)) do
+        Tuple.to_list(el)
+      else
+        el
+      end
+    end)
+    |> Enum.chunk_every(length(list))
+  end
+
+  @doc """
+  Expand sublists taking one lement from each and building a new list
+  [[a], [b,c]] -> [[a,b],[a,c]]
+  [[a,b]] -> [a,b]
+  """
+  def subpermute([a]), do: a
+
+  def subpermute(list) when is_list(list) do
+    sizes = Enum.map(list, &length(&1))
+    cycles = Enum.reduce(sizes, 1, &(&1 * &2))
+
+    for n <- 0..(cycles - 1) do
+      mklist_byindex(list, mknumber(n, sizes))
+    end
+  end
+
+  def mknumber(n, [_a]), do: [n]
+
+  def mknumber(n, [h | t]) do
+    [rem(n, h)] ++ mknumber(floor(n / h), t)
+  end
+
+  def mklist_byindex(list, indexes) do
+    Enum.zip([list, indexes])
+    |> Enum.map(fn {sublist, index} ->
+      Enum.at(sublist, index)
+    end)
+  end
+
+  def single_expand_order(list) when is_list(list) do
+    case list do
+      [a, b] ->
+        [[a, b], [b, a]]
+
+      _ ->
+        for item <- list do
+          remain = List.delete(list, item)
+          seo_remain = single_expand_order(remain)
+          Enum.map(seo_remain, &([item] ++ &1))
+        end
+        |> List.flatten()
+        |> Enum.chunk_every(length(list))
+    end
+  end
+
+  def single_expand_order(a), do: [a]
 end
