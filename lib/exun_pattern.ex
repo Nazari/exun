@@ -1,6 +1,5 @@
 defmodule Exun.Pattern do
   import Exun.UI
-  import Exun.Eq
 
   @moduledoc """
   Match ASTs
@@ -69,10 +68,10 @@ defmodule Exun.Pattern do
   matched_defs is a map that holds definitions
   """
   def mnode(aast, expr, map) do
-    #IO.inspect(aast, label: "MNode AST")
-    #IO.inspect(expr, label: "MNode Exp")
-    #IO.inspect(map,  label: "MNode Map")
-    #IO.puts(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+    # IO.inspect(aast, label: "MNode AST")
+    # IO.inspect(expr, label: "MNode Exp")
+    # IO.inspect(map,  label: "MNode Map")
+    # IO.puts(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
     case {aast, expr} do
       # Two numbers must match exactly
       {{:numb, n}, {:numb, n}} ->
@@ -106,8 +105,8 @@ defmodule Exun.Pattern do
       _ ->
         [{:ko, map}]
     end
-    #|> IO.inspect(label: "MNode Ret<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<")
 
+    # |> IO.inspect(label: "MNode Ret<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<")
   end
 
   @doc """
@@ -183,7 +182,7 @@ defmodule Exun.Pattern do
   integration, but if in conditions name is used without deriv, the condition will no
   be true if we can not integrate it.
   """
-  def mderiv(dr={:deriv, {:vari, func}, {:vari, var}}, expr, map) do
+  def mderiv(dr = {:deriv, {:vari, func}, {:vari, var}}, expr, map) do
     {res, newmap} = checkmap(map, dr, expr)
 
     if res == :ok do
@@ -197,7 +196,7 @@ defmodule Exun.Pattern do
   @doc """
   Match integral, only allowed as abstract form "$f,x"
   """
-  def minteg(itr={:integ, {:vari, n}, {:vari, var}}, expr, map) do
+  def minteg(itr = {:integ, {:vari, n}, {:vari, var}}, expr, map) do
     {res, newmap} = checkmap(map, itr, expr)
 
     if res == :ok do
@@ -214,7 +213,7 @@ defmodule Exun.Pattern do
   and equals x*y  If we use a pattern like f(x) then x must be in the expression expr
   in any way. If we use f(g(x)) then g(x) must be in the expression also
   """
-  def mfdef(acall1={:fcall, _, a1}, acall2={:fcall, _, a2}, map) do
+  def mfdef(acall1 = {:fcall, _, a1}, acall2 = {:fcall, _, a2}, map) do
     if(length(a1) != length(a2)) do
       [{:ko, map}]
     else
@@ -279,14 +278,33 @@ defmodule Exun.Pattern do
     end
   end
 
+  @doc """
+  TODO: External testing, function roottype returns an atom with the type of the
+  root tuple of expression. If you want to check if an expression is a symbolic
+  integral, roottype(expr) must not be :integ
+  For now, it returns true if there is not :integ inside ast
+  """
   def check_conds(map, cnd) do
-    Enum.reduce(cnd, true, fn el, ac ->
-      ac and check_cond(map, el)
-    end)
+    if cnd == [],
+      do: true,
+      else:
+        cnd
+        # |> IO.inspect(label: "conditions")
+        |> Enum.map(fn exp ->
+          symbinteg(Exun.ast_eval(exp, map))
+          # |> IO.inspect(label: "In cond")
+        end)
+        |> Enum.all?(& &1)
   end
 
-  def check_cond(map, cnd) do
-    true
+  defp symbinteg(ast) do
+    case ast do
+      {:integ, _, _} -> true
+      {:fcall, _, args} -> Enum.reduce(args, false, fn el, ac -> symbinteg(el) or ac end)
+      {{:m, _}, args} -> Enum.reduce(args, false, fn el, ac -> symbinteg(el) or ac end)
+      {_, l, r} -> symbinteg(l) or symbinteg(r)
+      _ -> false
+    end
   end
 
   @doc """

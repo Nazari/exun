@@ -63,7 +63,10 @@ defmodule Exun do
   def eval_ast(txt, context \\ %{}) do
     {ast, pctx} = parse(txt, context)
     # |> IO.inspect(label: "ast and pctx")
+    ast_eval(ast,pctx)
+  end
 
+  def ast_eval(ast, pctx \\ %{}) do
     case ast do
       {:error, {line, _app, list}} ->
         throw("Error line:#{line} #{list}")
