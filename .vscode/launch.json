@@ -6,10 +6,10 @@
     "configurations": [
         {
             "type": "mix_task",
-            "name": "mix Debug",
+            "name": "mix debg",
+            "task": "run",
             "request": "launch",
             "projectDir": "${workspaceRoot}",
-            "task": "run",
         }
     ]
 }
