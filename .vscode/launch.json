@@ -6,14 +6,10 @@
     "configurations": [
         {
             "type": "mix_task",
-            "name": "Call Exun.debug()",
+            "name": "mix Debug",
             "request": "launch",
             "projectDir": "${workspaceRoot}",
             "task": "run",
-            "taskArgs": [
-                "--eval",
-                "\"Exun.debug()\""
-            ]
         }
     ]
 }
