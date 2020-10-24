@@ -11,14 +11,4 @@ To-Do
 
 import Exun.Pattern
 import Exun
-umatch "f(g)*g'x","cos(sin(x))*cos(x)"
-umatch "h+f*g","sin(x)/cos(x)"
-umatch "u*v'x","x*2*cos(x^2)"
-umatch("u*v'x","x")
-umatch("g(y)+f'x","1+x+y")
-umatch("f(x)","sin(x)")
-umatch("f(2*x)","sin(2*x)")
-
-aast = {:fcall, "f", [{:fcall, "g", [vari: "x"]}]}
-expr = {:fcall, "cos", [{:fcall, "sin", [vari: "x"]}]}
-map = %{"g" => {:fcall, "sin", [vari: "x"]}, "g'" => {:fcall, "cos", [vari: "x"]}}
+umatch "f * f'x", "cos(x)/sin(x)*ln(sin(x))"
