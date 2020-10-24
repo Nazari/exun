@@ -291,7 +291,11 @@ defmodule Exun.Pattern do
         cnd
         # |> IO.inspect(label: "conditions")
         |> Enum.map(fn exp ->
-          symbinteg(Exun.ast_eval(exp, map))
+          symbinteg(
+            Exun.ast_eval(exp, map)
+            |> IO.inspect(label: "evaluted cond")
+          )
+
           # |> IO.inspect(label: "In cond")
         end)
         |> Enum.all?(& &1)
@@ -299,11 +303,11 @@ defmodule Exun.Pattern do
 
   defp symbinteg(ast) do
     case ast do
-      {:integ, _, _} -> true
-      {:fcall, _, args} -> Enum.reduce(args, false, fn el, ac -> symbinteg(el) or ac end)
-      {{:m, _}, args} -> Enum.reduce(args, false, fn el, ac -> symbinteg(el) or ac end)
-      {_, l, r} -> symbinteg(l) or symbinteg(r)
-      _ -> false
+      {:integ, _, _} -> false
+      {:fcall, _, args} -> Enum.reduce(args, true, fn el, ac -> symbinteg(el) and ac end)
+      {{:m, _}, args} -> Enum.reduce(args, false, fn el, ac -> symbinteg(el) and ac end)
+      {_, l, r} -> symbinteg(l) and symbinteg(r)
+      _ -> true
     end
   end
 
