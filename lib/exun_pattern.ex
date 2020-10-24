@@ -1,5 +1,6 @@
 defmodule Exun.Pattern do
   import Exun.UI
+  import Exun.Eq
 
   @moduledoc """
   Match ASTs
@@ -11,7 +12,8 @@ defmodule Exun.Pattern do
     los = match(taast, texpr, %{}, tconditions)
 
     if los != [] do
-      Enum.each(los, fn {res, map} ->
+      los
+      |> Enum.each(fn {res, map} ->
         IO.puts("Match group #{res}")
 
         Enum.each(map, fn {name, value} ->
@@ -39,6 +41,24 @@ defmodule Exun.Pattern do
       end)
 
     match_ast(aast, expr, conditions)
+    |> remove_dups()
+  end
+
+  def remove_dups(los) do
+    Enum.map(los, fn {:ok, sol} ->
+      Enum.map(sol, fn {k, v} ->
+        {Exun.Eq.norm(k), Exun.Eq.norm(v)}
+      end)
+    end)
+    |> Enum.reduce(MapSet.new(), fn m, ms ->
+      MapSet.put(
+        ms,
+        Enum.map(m, fn {k, v} ->
+          {norm(k), norm(v)}
+        end)
+      )
+    end)
+    |> Enum.map(&{:ok, &1})
   end
 
   def match_ast(aast, expr, conditions \\ []) do
@@ -68,9 +88,9 @@ defmodule Exun.Pattern do
   matched_defs is a map that holds definitions
   """
   def mnode(aast, expr, map) do
-    # IO.inspect(aast, label: "MNode AST")
-    # IO.inspect(expr, label: "MNode Exp")
-    # IO.inspect(map,  label: "MNode Map")
+    # IO.inspect(aast, label: "aast = ")
+    # IO.inspect(expr, label: "expr = ")
+    # IO.inspect(map,  label: "map = ")
     # IO.puts(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
     case {aast, expr} do
       # Two numbers must match exactly
@@ -105,6 +125,8 @@ defmodule Exun.Pattern do
       _ ->
         [{:ko, map}]
     end
+    # Eliminate ko
+    |> Enum.reject(fn {res, _} -> res == :ko end)
 
     # |> IO.inspect(label: "MNode Ret<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<")
   end
@@ -184,12 +206,13 @@ defmodule Exun.Pattern do
   """
   def mderiv(dr = {:deriv, {:vari, func}, {:vari, var}}, expr, map) do
     {res, newmap} = checkmap(map, dr, expr)
+    # |> IO.inspect(label: "Deriv checkmap")
 
-    if res == :ok do
+    if res == :ko do
       integral = Exun.Collect.coll({:integ, expr, {:vari, var}})
       [checkmap(newmap, {:vari, func}, integral)]
     else
-      [{:ko, map}]
+      [{res, newmap}]
     end
   end
 
@@ -261,7 +284,7 @@ defmodule Exun.Pattern do
         end
       end)
     end)
-    |> Enum.reject(fn {a, _} -> a != :ok end)
+    |> Enum.reject(fn {a, _} -> a == :ko end)
   end
 
   def checkmap(map, key, val) do
