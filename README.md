@@ -1,7 +1,7 @@
 # Exun
 
 Symbolic math library for Elixir, with unit support.
-Alpha state.
+Alpha state, please provide feedback, this lib has to be tested deeply.
 
 TODO:
  - Temperature unit conversions

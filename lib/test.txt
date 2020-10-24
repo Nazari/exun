@@ -12,3 +12,9 @@ To-Do
 import Exun.Pattern
 import Exun
 umatch "f * f'x", "cos(x)/sin(x)*ln(sin(x))"
+
+umatch "f*f'x","2*x"
+umatch "g(y)+f'x","1+x+y"
+
+
+umatch "f * f'x", "cos(x)/sin(x)*ln(sin(x))"

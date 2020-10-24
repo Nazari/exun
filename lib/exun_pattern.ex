@@ -3,7 +3,46 @@ defmodule Exun.Pattern do
   import Exun.Eq
 
   @moduledoc """
-  Match ASTs
+  Match ASTs. Functions umatch and match try to match patter with a real expression. Rules for matching, by example:
+  - umatch "f", "(any valid expression)"
+
+   Will always match f => expression
+
+  Ex: umatch "f","x^2+y"
+
+  - umatch "f'x", "exp"
+
+  Match f'x as exp AND f as $exp,x
+
+  Ex: umatch "f'x", "-cos(x)"
+
+  - umatch "f<op>g", "exp"
+
+  Will tray to match f and g against exp using <op>=*,+,-,/,^ on any possible combination
+
+  Ex: umatch "a+b", "2x^2+3"
+
+  - umatch "f*f'x", "exp"
+
+  Will match if can find a product on exp of the form f * d(f)/dx
+
+  Ex: umatch "sin(x)*cos(x)"
+
+  - umatch "f*$f,x"
+
+  Will match if can find a product on exp of the form f * integ(f,x)
+
+  - umatch "f(x,y)", "exp"
+
+  Will match if exp is a function call and can match x and y with its arguments.
+
+  Ex: umatch "f(a,b)", "function(2*x,y^3)"
+
+  - umatch "u*v'x","sin(x)*cos(x)", ["v*u'x"]
+
+  Will match u and v against "sin(x)*cos(x)" and checks that condition "v*u'x" does not contains a symbolic integral. This
+  case is used for integrate by parts: $u*v'x,x = u*v - $v*u'x,x
+
   """
   @doc """
   User function, try to match and prints
@@ -88,10 +127,11 @@ defmodule Exun.Pattern do
   matched_defs is a map that holds definitions
   """
   def mnode(aast, expr, map) do
-    # IO.inspect(aast, label: "aast = ")
-    # IO.inspect(expr, label: "expr = ")
-    # IO.inspect(map,  label: "map = ")
-    # IO.puts(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+    #IO.inspect(aast, label: "aast = ")
+    #IO.inspect(expr, label: "expr = ")
+    #IO.inspect(map, label: "map = ")
+    #IO.puts(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+
     case {aast, expr} do
       # Two numbers must match exactly
       {{:numb, n}, {:numb, n}} ->
@@ -127,8 +167,7 @@ defmodule Exun.Pattern do
     end
     # Eliminate ko
     |> Enum.reject(fn {res, _} -> res == :ko end)
-
-    # |> IO.inspect(label: "MNode Ret<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<")
+    #|> IO.inspect(label: "MNode Ret<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<")
   end
 
   @doc """
@@ -204,29 +243,42 @@ defmodule Exun.Pattern do
   integration, but if in conditions name is used without deriv, the condition will no
   be true if we can not integrate it.
   """
-  def mderiv(dr = {:deriv, {:vari, func}, {:vari, var}}, expr, map) do
-    {res, newmap} = checkmap(map, dr, expr)
-    # |> IO.inspect(label: "Deriv checkmap")
+  def mderiv(dr = {:deriv, ef = {:vari, _func}, {:vari, var}}, expr, map) do
+    case Map.fetch(map, ef) do
+      {:ok, funcvalue} ->
+        derivate = Exun.Collect.coll({:deriv, funcvalue, {:vari, var}})
+        if eq(derivate, expr), do: [{:ok, map}], else: [{:ko, map}]
 
-    if res == :ko do
-      integral = Exun.Collect.coll({:integ, expr, {:vari, var}})
-      [checkmap(newmap, {:vari, func}, integral)]
-    else
-      [{res, newmap}]
+      :error ->
+        {res, newmap} = checkmap(map, dr, expr)
+
+        if res == :ok do
+          integral = Exun.Collect.coll({:integ, expr, {:vari, var}})
+          [checkmap(newmap, ef, integral)]
+        else
+          [{:ko, map}]
+        end
     end
   end
 
   @doc """
   Match integral, only allowed as abstract form "$f,x"
   """
-  def minteg(itr = {:integ, {:vari, n}, {:vari, var}}, expr, map) do
-    {res, newmap} = checkmap(map, itr, expr)
+  def minteg(itr = {:integ, ef = {:vari, func}, {:vari, var}}, expr, map) do
+    case Map.fetch(map, ef) do
+      {:ok, funcvalue} ->
+        integral = Exun.Collect.coll({:integ, funcvalue, {:vari, var}})
+        if eq(integral, expr), do: [{:ok, map}], else: [{:ko, map}]
 
-    if res == :ok do
-      deriv = Exun.Collect.coll({:deriv, expr, {:vari, var}})
-      [checkmap(newmap, {:vari, n}, deriv)]
-    else
-      [{:ko, map}]
+      :error ->
+        {res, newmap} = checkmap(map, itr, expr)
+
+        if res == :ok do
+          deriv = Exun.Collect.coll({:deriv, expr, {:vari, var}})
+          [checkmap(newmap, {:vari, func}, deriv)]
+        else
+          [{:ko, map}]
+        end
     end
   end
 
