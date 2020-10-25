@@ -116,7 +116,9 @@ defmodule ExunTest do
       assert name <> "(x)" == result_deriv
     end)
   end
+
   import Exun.Pattern
+
   test "Patterns 01" do
     assert match("f(g)*g'x", "cos(sin(x))*cos(x)", %{}) == [
              ok: %{
@@ -131,14 +133,14 @@ defmodule ExunTest do
     assert(
       match("h+f*g", "sin(x)/cos(x)", %{}) == [
         ok: %{
-          {:vari, "f"} => {:fcall, "sin", [vari: "x"]},
-          {:vari, "g"} => {:elev, {:fcall, "cos", [vari: "x"]}, {:numb, -1}},
-          {:vari, "h"} => {:numb, 0}
-        },
-        ok: %{
-          {:vari, "f"} => {:elev, {:fcall, "cos", [vari: "x"]}, {:numb, -1}},
-          {:vari, "g"} => {:fcall, "sin", [vari: "x"]},
-          {:vari, "h"} => {:numb, 0}
+          {:vari, "f"} => {:numb, 0},
+          {:vari, "g"} => {:numb, 1},
+          {:vari, "h"} =>
+            {{:m, :mult},
+             [
+               {:elev, {:fcall, "cos", [vari: "x"]}, {:numb, -1}},
+               {:fcall, "sin", [vari: "x"]}
+             ]}
         },
         ok: %{
           {:vari, "f"} => {:numb, 1},
@@ -151,14 +153,14 @@ defmodule ExunTest do
              ]}
         },
         ok: %{
-          {:vari, "f"} => {:numb, 0},
-          {:vari, "g"} => {:numb, 1},
-          {:vari, "h"} =>
-            {{:m, :mult},
-             [
-               {:elev, {:fcall, "cos", [vari: "x"]}, {:numb, -1}},
-               {:fcall, "sin", [vari: "x"]}
-             ]}
+          {:vari, "f"} => {:elev, {:fcall, "cos", [vari: "x"]}, {:numb, -1}},
+          {:vari, "g"} => {:fcall, "sin", [vari: "x"]},
+          {:vari, "h"} => {:numb, 0}
+        },
+        ok: %{
+          {:vari, "f"} => {:fcall, "sin", [vari: "x"]},
+          {:vari, "g"} => {:elev, {:fcall, "cos", [vari: "x"]}, {:numb, -1}},
+          {:vari, "h"} => {:numb, 0}
         }
       ]
     )
@@ -167,14 +169,14 @@ defmodule ExunTest do
   test "Patterns 03" do
     assert match("u*v'x", "x*cos(x)", %{}) == [
              ok: %{
-               {:vari, "u"} => {:fcall, "cos", [vari: "x"]},
-               {:vari, "v"} => {:mult, {:numb, 0.5}, {:elev, {:vari, "x"}, {:numb, 2}}},
-               {:deriv, {:vari, "v"}, {:vari, "x"}} => {:vari, "x"}
-             },
-             ok: %{
                {:vari, "u"} => {:vari, "x"},
                {:vari, "v"} => {:fcall, "sin", [vari: "x"]},
                {:deriv, {:vari, "v"}, {:vari, "x"}} => {:fcall, "cos", [vari: "x"]}
+             },
+             ok: %{
+               {:vari, "u"} => {:fcall, "cos", [vari: "x"]},
+               {:vari, "v"} => {:mult, {:numb, 0.5}, {:elev, {:vari, "x"}, {:numb, 2}}},
+               {:deriv, {:vari, "v"}, {:vari, "x"}} => {:vari, "x"}
              }
            ]
   end
@@ -197,108 +199,22 @@ defmodule ExunTest do
   test "Patterns 05" do
     assert match("g(y)+f'x", "1+x+y", %{}) == [
              ok: %{
-               {:vari, "f"} =>
-                 {:suma, {:vari, "x"}, {:mult, {:numb, 0.5}, {:elev, {:vari, "x"}, {:numb, 2}}}},
-               {:vari, "y"} => {:numb, 0},
-               {:deriv, {:vari, "f"}, {:vari, "x"}} => {{:m, :suma}, [vari: "x", numb: 1]},
-               {:fcall, "g", [vari: "y"]} => {:vari, "y"}
-             },
-             ok: %{
-               {:vari, "f"} =>
-                 {:suma, {:vari, "x"}, {:mult, {:numb, 0.5}, {:elev, {:vari, "x"}, {:numb, 2}}}},
-               {:vari, "y"} => {:vari, "y"},
-               {:deriv, {:vari, "f"}, {:vari, "x"}} => {{:m, :suma}, [vari: "x", numb: 1]},
-               {:fcall, "g", [vari: "y"]} => {:vari, "y"}
-             },
-             ok: %{
-               {:vari, "f"} =>
-                 {:suma, {:vari, "x"}, {:mult, {:numb, 0.5}, {:elev, {:vari, "x"}, {:numb, 2}}}},
+               {:vari, "f"} => {:vari, "x"},
                {:vari, "y"} => {:numb, 1},
-               {:deriv, {:vari, "f"}, {:vari, "x"}} => {{:m, :suma}, [vari: "x", numb: 1]},
-               {:fcall, "g", [vari: "y"]} => {:vari, "y"}
+               {:deriv, {:vari, "f"}, {:vari, "x"}} => {:numb, 1},
+               {:fcall, "g", [vari: "y"]} => {{:m, :suma}, [vari: "x", vari: "y"]}
              },
              ok: %{
-               {:vari, "f"} =>
-                 {:suma, {:vari, "x"}, {:mult, {:numb, 0.5}, {:elev, {:vari, "x"}, {:numb, 2}}}},
-               {:vari, "y"} => {:vari, "y"},
-               {:deriv, {:vari, "f"}, {:vari, "x"}} => {{:m, :suma}, [vari: "x", numb: 1]},
-               {:fcall, "g", [vari: "y"]} => {:vari, "y"}
-             },
-             ok: %{
-               {:vari, "f"} =>
-                 {:suma, {:vari, "x"}, {:mult, {:numb, 0.5}, {:elev, {:vari, "x"}, {:numb, 2}}}},
-               {:vari, "y"} => {:numb, 0},
-               {:deriv, {:vari, "f"}, {:vari, "x"}} => {{:m, :suma}, [numb: 1, vari: "x"]},
-               {:fcall, "g", [vari: "y"]} => {:vari, "y"}
-             },
-             ok: %{
-               {:vari, "f"} =>
-                 {:suma, {:vari, "x"}, {:mult, {:numb, 0.5}, {:elev, {:vari, "x"}, {:numb, 2}}}},
-               {:vari, "y"} => {:vari, "y"},
-               {:deriv, {:vari, "f"}, {:vari, "x"}} => {{:m, :suma}, [numb: 1, vari: "x"]},
-               {:fcall, "g", [vari: "y"]} => {:vari, "y"}
-             },
-             ok: %{
-               {:vari, "f"} =>
-                 {:suma, {:vari, "x"}, {:mult, {:numb, 0.5}, {:elev, {:vari, "x"}, {:numb, 2}}}},
+               {:vari, "f"} => {:vari, "x"},
                {:vari, "y"} => {:numb, 1},
-               {:deriv, {:vari, "f"}, {:vari, "x"}} => {{:m, :suma}, [numb: 1, vari: "x"]},
-               {:fcall, "g", [vari: "y"]} => {:vari, "y"}
+               {:deriv, {:vari, "f"}, {:vari, "x"}} => {:numb, 1},
+               {:fcall, "g", [vari: "y"]} => {{:m, :suma}, [vari: "y", vari: "x"]}
              },
              ok: %{
-               {:vari, "f"} =>
-                 {:suma, {:vari, "x"}, {:mult, {:numb, 0.5}, {:elev, {:vari, "x"}, {:numb, 2}}}},
-               {:vari, "y"} => {:vari, "y"},
-               {:deriv, {:vari, "f"}, {:vari, "x"}} => {{:m, :suma}, [numb: 1, vari: "x"]},
-               {:fcall, "g", [vari: "y"]} => {:vari, "y"}
-             },
-             ok: %{
-               {:vari, "f"} => {:mult, {:numb, 0.5}, {:elev, {:vari, "x"}, {:numb, 2}}},
-               {:vari, "y"} => {:numb, 1},
-               {:deriv, {:vari, "f"}, {:vari, "x"}} => {:vari, "x"},
-               {:fcall, "g", [vari: "y"]} => {{:m, :suma}, [vari: "y", numb: 1]}
-             },
-             ok: %{
-               {:vari, "f"} => {:mult, {:numb, 0.5}, {:elev, {:vari, "x"}, {:numb, 2}}},
-               {:vari, "y"} => {:vari, "y"},
-               {:deriv, {:vari, "f"}, {:vari, "x"}} => {:vari, "x"},
-               {:fcall, "g", [vari: "y"]} => {{:m, :suma}, [vari: "y", numb: 1]}
-             },
-             ok: %{
-               {:vari, "f"} => {:mult, {:numb, 0.5}, {:elev, {:vari, "x"}, {:numb, 2}}},
-               {:vari, "y"} => {:numb, 1},
-               {:deriv, {:vari, "f"}, {:vari, "x"}} => {:vari, "x"},
-               {:fcall, "g", [vari: "y"]} => {{:m, :suma}, [vari: "y", numb: 1]}
-             },
-             ok: %{
-               {:vari, "f"} => {:mult, {:numb, 0.5}, {:elev, {:vari, "x"}, {:numb, 2}}},
-               {:vari, "y"} => {{:m, :suma}, [vari: "y", numb: 1]},
-               {:deriv, {:vari, "f"}, {:vari, "x"}} => {:vari, "x"},
-               {:fcall, "g", [vari: "y"]} => {{:m, :suma}, [vari: "y", numb: 1]}
-             },
-             ok: %{
-               {:vari, "f"} => {:mult, {:numb, 0.5}, {:elev, {:vari, "x"}, {:numb, 2}}},
-               {:vari, "y"} => {:vari, "y"},
-               {:deriv, {:vari, "f"}, {:vari, "x"}} => {:vari, "x"},
-               {:fcall, "g", [vari: "y"]} => {{:m, :suma}, [numb: 1, vari: "y"]}
-             },
-             ok: %{
-               {:vari, "f"} => {:mult, {:numb, 0.5}, {:elev, {:vari, "x"}, {:numb, 2}}},
-               {:vari, "y"} => {:numb, 1},
-               {:deriv, {:vari, "f"}, {:vari, "x"}} => {:vari, "x"},
-               {:fcall, "g", [vari: "y"]} => {{:m, :suma}, [numb: 1, vari: "y"]}
-             },
-             ok: %{
-               {:vari, "f"} => {:mult, {:numb, 0.5}, {:elev, {:vari, "x"}, {:numb, 2}}},
-               {:vari, "y"} => {:numb, 1},
-               {:deriv, {:vari, "f"}, {:vari, "x"}} => {:vari, "x"},
-               {:fcall, "g", [vari: "y"]} => {{:m, :suma}, [numb: 1, vari: "y"]}
-             },
-             ok: %{
-               {:vari, "f"} => {:mult, {:numb, 0.5}, {:elev, {:vari, "x"}, {:numb, 2}}},
-               {:vari, "y"} => {{:m, :suma}, [numb: 1, vari: "y"]},
-               {:deriv, {:vari, "f"}, {:vari, "x"}} => {:vari, "x"},
-               {:fcall, "g", [vari: "y"]} => {{:m, :suma}, [numb: 1, vari: "y"]}
+               {:vari, "f"} => {:vari, "x"},
+               {:vari, "y"} => {:vari, "x"},
+               {:deriv, {:vari, "f"}, {:vari, "x"}} => {:numb, 1},
+               {:fcall, "g", [vari: "y"]} => {{:m, :suma}, [vari: "x", vari: "y"]}
              },
              ok: %{
                {:vari, "f"} => {:vari, "x"},
@@ -310,13 +226,19 @@ defmodule ExunTest do
                {:vari, "f"} => {:vari, "x"},
                {:vari, "y"} => {:vari, "y"},
                {:deriv, {:vari, "f"}, {:vari, "x"}} => {:numb, 1},
+               {:fcall, "g", [vari: "y"]} => {{:m, :suma}, [vari: "x", vari: "y"]}
+             },
+             ok: %{
+               {:vari, "f"} => {:vari, "x"},
+               {:vari, "y"} => {:vari, "y"},
+               {:deriv, {:vari, "f"}, {:vari, "x"}} => {:numb, 1},
                {:fcall, "g", [vari: "y"]} => {{:m, :suma}, [vari: "y", vari: "x"]}
              },
              ok: %{
                {:vari, "f"} => {:vari, "x"},
-               {:vari, "y"} => {:numb, 1},
+               {:vari, "y"} => {{:m, :suma}, [vari: "x", vari: "y"]},
                {:deriv, {:vari, "f"}, {:vari, "x"}} => {:numb, 1},
-               {:fcall, "g", [vari: "y"]} => {{:m, :suma}, [vari: "y", vari: "x"]}
+               {:fcall, "g", [vari: "y"]} => {{:m, :suma}, [vari: "x", vari: "y"]}
              },
              ok: %{
                {:vari, "f"} => {:vari, "x"},
@@ -325,28 +247,82 @@ defmodule ExunTest do
                {:fcall, "g", [vari: "y"]} => {{:m, :suma}, [vari: "y", vari: "x"]}
              },
              ok: %{
-               {:vari, "f"} => {:vari, "x"},
-               {:vari, "y"} => {:vari, "y"},
-               {:deriv, {:vari, "f"}, {:vari, "x"}} => {:numb, 1},
-               {:fcall, "g", [vari: "y"]} => {{:m, :suma}, [vari: "x", vari: "y"]}
-             },
-             ok: %{
-               {:vari, "f"} => {:vari, "x"},
-               {:vari, "y"} => {:vari, "x"},
-               {:deriv, {:vari, "f"}, {:vari, "x"}} => {:numb, 1},
-               {:fcall, "g", [vari: "y"]} => {{:m, :suma}, [vari: "x", vari: "y"]}
-             },
-             ok: %{
-               {:vari, "f"} => {:vari, "x"},
+               {:vari, "f"} => {:mult, {:numb, 0.5}, {:elev, {:vari, "x"}, {:numb, 2}}},
                {:vari, "y"} => {:numb, 1},
-               {:deriv, {:vari, "f"}, {:vari, "x"}} => {:numb, 1},
-               {:fcall, "g", [vari: "y"]} => {{:m, :suma}, [vari: "x", vari: "y"]}
+               {:deriv, {:vari, "f"}, {:vari, "x"}} => {:vari, "x"},
+               {:fcall, "g", [vari: "y"]} => {{:m, :suma}, [numb: 1, vari: "y"]}
              },
              ok: %{
-               {:vari, "f"} => {:vari, "x"},
-               {:vari, "y"} => {{:m, :suma}, [vari: "x", vari: "y"]},
-               {:deriv, {:vari, "f"}, {:vari, "x"}} => {:numb, 1},
-               {:fcall, "g", [vari: "y"]} => {{:m, :suma}, [vari: "x", vari: "y"]}
+               {:vari, "f"} => {:mult, {:numb, 0.5}, {:elev, {:vari, "x"}, {:numb, 2}}},
+               {:vari, "y"} => {:numb, 1},
+               {:deriv, {:vari, "f"}, {:vari, "x"}} => {:vari, "x"},
+               {:fcall, "g", [vari: "y"]} => {{:m, :suma}, [vari: "y", numb: 1]}
+             },
+             ok: %{
+               {:vari, "f"} => {:mult, {:numb, 0.5}, {:elev, {:vari, "x"}, {:numb, 2}}},
+               {:vari, "y"} => {:vari, "y"},
+               {:deriv, {:vari, "f"}, {:vari, "x"}} => {:vari, "x"},
+               {:fcall, "g", [vari: "y"]} => {{:m, :suma}, [numb: 1, vari: "y"]}
+             },
+             ok: %{
+               {:vari, "f"} => {:mult, {:numb, 0.5}, {:elev, {:vari, "x"}, {:numb, 2}}},
+               {:vari, "y"} => {:vari, "y"},
+               {:deriv, {:vari, "f"}, {:vari, "x"}} => {:vari, "x"},
+               {:fcall, "g", [vari: "y"]} => {{:m, :suma}, [vari: "y", numb: 1]}
+             },
+             ok: %{
+               {:vari, "f"} => {:mult, {:numb, 0.5}, {:elev, {:vari, "x"}, {:numb, 2}}},
+               {:vari, "y"} => {{:m, :suma}, [numb: 1, vari: "y"]},
+               {:deriv, {:vari, "f"}, {:vari, "x"}} => {:vari, "x"},
+               {:fcall, "g", [vari: "y"]} => {{:m, :suma}, [numb: 1, vari: "y"]}
+             },
+             ok: %{
+               {:vari, "f"} => {:mult, {:numb, 0.5}, {:elev, {:vari, "x"}, {:numb, 2}}},
+               {:vari, "y"} => {{:m, :suma}, [vari: "y", numb: 1]},
+               {:deriv, {:vari, "f"}, {:vari, "x"}} => {:vari, "x"},
+               {:fcall, "g", [vari: "y"]} => {{:m, :suma}, [vari: "y", numb: 1]}
+             },
+             ok: %{
+               {:vari, "f"} =>
+                 {:suma, {:vari, "x"}, {:mult, {:numb, 0.5}, {:elev, {:vari, "x"}, {:numb, 2}}}},
+               {:vari, "y"} => {:numb, 0},
+               {:deriv, {:vari, "f"}, {:vari, "x"}} => {{:m, :suma}, [numb: 1, vari: "x"]},
+               {:fcall, "g", [vari: "y"]} => {:vari, "y"}
+             },
+             ok: %{
+               {:vari, "f"} =>
+                 {:suma, {:vari, "x"}, {:mult, {:numb, 0.5}, {:elev, {:vari, "x"}, {:numb, 2}}}},
+               {:vari, "y"} => {:numb, 0},
+               {:deriv, {:vari, "f"}, {:vari, "x"}} => {{:m, :suma}, [vari: "x", numb: 1]},
+               {:fcall, "g", [vari: "y"]} => {:vari, "y"}
+             },
+             ok: %{
+               {:vari, "f"} =>
+                 {:suma, {:vari, "x"}, {:mult, {:numb, 0.5}, {:elev, {:vari, "x"}, {:numb, 2}}}},
+               {:vari, "y"} => {:numb, 1},
+               {:deriv, {:vari, "f"}, {:vari, "x"}} => {{:m, :suma}, [numb: 1, vari: "x"]},
+               {:fcall, "g", [vari: "y"]} => {:vari, "y"}
+             },
+             ok: %{
+               {:vari, "f"} =>
+                 {:suma, {:vari, "x"}, {:mult, {:numb, 0.5}, {:elev, {:vari, "x"}, {:numb, 2}}}},
+               {:vari, "y"} => {:numb, 1},
+               {:deriv, {:vari, "f"}, {:vari, "x"}} => {{:m, :suma}, [vari: "x", numb: 1]},
+               {:fcall, "g", [vari: "y"]} => {:vari, "y"}
+             },
+             ok: %{
+               {:vari, "f"} =>
+                 {:suma, {:vari, "x"}, {:mult, {:numb, 0.5}, {:elev, {:vari, "x"}, {:numb, 2}}}},
+               {:vari, "y"} => {:vari, "y"},
+               {:deriv, {:vari, "f"}, {:vari, "x"}} => {{:m, :suma}, [numb: 1, vari: "x"]},
+               {:fcall, "g", [vari: "y"]} => {:vari, "y"}
+             },
+             ok: %{
+               {:vari, "f"} =>
+                 {:suma, {:vari, "x"}, {:mult, {:numb, 0.5}, {:elev, {:vari, "x"}, {:numb, 2}}}},
+               {:vari, "y"} => {:vari, "y"},
+               {:deriv, {:vari, "f"}, {:vari, "x"}} => {{:m, :suma}, [vari: "x", numb: 1]},
+               {:fcall, "g", [vari: "y"]} => {:vari, "y"}
              }
            ]
   end

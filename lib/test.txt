@@ -10,11 +10,15 @@ To-Do
 
 
 import Exun.Pattern
-import Exun
-umatch "f * f'x", "cos(x)/sin(x)*ln(sin(x))"
+umatch "f*f'x","2*x^a*x^(3-a)"
 
-umatch "f*f'x","2*x"
-umatch "g(y)+f'x","1+x+y"
+umatch "f*f'x","2*x^3"
 
+f => x^2
 
-umatch "f * f'x", "cos(x)/sin(x)*ln(sin(x))"
+f  = x^a
+f' = a*x^(a-1)
+
+?f' = 2*x^(3-a)
+
+a*x^(a-1) = 2*x^(3-a)
