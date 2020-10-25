@@ -85,17 +85,12 @@ defmodule Exun.Pattern do
 
   def remove_dups(los) do
     Enum.map(los, fn {:ok, sol} ->
-      Enum.map(sol, fn {k, v} ->
-        {Exun.Eq.norm(k), Exun.Eq.norm(v)}
+      Enum.reduce(%{},sol, fn {k, v},nmap ->
+        Map.put(nmap,norm(k), norm(v))
       end)
     end)
-    |> Enum.reduce(MapSet.new(), fn m, ms ->
-      MapSet.put(
-        ms,
-        Enum.map(m, fn {k, v} ->
-          {norm(k), norm(v)}
-        end)
-      )
+    |>Enum.reduce(MapSet.new,fn map,mapset ->
+      MapSet.put(mapset,map)
     end)
     |> Enum.map(&{:ok, &1})
   end
@@ -127,10 +122,11 @@ defmodule Exun.Pattern do
   matched_defs is a map that holds definitions
   """
   def mnode(aast, expr, map) do
-    #IO.inspect(aast, label: "aast = ")
-    #IO.inspect(expr, label: "expr = ")
-    #IO.inspect(map, label: "map = ")
-    #IO.puts(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+    IO.puts(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+    IO.inspect(aast, label: "aast = ")
+    IO.inspect(expr, label: "expr = ")
+    IO.inspect(map, label: "map = ")
+    IO.puts("..............................................")
 
     case {aast, expr} do
       # Two numbers must match exactly
@@ -165,9 +161,7 @@ defmodule Exun.Pattern do
       _ ->
         [{:ko, map}]
     end
-    # Eliminate ko
-    |> Enum.reject(fn {res, _} -> res == :ko end)
-    #|> IO.inspect(label: "MNode Ret<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<")
+    |> IO.inspect(label: "MNode Ret<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n")
   end
 
   @doc """
@@ -206,7 +200,7 @@ defmodule Exun.Pattern do
       expand_order(el) ++ ac
     end)
     # |> IO.inspect(label: "Order Expanded")
-    # zip abstract and expresion ans try to match with mnode
+    # zip abstract and expresion and try to match with mnode
     |> Enum.reduce([], fn set, acc ->
       (List.zip([lsta, set])
        # |> IO.inspect(label: "Zipped")
@@ -327,8 +321,9 @@ defmodule Exun.Pattern do
 
   def mlist(a1, a2, map) when is_list(a1) and is_list(a2) do
     List.zip([a1, a2])
-    |> Enum.reduce([{:ok, map}], fn {ast, exp}, lssol ->
-      Enum.reduce(lssol, [], fn {res, smap}, acu ->
+    #|> IO.inspect(label: "mlist zipped")
+    |> Enum.reduce([{:ok, map}], fn {ast, exp}, maps ->
+      Enum.reduce(maps, [], fn {res, smap}, acu ->
         if res == :ok do
           mnode(ast, exp, smap) ++ acu
         else
@@ -336,7 +331,7 @@ defmodule Exun.Pattern do
         end
       end)
     end)
-    |> Enum.reject(fn {a, _} -> a == :ko end)
+    |> Enum.reject(fn {res, _} -> res != :ok end)
   end
 
   def checkmap(map, key, val) do
