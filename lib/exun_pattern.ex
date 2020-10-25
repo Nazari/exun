@@ -1,6 +1,7 @@
 defmodule Exun.Pattern do
   import Exun.UI
   import Exun.Eq
+  import Exun.Collect
 
   @moduledoc """
   Match ASTs. Functions umatch and match try to match patter with a real expression. Rules for matching, by example:
@@ -85,24 +86,80 @@ defmodule Exun.Pattern do
 
   def remove_dups(los) do
     Enum.map(los, fn {:ok, sol} ->
-      Enum.reduce(%{},sol, fn {k, v},nmap ->
-        Map.put(nmap,norm(k), norm(v))
+      Enum.reduce(%{}, sol, fn {k, v}, nmap ->
+        Map.put(nmap, norm(k), norm(coll(v)))
       end)
     end)
-    |>Enum.reduce(MapSet.new,fn map,mapset ->
-      MapSet.put(mapset,map)
+    |> Enum.reduce(MapSet.new(), fn map, mapset ->
+      MapSet.put(mapset, map)
     end)
     |> Enum.map(&{:ok, &1})
   end
 
+  @doc """
+  Make some expansions in east in order to match complex matching expressions.
+  For example match "f*f'x" to "2*x^3" will match if it is transformed to
+  "2*x*x^2" so f=x^2
+  """
   def match_ast(aast, expr, conditions \\ []) do
-    mnode(aast, expr, %{})
+    expr
+    #|> IO.inspect(label: "expr")
+    |> transform()
+    #|> IO.inspect(label: "expr transformed")
+    |> Enum.reduce([], fn expr, ac ->
+      mnode(aast, expr, %{}) ++ ac
+    end)
     |> Enum.reject(fn {res, map} ->
       res != :ok or map == %{}
     end)
     |> Enum.map(fn {:ok, map} ->
       res = if check_conds(map, conditions), do: :ok, else: :nocond
       {res, map}
+    end)
+  end
+
+  def transform(expr) do
+    [
+      expr
+      | case expr do
+          {{:m, :mult}, lst} ->
+            # Get list of posssible list for {:m,:mult}
+            trx1(lst)
+            |> Enum.map(fn l ->
+              {{:m, :mult}, l}
+            end)
+
+          _ ->
+            []
+        end
+    ]
+  end
+
+  @doc """
+  trx1: {{:m,:mult},lst} where k={:elev, {:vari,a},{some}} in list
+  will double matched, original and replacing k with a^(some-remain_lst)*a^(remain_lst)
+  in a try to match f*f'x <- "2*x^3", so also will try "2*x^(3-2)*x^2" == "2*x*x^2" and then
+  f==x^2
+  """
+  def trx1(lst) do
+    # List of powers in list
+    Enum.reduce(lst, [], fn el, ac ->
+      case el do
+        m1 = {:elev, _, _} -> [m1 | ac]
+        _ -> ac
+      end
+    end)
+    # for each transform lst
+    |> Enum.map(fn power = {:elev, a, b} ->
+      #IO.inspect(power,label: "power")
+      remain = List.delete(lst, power)
+      #|> IO.inspect(label: "remain")
+      expon1 = norm coll({{:m, :mult}, remain})
+      #|> IO.inspect(label: "expon1")
+      expon2 = norm coll({:rest, b, expon1})
+      #|> IO.inspect(label: "expon2")
+      [{:elev, a, expon1}, {:elev, a, expon2} | remain]
+      #|> IO.inspect(label: "trx1 result")
     end)
   end
 
@@ -122,11 +179,11 @@ defmodule Exun.Pattern do
   matched_defs is a map that holds definitions
   """
   def mnode(aast, expr, map) do
-    IO.puts(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
-    IO.inspect(aast, label: "aast = ")
-    IO.inspect(expr, label: "expr = ")
-    IO.inspect(map, label: "map = ")
-    IO.puts("..............................................")
+    # IO.puts(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+    # IO.inspect(aast, label: "aast = ")
+    # IO.inspect(expr, label: "expr = ")
+    # IO.inspect(map, label: "map = ")
+    # IO.puts("..............................................")
 
     case {aast, expr} do
       # Two numbers must match exactly
@@ -161,7 +218,8 @@ defmodule Exun.Pattern do
       _ ->
         [{:ko, map}]
     end
-    |> IO.inspect(label: "MNode Ret<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n")
+
+    # |> IO.inspect(label: "MNode Ret<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n")
   end
 
   @doc """
@@ -186,19 +244,7 @@ defmodule Exun.Pattern do
       end
 
     # Get n sets (size of abstract list) from a list of m size (expression)
-    combin(aast, east)
-    # |> IO.inspect(label: "Combined")
-    # Combine order for each set, mult and sum are commutative
-    # Elevate list of a single element to the element [e] -> e
-    |> Enum.map(fn sl ->
-      Enum.map(sl, fn el ->
-        if is_list(el) and length(el) == 1, do: List.first(el), else: el
-      end)
-    end)
-    # |> IO.inspect(label: "Elevate list of single element")
-    |> Enum.reduce([], fn el, ac ->
-      expand_order(el) ++ ac
-    end)
+    combin_expand(aast, east)
     # |> IO.inspect(label: "Order Expanded")
     # zip abstract and expresion and try to match with mnode
     |> Enum.reduce([], fn set, acc ->
@@ -231,6 +277,23 @@ defmodule Exun.Pattern do
     mmult(aast, {{:m, op}, [expr, unity]}, map)
   end
 
+  def combin_expand(aast, east) do
+    # Get n sets (size of abstract list) from a list of m size (expression)
+    combin(aast, east)
+    # |> IO.inspect(label: "Combined")
+    # Combine order for each set, mult and sum are commutative
+    # Elevate list of a single element to the element [e] -> e
+    |> Enum.map(fn sl ->
+      Enum.map(sl, fn el ->
+        if is_list(el) and length(el) == 1, do: List.first(el), else: el
+      end)
+    end)
+    # |> IO.inspect(label: "Elevate list of single element")
+    |> Enum.reduce([], fn el, ac ->
+      expand_order(el) ++ ac
+    end)
+  end
+
   @doc """
   deriv match in two situations: if name is yet in map, its definition must be equal
   to exp. If not it will match if we can integrate expr; initially we ca use symbolic
@@ -240,14 +303,14 @@ defmodule Exun.Pattern do
   def mderiv(dr = {:deriv, ef = {:vari, _func}, {:vari, var}}, expr, map) do
     case Map.fetch(map, ef) do
       {:ok, funcvalue} ->
-        derivate = Exun.Collect.coll({:deriv, funcvalue, {:vari, var}})
+        derivate = coll({:deriv, funcvalue, {:vari, var}})
         if eq(derivate, expr), do: [{:ok, map}], else: [{:ko, map}]
 
       :error ->
         {res, newmap} = checkmap(map, dr, expr)
 
         if res == :ok do
-          integral = Exun.Collect.coll({:integ, expr, {:vari, var}})
+          integral = coll({:integ, expr, {:vari, var}})
           [checkmap(newmap, ef, integral)]
         else
           [{:ko, map}]
@@ -261,14 +324,14 @@ defmodule Exun.Pattern do
   def minteg(itr = {:integ, ef = {:vari, func}, {:vari, var}}, expr, map) do
     case Map.fetch(map, ef) do
       {:ok, funcvalue} ->
-        integral = Exun.Collect.coll({:integ, funcvalue, {:vari, var}})
+        integral = coll({:integ, funcvalue, {:vari, var}})
         if eq(integral, expr), do: [{:ok, map}], else: [{:ko, map}]
 
       :error ->
         {res, newmap} = checkmap(map, itr, expr)
 
         if res == :ok do
-          deriv = Exun.Collect.coll({:deriv, expr, {:vari, var}})
+          deriv = coll({:deriv, expr, {:vari, var}})
           [checkmap(newmap, {:vari, func}, deriv)]
         else
           [{:ko, map}]
@@ -321,7 +384,7 @@ defmodule Exun.Pattern do
 
   def mlist(a1, a2, map) when is_list(a1) and is_list(a2) do
     List.zip([a1, a2])
-    #|> IO.inspect(label: "mlist zipped")
+    # |> IO.inspect(label: "mlist zipped")
     |> Enum.reduce([{:ok, map}], fn {ast, exp}, maps ->
       Enum.reduce(maps, [], fn {res, smap}, acu ->
         if res == :ok do

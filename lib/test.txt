@@ -8,17 +8,9 @@ To-Do
  6. Going multiprocess
  7. Functions! Derivate! Integrate!
 
-
+import Exun
+import Exun.Eq
 import Exun.Pattern
-umatch "f*f'x","2*x^a*x^(3-a)"
+aast = norm parse_text "f*f'x"
+east = norm parse_text "2*x^3"
 
-umatch "f*f'x","2*x^3"
-
-f => x^2
-
-f  = x^a
-f' = a*x^(a-1)
-
-?f' = 2*x^(3-a)
-
-a*x^(a-1) = 2*x^(3-a)
