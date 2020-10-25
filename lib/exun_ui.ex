@@ -48,8 +48,8 @@ defmodule Exun.UI do
     |> Enum.reduce(str, fn {k, v}, str -> String.replace(str, k, v) end)
   end
 
-  defp its({:mult, {:numb, -1}, a}), do: "-" <> its(a)
-  defp its({:mult, a, {:numb, -1}}), do: "-" <> its(a)
+  defp its({:mult, {:numb, -1}, a}), do: "-(#{its(a)})"
+  defp its({:mult, a, {:numb, -1}}), do: "-(#{its(a)})"
   defp its({:mult, {:divi, {:numb, 1}, a}, b}), do: its({:divi, b, a})
   defp its({:mult, a, {:elev, b, {:numb, n}}}) when n < 0, do: its({:divi, a, {:elev, b, {:numb, -n}}})
   defp its({:mult, {:elev, b, {:numb, n}}, a}) when n < 0, do: its({:divi, a, {:elev, b, {:numb, -n}}})
