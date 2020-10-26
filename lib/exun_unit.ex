@@ -1,7 +1,7 @@
 defmodule Exun.Unit do
-  alias Exun.Collect
-  alias Exun.Eq
+  import Exun.Collect
   import Exun.UI
+  import Exun.Fun
 
   @moduledoc """
   Handle Units, converts, sum, multiply, transform to SI and factorize
@@ -252,20 +252,14 @@ defmodule Exun.Unit do
   @doc """
   Sum or Rest of two units
   """
-  def sum(op, {:unit, {:numb, n1}, t1}, {:unit, {:numb, n2}, t2}, pcontext \\ %{}) do
+  def sum({:unit, {:numb, n1}, t1}, {:unit, {:numb, n2}, t2}, pcontext \\ %{}) do
     {res1, exps1} = to_si({1, t1}, pcontext, 1, %{})
     {res2, exps2} = to_si({1, t2}, pcontext, 1, %{})
 
     if exps1 != exps2 do
       {:err, "Inconsisten units " <> tostr(t1) <> " and " <> tostr(t2)}
     else
-      val =
-        case op do
-          :suma -> (n1 * res1 + n2 * res2) / res1
-          :rest -> (n1 * res1 - n2 * res2) / res1
-          _ -> throw("Unknown op for Exun.Units.sum")
-        end
-
+      val = (n1 * res1 + n2 * res2) / res1
       {:ok, {:unit, {:numb, val}, t1}}
     end
   end
@@ -321,7 +315,7 @@ defmodule Exun.Unit do
   """
   def factorize_ast({:unit, {:numb, n1}, t1}, {:unit, {:numb, _n2}, t2}, pcontext) do
     # Divide t1 by t2, reduce to si and multiply by t2
-    {nres, exps} = to_si({n1, {:divi, t1, t2}}, pcontext, 1, %{})
+    {nres, exps} = to_si({n1, divi(t1, t2)}, pcontext, 1, %{})
     "#{nres}[#{tostr(t2)}#{exps_tostr(exps)}]"
   end
 
@@ -335,24 +329,14 @@ defmodule Exun.Unit do
   end
 
   defp to_si({:unit, {:numb, n}, tree}, pcontext \\ %{}) do
-    to_si({n, Eq.denorm(tree)}, pcontext, 1, %{})
+    to_si({n, tree}, pcontext, 1, %{})
   end
 
-  defp to_si({n, {:mult, left, right}}, pcontext, curr_exp, exps) do
-    {left_n, exps} = to_si({1, left}, pcontext, curr_exp, exps)
-    {right_n, exps} = to_si({1, right}, pcontext, curr_exp, exps)
-    {n * left_n * right_n, exps}
-  end
-
-  defp to_si({n, {:divi, {:numb, 1}, denom}}, pcontext, curr_exp, exps) do
-    {nn, exps} = to_si({1, denom}, pcontext, -curr_exp, exps)
-    {n / nn, exps}
-  end
-
-  defp to_si({n, {:divi, left, right}}, pcontext, curr_exp, exps) do
-    {left_n, exps} = to_si({1, left}, pcontext, curr_exp, exps)
-    {right_n, exps} = to_si({1, right}, pcontext, -curr_exp, exps)
-    {n * left_n / right_n, exps}
+  defp to_si({n, {{:m,:mult}, lst}}, pcontext, curr_exp, exps) do
+    Enum.reduce(lst, {n,exps}, fn opand, {acu_n,acu_e} ->
+      {new_n,ne}=to_si({1, opand}, pcontext, curr_exp, acu_e)
+      {acu_n*new_n,ne}
+    end)
   end
 
   defp to_si({n, {:elev, left, {:numb, exponent}}}, pcontext, curr_exp, exps) do
@@ -430,15 +414,17 @@ defmodule Exun.Unit do
   Converts unit to International System
   """
   def toSI({:unit, uv, ut}) do
-    {r, e} = to_si({:unit, Collect.coll(uv), Collect.coll(ut)})
+    {r, e} = to_si({:unit, coll(uv), coll(ut)})
 
     {:unit, {:numb, r},
      e
      |> Enum.reject(fn {_a, b} -> b == 0 end)
      |> Enum.reduce({:numb, 1}, fn {var, expon}, tree ->
        cond do
-         expon > 0 -> Collect.coll({:mult, tree, {:elev, {:vari, var}, {:numb, expon}}})
-         expon < 0 -> Collect.coll({:divi, tree, {:elev, {:vari, var}, {:numb, -expon}}})
+         expon > 0 ->
+          coll(mult(tree, {:elev, {:vari, var}, {:numb, expon}}))
+         expon < 0 ->
+          coll(divi(tree, {:elev, {:vari, var}, {:numb, -expon}}))
        end
      end)}
   end

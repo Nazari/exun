@@ -1,5 +1,5 @@
 Terminals  ',' '(' ')' '/' '*' '^' '+' '-' '[' ']' '\'' '=' '$' word number.
-Nonterminals main expr uexpr variable function arg_list arguments signed_number.
+Nonterminals main expr mmm msm uexpr variable function arg_list arguments signed_number.
 Rootsymbol main.
 Right 950 '$'.
 Left 950 '\''.
@@ -15,11 +15,19 @@ main -> expr '=' expr : {equal, '$1', '$3' }.
 expr -> '(' expr ')' : '$2'.
 
 expr -> expr '^' expr : {elev, '$1', '$3'}.
-expr -> expr '/' expr : {divi, '$1', '$3'}.
-expr -> expr '*' expr : {mult, '$1', '$3'}.
-expr -> expr '+' expr : {suma, '$1', '$3'}.
-expr -> expr '-' expr : {rest, '$1', '$3'}.
 
+mmm -> expr '*' expr : ['$1' , '$3'].
+mmm -> expr '/' expr : ['$1' , {elev,'$3',{numb, -1}}].
+mmm ->  mmm '*' expr : ['$3' | '$1'].
+mmm ->  mmm '/' expr : [{elev,'$3',{numb, -1}} | '$1'].
+
+msm -> expr '+' expr : ['$1' , '$3'].
+msm -> expr '-' expr : ['$1' , {minus, '$3'}].
+msm -> msm  '+' expr : ['$3' | '$1'].
+msm -> msm  '-' expr : [{minus, '$3'} | '$1'].
+
+expr -> mmm : {{m, mult}, lists:sort('$1')}.
+expr -> msm : {{m, suma}, lists:sort('$1')}.
 
 expr -> number : {numb, extract_token('$1')}.
 expr -> signed_number : {numb, '$1'}.
@@ -38,7 +46,7 @@ arguments -> expr : ['$1'] .
 arguments -> arguments ',' expr : ['$3'|'$1'] .
 
 uexpr -> expr '[' expr ']' : {unit, '$1', '$3'}.
-expr -> '-' expr : {mult, {numb, -1}, '$2'}.
+expr -> '-' expr : {minus, '$2'}.
 expr -> expr '\'' variable : {deriv, '$1', {vari, '$3'}}.
 expr -> '$' expr ',' variable : {integ, '$2', {vari, '$4'}}.
 expr -> uexpr : '$1'.

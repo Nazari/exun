@@ -11,6 +11,6 @@ To-Do
 import Exun
 import Exun.Eq
 import Exun.Pattern
-aast = norm parse_text "f*f'x"
-east = norm parse_text "2*x^3"
-
+import Exun.UI
+aast = parse_text "x/(a+b)"
+tostr aast

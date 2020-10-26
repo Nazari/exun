@@ -1,6 +1,7 @@
 defmodule Exun.Integral do
-  import Exun.Collect
+
   import Exun.Fun
+  import Exun.Math
   import Exun
 
   @zero {:numb, 0}
@@ -10,18 +11,14 @@ defmodule Exun.Integral do
   Try to integrate function
   """
   def integ(@zero, _), do: @uno
-  def integ(n = {:numb, _}, v), do: {:mult, n, v}
-  def integ(v = {:vari, _}, v), do: {:mult, {:numb, 0.5}, {:elev, v, @dos}}
-  def integ({:suma, a, b}, v), do: {:suma, integ(a, v), integ(b, v)}
-  def integ({:rest, a, b}, v), do: {:rest, integ(a, v), integ(b, v)}
-  def integ({:mult, n = {:numb, _}, a}, v), do: {:mult, n, integ(a, v)}
-  def integ({:mult, a, n = {:numb, _}}, v), do: {:mult, n, integ(a, v)}
+  def integ(n = {:numb, _}, v), do: mult( n, v)
+  def integ(v = {:vari, _}, v), do: mult({:numb, 0.5}, {:elev, v, @dos})
   def integ({:deriv, f, x}, x), do: f
-  def integ({:vari, a}, v), do: {:mult, {:vari, a}, v}
+  def integ({:vari, a}, v), do: mult({:vari, a}, v)
 
   def integ({:elev, {:vari, v}, expon = {:numb, _}}, {:vari, v}) do
-    newexp = {:suma, expon, @uno}
-    {:divi, {:elev, {:vari, v}, newexp}, newexp}
+    newexp = suma(expon, @uno)
+    {{:m,:mult}, {:elev, {:vari, v}, newexp}, chpow(newexp)}
   end
 
   def integ({:fcall, "sin", [v = {:vari, x}]}, v),
@@ -87,46 +84,15 @@ defmodule Exun.Integral do
     end
   end
 
-  def integ({{:m, op}, lst}, v) do
-    {{:m, op}, Enum.map(lst, &integ(&1, v))}
+  def integ({{:m, :suma}, lst}, v) do
+    {{:m, :suma}, Enum.map(lst, &integ(&1, v))}
   end
+
+  def integ({{:m,:mult},_},_v), do: throw "Product integral not yet"
 
   # Fallthrough
   def integ(c, v) do
     {:integ, c, v}
   end
 
-  def parts({:mult, l, r}, x) do
-    # u=l, dv=r
-    v1 = coll({:integ, r, x})
-    sr1 = coll({:integ, {:mult, {:deriv, l, x}, v1}, x})
-    # u=r, dv=l
-    v2 = coll({:integ, l, x})
-    sr2 = coll({:integ, {:mult, {:deriv, r, x}, v2}, x})
-
-    case {check_parts(v1, sr1), check_parts(v2, sr2)} do
-      {:ok, _} -> doparts(l, v1, sr1)
-      {_, :ok} -> doparts(r, v2, sr2)
-      _ -> :fail
-    end
-  end
-
-  def parts(_, _) do
-    {:fail}
-  end
-
-  def check_parts(v, sr) do
-    {op1, _, _} = v
-    {op2, _, _} = sr
-
-    case {op1, op2} do
-      {:integ, _} -> :fail
-      {_, :integ} -> :fail
-      _ -> :ok
-    end
-  end
-
-  def doparts(u, v, sr) do
-    {:rest, {:mult, u, v}, sr}
-  end
 end

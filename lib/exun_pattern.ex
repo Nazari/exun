@@ -2,6 +2,7 @@ defmodule Exun.Pattern do
   import Exun.UI
   import Exun.Eq
   import Exun.Collect
+  import Exun.Fun
 
   @moduledoc """
   Match ASTs. Functions umatch and match try to match patter with a real expression. Rules for matching, by example:
@@ -57,9 +58,9 @@ defmodule Exun.Pattern do
         IO.puts("Match group #{res}")
 
         Enum.each(map, fn {name, value} ->
-          n = tostr(name)
-          v = tostr(value)
-          IO.puts("  #{n}\t=> #{v}")
+          #IO.inspect(name,label: "VarName")
+          #IO.inspect(value, label: "VarValue")
+          IO.puts("::>#{tostr(name)}\t=> #{tostr(value)}")
         end)
       end)
     else
@@ -68,11 +69,8 @@ defmodule Exun.Pattern do
   end
 
   def match(taast, texpr, context, tconditions \\ []) do
-    {naast, _} = Exun.parse(taast)
-    {nexpr, _} = Exun.parse(texpr, context)
-
-    aast = Exun.Eq.norm(naast)
-    expr = Exun.Eq.norm(nexpr)
+    {aast, _} = Exun.parse(taast)
+    {expr, _} = Exun.parse(texpr, context)
 
     conditions =
       Enum.map(tconditions, fn cnd ->
@@ -87,7 +85,7 @@ defmodule Exun.Pattern do
   def remove_dups(los) do
     Enum.map(los, fn {:ok, sol} ->
       Enum.reduce(%{}, sol, fn {k, v}, nmap ->
-        Map.put(nmap, norm(k), norm(coll(v)))
+        Map.put(nmap, k, coll(v))
       end)
     end)
     |> Enum.reduce(MapSet.new(), fn map, mapset ->
@@ -154,11 +152,11 @@ defmodule Exun.Pattern do
       #IO.inspect(power,label: "power")
       remain = List.delete(lst, power)
       #|> IO.inspect(label: "remain")
-      expon1 = norm coll({{:m, :mult}, remain})
+      expon1 = coll({{:m, :mult}, remain |> Enum.sort(&smm(&1,&2))})
       #|> IO.inspect(label: "expon1")
-      expon2 = norm coll({:rest, b, expon1})
+      expon2 = coll(rest(b, expon1))
       #|> IO.inspect(label: "expon2")
-      [{:elev, a, expon1}, {:elev, a, expon2} | remain]
+      [coll({:elev, a, expon1}), coll({:elev, a, expon2}) | remain] |> Enum.sort(&smm(&1,&2))
       #|> IO.inspect(label: "trx1 result")
     end)
   end

@@ -155,11 +155,18 @@ Match group ok
 If you are interested in parsing, use 'parse' or 'eval_ast'
 ```
 parse "(a+b)^2/c"
-{:divi, {:elev, {:suma, {:vari, "a"}, {:vari, "b"}}, {:numb, 2}}, {:vari, "c"}}
+{{{:m, :mult},
+  [
+    {:elev, {:vari, "c"}, {:numb, -1}},
+    {:elev, {{:m, :suma}, [vari: "a", vari: "b"]}, {:numb, 2}}
+  ]}, %{}}
 
 eval_ast "(a+b)^2/c", %{"a"=>"20[m]","b"=>"2[cm]","c"=>"3[s^2]"}
-{:unit, {:numb, 133.60013333333333},
- {:divi, {:elev, {:vari, "m"}, {:numb, 2}}, {:elev, {:vari, "s"}, {:numb, 2}}}}
+{:m, :mult},
+ [
+   {:elev, {:vari, "c"}, {:numb, -1}},
+   {:elev, {{:m, :suma}, [vari: "a", vari: "b"]}, {:numb, 2}}
+ ]}
 ```
 
 This library use an AST built with erlang's yecc parser and transformation in elixir like this:

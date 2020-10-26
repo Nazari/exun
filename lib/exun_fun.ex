@@ -36,7 +36,7 @@ defmodule Exun.Fun do
   def compounds,
     do: %{
       "sqrt(F)" => "F^0.5",
-      "tan(F)"  => "sin(F)/cos(F)",
+      "tan(F)" => "sin(F)/cos(F)"
     }
 
   def fcall(name, args) do
@@ -73,6 +73,12 @@ defmodule Exun.Fun do
       {:unit, uv, ut} ->
         {:unit, replace_args_internal(uv, args, vari), ut}
 
+      {{:m, op}, lst} ->
+        {{:m, op}, Enum.map(lst, &replace_args_internal(&1, args, vari))}
+
+      {:minus, a} ->
+        {:minus, replace_args_internal(a, args, vari)}
+
       {op, l, r} ->
         {op, replace_args_internal(l, args, vari), replace_args_internal(r, args, vari)}
 
@@ -85,5 +91,26 @@ defmodule Exun.Fun do
     Enum.reduce(args, true, fn el, ac ->
       ac and elem(el, 0) == :numb
     end)
+  end
+
+  def mult(a, b), do: mcompose(:mult, a, b)
+  def divi(a, b), do: mult(a, Exun.Math.chpow(b))
+  def suma(a, b), do: mcompose(:suma, a, b)
+  def rest(a, b), do: suma(a, Exun.Math.chsign(b))
+
+  def mcompose(op, a, b) do
+    case {a, b} do
+      {{{:m, ^op}, l1}, {{:m, ^op}, l2}} ->
+        Exun.Collect.coll({{:m, op}, l1 ++ l2})
+
+      {{{:m, ^op}, l1}, _} ->
+        Exun.Collect.coll({{:m, op}, [b | l1]})
+
+      {_, {{:m, ^op}, l2}} ->
+        Exun.Collect.coll({{:m, op}, [a | l2]})
+
+      _ ->
+        Exun.Collect.coll({{:m, op}, [a, b]})
+    end
   end
 end

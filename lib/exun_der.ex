@@ -1,6 +1,5 @@
 defmodule Exun.Der do
   import Exun.Fun
-  import Exun.MProc
 
   @moduledoc """
   Derivate expressions
@@ -22,11 +21,11 @@ defmodule Exun.Der do
     der(ast, {:vari, name})
   end
 
-  defp der({:deriv, fun, x1}, x2) do
+  def der({:deriv, fun, x1}, x2) do
     der(der(fun, x1), x2)
   end
 
-  defp der({:fcall, name, args}, x) do
+  def der({:fcall, name, args}, x) do
     search_name = name <> "(F)"
 
     cond do
@@ -43,48 +42,43 @@ defmodule Exun.Der do
       true ->
         {:deriv, {:fcall, name, args}, x}
     end
+
+    # |> IO.inspect(label: "der fcall")
   end
 
-  defp der({:numb, _}, _x),
-    do: @zero
+  def der({:minus, a}, x), do: {:minus, der(a, x)}
+  def der({:numb, _}, _x), do: @zero
+  def der({:unit, _uv, _ut}, _x), do: @zero
+  def der({:vari, var}, {:vari, x}), do: if(var == x, do: @uno, else: @zero)
 
-  defp der({:unit, _uv, _ut}, _x),
-    do: @zero
-
-  defp der({:vari, var}, {:vari, x}),
-    do: if(var == x, do: @uno, else: @zero)
-
-  defp der({:suma, a, b}, x),
-    do: parallel({:suma, der(a, x), der(b, x)})
-
-  defp der({:rest, a, b}, x),
-    do: parallel({:rest, der(a, x), der(b, x)})
-
-  defp der({:mult, a, b}, x),
-    do: parallel({:suma, {:mult, der(a, x), b}, {:mult, a, der(b, x)}})
-
-  defp der({:divi, a, b}, x),
+  def der({:elev, base, expon}, x),
     do:
-      parallel(
-        {:divi, {:rest, {:mult, b, der(a, x)}, {:mult, der(b, x), a}}, {:elev, b, {:numb, 2}}}
+      mult(
+        {:elev, base, expon},
+        suma(
+          mult(der(expon, x), {:fcall, "ln", [base]}),
+          mult(expon, divi(der(base, x), base))
+        )
       )
 
-  defp der(y = {:elev, f, g}, x),
-    do:
-      {:mult, y,
-       parallel(
-         {:suma, {:mult, der(g, x), {:fcall, "ln", [f]}}, {:mult, g, {:divi, der(f, x), f}}}
-       )}
+  def der({:integ, f, x}, x), do: f
 
-  defp der({:integ, f, x}, x), do: f
+  def der({{:m, :suma}, lst}, x),
+    do: {{:m, :suma}, Enum.map(lst, &der(&1, x))}
 
-  defp der({{:m, :suma}, lst}, x), do: {{:m, :suma}, Enum.map(lst, &der(&1, x))}
+  def der({{:m, :mult}, [a]}, x), do: der(a, x)
 
-  defp der(a = {{:m, :mult}, _lst}, x) do
-    der(Exun.Eq.denorm(a), x)
+  def der({{:m, :mult}, lst}, x) when is_list(lst) do
+    prim = List.first(lst)
+    segu = {{:m, :mult}, List.delete(lst, prim)}
+
+    suma(
+      mult(prim, der(segu, x)),
+      mult(der(prim, x), segu)
+    )
   end
 
-  defp der(f, x) do
+  def der(f, x) do
     {:deriv, f, x}
   end
 end

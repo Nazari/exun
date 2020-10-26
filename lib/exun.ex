@@ -1,11 +1,11 @@
 defmodule Exun do
   alias Exun.Cyclic
-  alias Exun.Collect
+  import Exun.Collect
   alias Exun.Eq
   alias Exun.UI
 
   def debug() do
-    eval "$x/x,x"
+    eval("$x/x,x")
   end
 
   @moduledoc """
@@ -63,7 +63,7 @@ defmodule Exun do
   def eval_ast(txt, context \\ %{}) do
     {ast, pctx} = parse(txt, context)
     # |> IO.inspect(label: "ast and pctx")
-    ast_eval(ast,pctx)
+    ast_eval(ast, pctx)
   end
 
   def ast_eval(ast, pctx \\ %{}) do
@@ -73,25 +73,25 @@ defmodule Exun do
 
       _ ->
         # First Collect context
-        pctx = for {k,v} <- pctx, into: %{} do
-          {k, Collect.coll(v)}
-        end
+        pctx =
+          for {k, v} <- pctx, into: %{} do
+            {k, coll(v)}
+          end
 
         ast
         # |> IO.inspect(label: "eval01,AST")
         |> replace(pctx)
         # |> IO.inspect(label: "eval02,Replaced")
-        |> Collect.coll()
+        |> coll()
     end
   end
 
   def parse_text(txt) do
     with {:ok, toks, _} <- :exun_lex.string(txt |> String.to_charlist()),
          {:ok, tree} <- :exun_yacc.parse(toks) do
-      tree
+      Exun.Collect.coll tree
     end
   end
-
 
   @doc """
   Replace definitions in context into
@@ -147,6 +147,9 @@ defmodule Exun do
             {:fcall, name, args}
         end
 
+      {{:m, op}, lst} ->
+        {{:m, op}, Enum.map(lst, &replace(&1, pc))}
+
       {op, l, r} ->
         {op, replace(l, pc), replace(r, pc)}
 
@@ -173,6 +176,4 @@ defmodule Exun do
         other
     end
   end
-
-
 end
