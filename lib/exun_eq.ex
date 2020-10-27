@@ -24,12 +24,20 @@ defmodule Exun.Eq do
   }
 
   def smm(l, r) do
-    lt = @stype[elem(l, 0)]
-    rt = @stype[elem(r, 0)]
+    tl = grt(l)
+    tr = grt(r)
+
+    lt = @stype[tl]
+    rt = @stype[tr]
 
     cond do
       lt == rt -> l < r
       true -> lt < rt
     end
+  end
+
+  defp grt(tup) do
+    t = elem(tup,0)
+    if t == :minus, do: elem(elem(tup,1),0), else: t
   end
 end
