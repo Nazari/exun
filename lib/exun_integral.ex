@@ -18,7 +18,7 @@ defmodule Exun.Integral do
 
   def integ({:elev, {:vari, v}, expon = {:numb, _}}, {:vari, v}) do
     newexp = suma(expon, @uno)
-    {{:m,:mult}, {:elev, {:vari, v}, newexp}, chpow(newexp)}
+    mult({:elev, {:vari, v}, newexp},chpow(newexp))
   end
 
   def integ({:fcall, "sin", [v = {:vari, x}]}, v),
