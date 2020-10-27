@@ -58,8 +58,8 @@ defmodule Exun.Pattern do
         IO.puts("Match group #{res}")
 
         Enum.each(map, fn {name, value} ->
-          #IO.inspect(name,label: "VarName")
-          #IO.inspect(value, label: "VarValue")
+          # IO.inspect(name,label: "VarName")
+          # IO.inspect(value, label: "VarValue")
           IO.puts("::>#{tostr(name)}\t=> #{tostr(value)}")
         end)
       end)
@@ -83,14 +83,15 @@ defmodule Exun.Pattern do
   end
 
   def remove_dups(los) do
-    Enum.map(los, fn {:ok, sol} ->
-      Enum.reduce(%{}, sol, fn {k, v}, nmap ->
+    los
+    # |> IO.inspect(label: "init")
+    |> Enum.map(fn {:ok, sol} ->
+      Enum.reduce(sol, %{}, fn {k, v}, nmap ->
         Map.put(nmap, k, coll(v))
       end)
     end)
-    |> Enum.reduce(MapSet.new(), fn map, mapset ->
-      MapSet.put(mapset, map)
-    end)
+    # |> IO.inspect(label: "collected")
+    |> Enum.reduce(MapSet.new(), &MapSet.put(&2, &1))
     |> Enum.map(&{:ok, &1})
   end
 
@@ -99,11 +100,11 @@ defmodule Exun.Pattern do
   For example match "f*f'x" to "2*x^3" will match if it is transformed to
   "2*x*x^2" so f=x^2
   """
-  def match_ast(aast, expr, conditions \\ []) do
-    expr
-    #|> IO.inspect(label: "expr")
-    |> transform()
-    #|> IO.inspect(label: "expr transformed")
+  def match_ast(aast, aexp, conditions \\ [], dotransforms \\ true) do
+    aexp
+    # |> IO.inspect(label: "expr")
+    |> transform(dotransforms)
+    # |> IO.inspect(label: "expr transformed")
     |> Enum.reduce([], fn expr, ac ->
       mnode(aast, expr, %{}) ++ ac
     end)
@@ -116,21 +117,25 @@ defmodule Exun.Pattern do
     end)
   end
 
-  def transform(expr) do
-    [
-      expr
-      | case expr do
-          {{:m, :mult}, lst} ->
-            # Get list of posssible list for {:m,:mult}
-            trx1(lst)
-            |> Enum.map(fn l ->
-              {{:m, :mult}, l}
-            end)
+  def transform(expr, exec) do
+    if exec do
+      [
+        expr
+        | case expr do
+            {{:m, :mult}, lst} ->
+              # Get list of posssible list for {:m,:mult}
+              trx1(lst)
+              |> Enum.map(fn l ->
+                {{:m, :mult}, l}
+              end)
 
-          _ ->
-            []
-        end
-    ]
+            _ ->
+              []
+          end
+      ]
+    else
+      [expr]
+    end
   end
 
   @doc """
@@ -149,15 +154,15 @@ defmodule Exun.Pattern do
     end)
     # for each transform lst
     |> Enum.map(fn power = {:elev, a, b} ->
-      #IO.inspect(power,label: "power")
+      # IO.inspect(power,label: "power")
       remain = List.delete(lst, power)
-      #|> IO.inspect(label: "remain")
-      expon1 = coll({{:m, :mult}, remain |> Enum.sort(&smm(&1,&2))})
-      #|> IO.inspect(label: "expon1")
+      # |> IO.inspect(label: "remain")
+      expon1 = coll({{:m, :mult}, remain |> Enum.sort(&smm(&1, &2))})
+      # |> IO.inspect(label: "expon1")
       expon2 = coll(rest(b, expon1))
-      #|> IO.inspect(label: "expon2")
-      [coll({:elev, a, expon1}), coll({:elev, a, expon2}) | remain] |> Enum.sort(&smm(&1,&2))
-      #|> IO.inspect(label: "trx1 result")
+      # |> IO.inspect(label: "expon2")
+      [coll({:elev, a, expon1}), coll({:elev, a, expon2}) | remain] |> Enum.sort(&smm(&1, &2))
+      # |> IO.inspect(label: "trx1 result")
     end)
   end
 
