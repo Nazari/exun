@@ -19,28 +19,41 @@ defmodule Exun.Simpl do
   end
 
   # simplify
-  defp mk({:minus, {:minus, a}}), do: mk(a)
-  defp mk({:minus, a}), do: {:minus, mk(a)}
-  defp mk({:numb, n}), do: if(floor(n) == n, do: {:numb, floor(n)}, else: {:numb, n})
+  def mk({:minus, {:minus, a}}), do: mk(a)
 
-  defp mk({:unit, val, {:numb, 1}}), do: mk(val)
-  defp mk({:unit, val, ut}), do: Unit.toSI({:unit, mk(val), mk(ut)})
+  def mk({:minus, {{:m, :mult}, list}}) do
+    {res, nlist} = collect_minus(list)
 
-  defp mk({:elev, _, @zero}), do: @uno
-  defp mk({:elev, a, @uno}), do: mk(a)
-  defp mk({:elev, @uno, _}), do: @uno
-  defp mk({:elev, {:numb, base}, {:numb, exp}}), do: {:numb, :math.pow(base, exp)}
-  defp mk({:elev, {:elev, base, e1}, e2}), do: {:elev, mk(base), mk(mult(e1, e2))}
+    if res do
+      mk({{:m, :mult}, nlist})
+    else
+      {:minus, mk({{:m, :mult}, list})}
+    end
+  end
 
-  defp mk({:elev, {:unit, uv, ut}, expon}),
+  def mk({:minus, a}), do: {:minus, mk(a)}
+  def mk({:numb, n}), do: if(floor(n) == n, do: {:numb, floor(n)}, else: {:numb, n})
+
+  def mk({:unit, val, {:numb, 1}}), do: mk(val)
+  def mk({:unit, val, ut}), do: Unit.toSI({:unit, mk(val), mk(ut)})
+
+  def mk({:elev, _, @zero}), do: @uno
+  def mk({:elev, a, @uno}), do: mk(a)
+  def mk({:elev, @uno, _}), do: @uno
+  def mk({:elev, {:numb, base}, {:numb, exp}}), do: {:numb, :math.pow(base, exp)}
+  def mk({:elev, {:elev, base, e1}, e2}), do: {:elev, mk(base), mk(mult(e1, e2))}
+
+  def mk({:elev, {:unit, uv, ut}, expon}),
     do: {:unit, mk({:elev, uv, expon}), mk({:elev, ut, expon})}
 
-  defp mk({{:m, op}, lst}) when op in [:suma, :mult] and is_list(lst) do
+  def mk({{:m, op}, lst}) when op in [:suma, :mult] and is_list(lst) do
     # Simplify each component of the list
     lst =
       lst
       # |> IO.inspect(label: "pre mk #{op}")
-      |> Enum.map(fn el -> mkrec(el) end)
+      |> Enum.map(&mkrec(&1))
+
+    # |> IO.inspect(label: ":m foreach el mkrec done")
 
     # |> IO.inspect(label: "post mk #{op} mk each")
 
@@ -53,15 +66,14 @@ defmodule Exun.Simpl do
           other -> [other | ac]
         end
       end)
-      |> Enum.sort(&smm(&1,&2))
+      |> Enum.sort(&smm(&1, &2))
 
     unity = if op == :suma, do: @zero, else: @uno
     ufc = if op == :suma, do: &+/2, else: &*/2
 
     # Collect numbers and units and simplify
     lst = collect_literals(op, lst, ufc, unity)
-    # If op is mult, collect :minus to the first element
-    lst = if op == :mult, do: collect_minus(lst), else: lst
+
     # Remove zeroes or ones, 0+any=any, 1*any=any and may be the nil
     # introduced by the last command
     lst = Enum.reject(lst, &(&1 == unity or &1 == nil))
@@ -96,34 +108,36 @@ defmodule Exun.Simpl do
               rest = get_rest(isol)
 
               isolp =
-                case op do
-                  :suma ->
-                    {{:m, :mult}, [pivot, {{:m, :suma}, coefs}]|>Enum.sort(&smm(&1,&2))}
+                mkrec(
+                  case op do
+                    :suma ->
+                      {{:m, :mult}, [pivot, {{:m, :suma}, coefs}] |> Enum.sort(&smm(&1, &2))}
 
-                  :mult ->
-                    {:elev, pivot, {{:m, :suma}, coefs |> Enum.sort(&smm(&1,&2))}}
-                end
+                    :mult ->
+                      {:elev, pivot, {{:m, :suma}, coefs |> Enum.sort(&smm(&1, &2))}}
+                  end
+                )
 
               case length(rest) do
                 0 -> isolp
-                _ -> {{:m, op}, [isolp | rest] |> Enum.sort(&smm(&1,&2))}
+                _ -> {{:m, op}, [isolp | rest] |> Enum.sort(&smm(&1, &2))}
               end
           end
       end
     end
   end
 
-  defp mk({:fcall, name, lst}) when is_list(lst) do
+  def mk({:fcall, name, lst}) when is_list(lst) do
     args = Enum.map(lst, &Collect.coll/1)
     Exun.Fun.fcall(name, args)
   end
 
-  defp mk({:deriv, a, {:vari, x}}), do: Exun.Der.deriv(mk(a), x)
-  defp mk({:integ, f, v = {:vari, _}}), do: Exun.Integral.integ(mk(f), v)
-  defp mk({op, a, b}), do: {op, mk(a), mk(b)}
+  def mk({:deriv, a, {:vari, x}}), do: Exun.Der.deriv(mk(a), x)
+  def mk({:integ, f, v = {:vari, _}}), do: Exun.Integral.integ(mk(f), v)
+  def mk({op, a, b}), do: {op, mk(a), mk(b)}
 
   # Fallthrough
-  defp mk(tree) do
+  def mk(tree) do
     tree
   end
 
@@ -191,6 +205,10 @@ defmodule Exun.Simpl do
 
   defp cbs(op, a, a) when op in [:suma, :mult] do
     {:ok, @uno}
+  end
+
+  defp cbs(op, {:minus, a}, a) when op in [:suma, :mult] do
+    {:ok, {:numb, -1}}
   end
 
   defp cbs(op, {:elev, a, e1}, {:elev, a, e2}) do
@@ -272,7 +290,31 @@ defmodule Exun.Simpl do
     # |> IO.inspect(label: "final unit,number,lst")
   end
 
+  # return {flag,newlist} if l is from mult and can extract signs
+  # from its operands
+  def acollect_minus(l) do
+    {false, l}
+  end
+
   def collect_minus(l) do
-    l
+    {res, nl, _} =
+      Enum.reduce(l, {false, [], false}, fn opand, {flag, nl, selected} ->
+        case opand do
+          {:minus, minusop} ->
+            nflag = if flag, do: false, else: true
+
+            if selected do
+              {nflag, [opand | nl], true}
+            else
+              {nflag, [minusop | nl], true}
+            end
+
+          _ ->
+            {flag, [opand | nl], selected}
+        end
+      end)
+
+    {res, nl |> Enum.reverse()}
+    # |> IO.inspect(label: "collected minus")
   end
 end
