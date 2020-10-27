@@ -91,7 +91,9 @@ defmodule Exun.Integral do
     {{:m, :suma}, Enum.map(lst, &integ(&1, v))}
   end
 
-  def integ({{:m,:mult},_},_v), do: throw "Product integral not yet"
+  def integ(a={{:m,:mult},_},v) do
+    {:integ,a,v}
+  end
 
   # Fallthrough
   def integ(c, v) do
