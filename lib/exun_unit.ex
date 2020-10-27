@@ -274,8 +274,13 @@ defmodule Exun.Unit do
   ```
   """
   def convert_ast({:unit, {:numb, n1}, t1}, {:unit, {:numb, _n2}, t2}, pcontext \\ %{}) do
-    {res1, exps1} = to_si({1, t1}, pcontext, 1, %{})
-    {res2, exps2} = to_si({1, t2}, pcontext, 1, %{})
+    {res1, exps1} =
+      to_si({1, t1}, pcontext, 1, %{})
+      #|> IO.inspect(label: "convert from unit1")
+
+    {res2, exps2} =
+      to_si({1, t2}, pcontext, 1, %{})
+      #|> IO.inspect(label: "convert to unit2")
 
     if exps1 != exps2 do
       {:err, "Inconsisten units " <> tostr(t1) <> " and " <> tostr(t2)}
@@ -324,7 +329,7 @@ defmodule Exun.Unit do
   """
   def factorize(e1, e2, pcontext \\ %{}) do
     {u1, _} = Exun.parse(e1, pcontext)
-    {u2, _} = Exun.parse("1"<>e2, pcontext)
+    {u2, _} = Exun.parse("1" <> e2, pcontext)
     factorize_ast(u1, u2, pcontext)
   end
 
@@ -332,10 +337,10 @@ defmodule Exun.Unit do
     to_si({n, tree}, pcontext, 1, %{})
   end
 
-  defp to_si({n, {{:m,:mult}, lst}}, pcontext, curr_exp, exps) do
-    Enum.reduce(lst, {n,exps}, fn opand, {acu_n,acu_e} ->
-      {new_n,ne}=to_si({1, opand}, pcontext, curr_exp, acu_e)
-      {acu_n*new_n,ne}
+  defp to_si({n, {{:m, :mult}, lst}}, pcontext, curr_exp, exps) do
+    Enum.reduce(lst, {n, exps}, fn opand, {acu_n, acu_e} ->
+      {new_n, ne} = to_si({1, opand}, pcontext, curr_exp, acu_e)
+      {acu_n * new_n, ne}
     end)
   end
 
@@ -389,23 +394,11 @@ defmodule Exun.Unit do
     exps
     |> Enum.reduce("", fn {var, exp}, ac ->
       cond do
-        exp == 0 ->
-          ac
-
-        exp == 1 ->
-          "#{ac}*#{var}"
-
-        exp == -1 ->
-          "#{ac}/#{var}"
-
-        exp > 0 ->
-          "#{ac}*#{var}^#{exp}"
-
-        exp < 0 ->
-          "#{ac}/#{var}^#{-exp}"
-
-        true ->
-          ac
+        exp == 0 -> ac
+        exp == 1 -> "#{ac}*#{var}"
+        exp == -1 -> "#{ac}/#{var}"
+        exp > 0 -> "#{ac}*#{var}^#{exp}"
+        exp < 0 -> "#{ac}/#{var}^#{-exp}"
       end
     end)
   end
@@ -414,18 +407,17 @@ defmodule Exun.Unit do
   Converts unit to International System
   """
   def toSI({:unit, uv, ut}) do
-    {r, e} = to_si({:unit, coll(uv), coll(ut)})
+    {r, e} =
+      to_si({:unit, coll(uv), coll(ut)})
+      #|> IO.inspect(label: "to_si")
 
     {:unit, {:numb, r},
-     e
-     |> Enum.reject(fn {_a, b} -> b == 0 end)
-     |> Enum.reduce({:numb, 1}, fn {var, expon}, tree ->
-       cond do
-         expon > 0 ->
-          coll(mult(tree, {:elev, {:vari, var}, {:numb, expon}}))
-         expon < 0 ->
-          coll(divi(tree, {:elev, {:vari, var}, {:numb, -expon}}))
-       end
-     end)}
+     coll(
+       e
+       |> Enum.reject(fn {_a, b} -> b == 0 end)
+       |> Enum.reduce({:numb, 1}, fn {var, expon}, tree ->
+         mult(tree, {:elev, {:vari, var}, {:numb, expon}})
+       end)
+     )}
   end
 end
