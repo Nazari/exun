@@ -12,5 +12,6 @@ import Exun
 import Exun.Eq
 import Exun.Pattern
 import Exun.UI
-aast = parse_text "x/(a+b)"
-tostr aast
+import Exun.Simpl
+{exp,_} = parse "sin(x*y)/cos(x*y)"
+Exun.Fun.revert_compounds exp
