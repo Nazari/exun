@@ -113,4 +113,31 @@ defmodule Exun.Fun do
         Exun.Collect.coll({{:m, op}, [a, b]})
     end
   end
+
+  @doc """
+  Looks in compounds for a match of ast and return it.
+  Thw first wins.
+  """
+  def revert_compounds(ast) do
+    matches =
+      compounds()
+      |> Enum.map(fn {k, v} ->
+        #Compile value
+        {vast, _} = Exun.parse(v, %{})
+        #Match, get the first match
+        res = Exun.Pattern.match_ast(vast, ast, [], false)
+        {k, res |> List.first()}
+      end)
+      |> Enum.reject(fn {_, v} -> v == nil end)
+
+    match = matches |> List.first()
+
+    if match != nil do
+      {tk, {:ok, map}} = match
+      {atk, _} = Exun.parse(tk, %{})
+      replace_args_internal(atk, [Map.fetch!(map, {:vari, "F"})], nil)
+    else
+      nil
+    end
+  end
 end
