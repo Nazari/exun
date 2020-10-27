@@ -17,8 +17,12 @@ defmodule Exun.Math do
   def chsign({{:m, :mult}, lst}) do
     {
       {:m, :mult},
-      List.replace_at(lst, 0, chsign(List.first(lst))
-      |> Enum.sort(&smm(&1,&2)))
+      List.replace_at(
+        lst,
+        0,
+        chsign(List.first(lst))
+        |> Enum.sort(&smm(&1, &2))
+      )
     }
   end
 
@@ -27,7 +31,7 @@ defmodule Exun.Math do
      Enum.map(lst, fn el ->
        chsign(el)
      end)
-     |> Enum.sort(&smm(&1,&2))}
+     |> Enum.sort(&smm(&1, &2))}
   end
 
   def chsign(ast), do: {:minus, ast}
@@ -48,4 +52,5 @@ defmodule Exun.Math do
   end
 
   def chpow(s = {{:m, :suma}, _}), do: {:elev, s, {:numb, -1}}
+  def chpow(ast), do: {:elev, ast, {:numb, -1}}
 end
