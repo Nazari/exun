@@ -6,14 +6,31 @@ defmodule Exun.Fun do
 
   @doc """
   base is a map that holds functions names and a tupla
-   <fname>(F) { <elixir function call reference for numbers>, "Deriv Abstract"}
    For example:
+  ```
+  "ln(F)" => {&:math.log/1, "F'x/F", "x*ln(F)-$(x/F),x"}
+  ```
+  - ln(F) : means function name is 'ln' and can receive Functions as argument
+  - &:math.log/1 : Is the Elixir numeric function for ln
+  - F'x/F : is the symbolic derivative of ln, deriv(F,x)/F
+  - x*ln(F)-$(x/F),x : is the symbolic integral for ln
 
-   ln(F) Function name is 'ln'
-   {&:math.log/1, "F'x/F"}
-
-   F'x is d(F)/dx
-
+  For now the definitions are
+  ```
+  "ln(F)" => {&:math.log/1, "F'x/F", "x*ln(F)-$(x/F),x"},
+  "sin(F)" => {&:math.sin/1, "F'x*cos(F)", nil},
+  "cos(F)" => {&:math.cos/1, "-F'x*sin(F)", nil},
+  "tan(F)" => {&:math.tan/1, "F'x/cos(F)^2", nil},
+  "acos(F)" => {&:math.acos/1, "-F'x/(1-F^2)^0.5", nil},
+  "asin(F)" => {&:math.asin/1, "F'x/(1-F^2)^0.5", nil},
+  "atan(F)" => {&:math.atan/1, "F'x/(1+F^2)", nil},
+  "sinh(F)" => {&:math.sinh/1, "F'x*cosh(F)", nil},
+  "cosh(F)" => {&:math.cosh/1, "F'x*sinh(F)", nil},
+  "tanh(F)" => {&:math.tanh/1, "F'x/cosh(F)^2", nil},
+  "asinh(F)" => {&:math.asinh/1, "F'x/(F^2+1)^0.5", nil},
+  "acosh(F)" => {&:math.acosh/1, "F'x/(F^2-1)^0.5", nil},
+  "atanh(F)" => {&:math.atanh/1, "F'x/(1-F^2)", nil}
+  ```
   """
   # name => Numeric implementation, Derivate, Integrate
   def base,
@@ -32,13 +49,26 @@ defmodule Exun.Fun do
       "acosh(F)" => {&:math.acosh/1, "F'x/(F^2-1)^0.5", nil},
       "atanh(F)" => {&:math.atanh/1, "F'x/(1-F^2)", nil}
     }
-
+  @doc """
+  Compounds is a map that holds synthetic definitions. Function
+  revert_compounds is able to look in an ast and identify this list,
+  substituting the values.
+  For now, the definitions are:
+  ```
+  "sqrt(F)" => "F^0.5",
+  "tan(F)" => "sin(F)/cos(F)"
+  ```
+  """
   def compounds,
     do: %{
       "sqrt(F)" => "F^0.5",
       "tan(F)" => "sin(F)/cos(F)"
     }
 
+  @doc """
+  Finds and exec a function call. Search in base and compounds, if cannot find any
+  returns a symbolic fcall.
+  """
   def fcall(name, args) do
     # IO.inspect({name, args}, label: "fcall")
     aau = allargs_numbers(args)
@@ -58,7 +88,10 @@ defmodule Exun.Fun do
         {:fcall, name, args}
     end
   end
-
+  @doc """
+  Replace arguments on ast as specified. Not intended for
+  external use, mus be public for now
+  """
   def replace_args_internal(ast, args, vari) do
     case ast do
       {:vari, "F"} ->
@@ -92,13 +125,24 @@ defmodule Exun.Fun do
       ac and elem(el, 0) == :numb
     end)
   end
-
+  @doc """
+  For convenience, creates ast {{:m,:mult},[a,b]}
+  """
   def mult(a, b), do: mcompose(:mult, a, b)
+  @doc """
+  For convenience, creates ast {{:m,:mult},[a,b^-1]}
+  """
   def divi(a, b), do: mult(a, Exun.Math.chpow(b))
+  @doc """
+  For convenience, creates ast {{:m,:suma},[a,b]}
+  """
   def suma(a, b), do: mcompose(:suma, a, b)
+  @doc """
+  For convenience, creates ast {{:m,:mult},[a,-b]}
+  """
   def rest(a, b), do: suma(a, Exun.Math.chsign(b))
 
-  def mcompose(op, a, b) do
+  defp mcompose(op, a, b) do
     case {a, b} do
       {{{:m, ^op}, l1}, {{:m, ^op}, l2}} ->
         Exun.Collect.coll({{:m, op}, l1 ++ l2})

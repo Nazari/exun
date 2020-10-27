@@ -7,7 +7,15 @@ defmodule Exun.Der do
   @zero {:numb, 0}
   @uno {:numb, 1}
   @doc """
-  Derive function txt for variable x, return string
+  Derive function for variable x, may be an ast or an expresion in text mode
+  ```
+  deriv("sin(x)","x")
+  -> cos(x)*x'x
+  ```
+   Or an AST, for internal use of library
+  ```
+  deriv({:vari,"x"},"x")
+  -> {:numb,1}
   """
   def deriv(txt, x) when is_binary(txt) and is_binary(x) do
     {ast, _ctx} = Exun.parse(txt)
@@ -21,11 +29,11 @@ defmodule Exun.Der do
     der(ast, {:vari, name})
   end
 
-  def der({:deriv, fun, x1}, x2) do
+  defp der({:deriv, fun, x1}, x2) do
     der(der(fun, x1), x2)
   end
 
-  def der({:fcall, name, args}, x) do
+  defp der({:fcall, name, args}, x) do
     search_name = name <> "(F)"
 
     cond do
@@ -46,12 +54,12 @@ defmodule Exun.Der do
     # |> IO.inspect(label: "der fcall")
   end
 
-  def der({:minus, a}, x), do: {:minus, der(a, x)}
-  def der({:numb, _}, _x), do: @zero
-  def der({:unit, _uv, _ut}, _x), do: @zero
-  def der({:vari, var}, {:vari, x}), do: if(var == x, do: @uno, else: @zero)
+  defp der({:minus, a}, x), do: {:minus, der(a, x)}
+  defp der({:numb, _}, _x), do: @zero
+  defp der({:unit, _uv, _ut}, _x), do: @zero
+  defp der({:vari, var}, {:vari, x}), do: if(var == x, do: @uno, else: @zero)
 
-  def der({:elev, base, expon}, x),
+  defp der({:elev, base, expon}, x),
     do:
       mult(
         {:elev, base, expon},
@@ -61,14 +69,14 @@ defmodule Exun.Der do
         )
       )
 
-  def der({:integ, f, x}, x), do: f
+  defp der({:integ, f, x}, x), do: f
 
-  def der({{:m, :suma}, lst}, x),
+  defp der({{:m, :suma}, lst}, x),
     do: {{:m, :suma}, Enum.map(lst, &der(&1, x))}
 
-  def der({{:m, :mult}, [a]}, x), do: der(a, x)
+  defp der({{:m, :mult}, [a]}, x), do: der(a, x)
 
-  def der({{:m, :mult}, lst}, x) when is_list(lst) do
+  defp der({{:m, :mult}, lst}, x) when is_list(lst) do
     prim = List.first(lst)
     segu = {{:m, :mult}, List.delete(lst, prim)}
 
@@ -78,7 +86,7 @@ defmodule Exun.Der do
     )
   end
 
-  def der(f, x) do
+  defp der(f, x) do
     {:deriv, f, x}
   end
 end

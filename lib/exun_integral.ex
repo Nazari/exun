@@ -10,6 +10,9 @@ defmodule Exun.Integral do
   @moduledoc """
   Try to integrate function
   """
+  @doc """
+  Integrate function for var v. Expect an AST and return an AST.
+  """
   def integ(@zero, _), do: @uno
   def integ(n = {:numb, _}, v), do: mult( n, v)
   def integ(v = {:vari, _}, v), do: mult({:numb, 0.5}, {:elev, v, @dos})

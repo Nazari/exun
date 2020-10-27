@@ -4,10 +4,6 @@ defmodule Exun do
   alias Exun.Eq
   alias Exun.UI
 
-  def debug() do
-    eval("$x/x,x")
-  end
-
   @moduledoc """
   Symbolic Math for Elixir, with Units support
   """
@@ -24,6 +20,7 @@ defmodule Exun do
   expression is a tuple that holds math AST and
   parsed_context is a map whith all equalities (definitions) parsed as
   "name" => expression
+  See parse_txt for an explanation
   """
   def parse(txt, context \\ %{}) do
     case Cyclic.check(context) do
@@ -66,6 +63,9 @@ defmodule Exun do
     ast_eval(ast, pctx)
   end
 
+  @doc """
+  Eval an ast (not text expression)
+  """
   def ast_eval(ast, pctx \\ %{}) do
     case ast do
       {:error, {line, _app, list}} ->
@@ -85,7 +85,18 @@ defmodule Exun do
         |> coll()
     end
   end
-
+  @doc """
+  Parses an expression in text format. Special symbols used:
+  - An Unit: <number>[UnitExpression] : 1[m/s]
+  - A multiplication, division, suma, rest and parenthesis works in the usual way: 2**x-3**(y-2)
+  - Function call: fname(args): sin(x)
+  - A derivate: <expression>'<var> : sin(x)'x. Symbol (') has the greatest priority, for example
+  y^x'x is equals to y^(x'x). Use () to be clear: (y^x)'x
+  - An integral: $<expression>,<var>: $tan(x),x
+  - You can sum units: 1[m]+1[cm] if are of the same magnitude. For example 1[m]+1[s] will
+  throw an exception. You can multiple/divide any two unis.
+  """
+  @spec parse_text(binary) :: any
   def parse_text(txt) do
     with {:ok, toks, _} <- :exun_lex.string(txt |> String.to_charlist()),
          {:ok, tree} <- :exun_yacc.parse(toks) do
@@ -93,12 +104,7 @@ defmodule Exun do
     end
   end
 
-  @doc """
-  Replace definitions in context into
-  main tree expression until no more
-  expansion is posssible
-  """
-  def replace(tree, pc) do
+  defp replace(tree, pc) do
     newtree = repl(tree, pc)
 
     if not Eq.eq(tree, newtree) do

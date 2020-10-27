@@ -7,7 +7,7 @@ defmodule Exun.Collect do
   alias Exun.Fun
 
   @doc """
-  Main collecting function. Try to simplify tree without chaging its value
+  Main collecting function. Try to simplify tree withou chaging its value
   Gets and returns an AST, as produced by Exun.parse.
   """
   def coll(tree) do

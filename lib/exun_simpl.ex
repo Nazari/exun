@@ -10,6 +10,10 @@ defmodule Exun.Simpl do
   @moduledoc """
   Simplify expressions
   """
+  @doc """
+  Recursively try to simplify expression. Multiple tries are performed.
+  For a more agressive simplify, use Exun.Collect.coll
+  """
   def mkrec(tree) do
     ntree = mk(tree)
 
@@ -19,9 +23,9 @@ defmodule Exun.Simpl do
   end
 
   # simplify
-  def mk({:minus, {:minus, a}}), do: mk(a)
+  defp mk({:minus, {:minus, a}}), do: mk(a)
 
-  def mk({:minus, {{:m, :mult}, list}}) do
+  defp mk({:minus, {{:m, :mult}, list}}) do
     {res, nlist} = collect_minus(list)
 
     if res do
@@ -31,22 +35,22 @@ defmodule Exun.Simpl do
     end
   end
 
-  def mk({:minus, a}), do: {:minus, mk(a)}
-  def mk({:numb, n}), do: if(floor(n) == n, do: {:numb, floor(n)}, else: {:numb, n})
+  defp mk({:minus, a}), do: {:minus, mk(a)}
+  defp mk({:numb, n}), do: if(floor(n) == n, do: {:numb, floor(n)}, else: {:numb, n})
 
-  def mk({:unit, val, {:numb, 1}}), do: mk(val)
-  def mk({:unit, val, ut}), do: Unit.toSI({:unit, mk(val), mk(ut)})
+  defp mk({:unit, val, {:numb, 1}}), do: mk(val)
+  defp mk({:unit, val, ut}), do: Unit.toSI({:unit, mk(val), mk(ut)})
 
-  def mk({:elev, _, @zero}), do: @uno
-  def mk({:elev, a, @uno}), do: mk(a)
-  def mk({:elev, @uno, _}), do: @uno
-  def mk({:elev, {:numb, base}, {:numb, exp}}), do: {:numb, :math.pow(base, exp)}
-  def mk({:elev, {:elev, base, e1}, e2}), do: {:elev, mk(base), mk(mult(e1, e2))}
+  defp mk({:elev, _, @zero}), do: @uno
+  defp mk({:elev, a, @uno}), do: mk(a)
+  defp mk({:elev, @uno, _}), do: @uno
+  defp mk({:elev, {:numb, base}, {:numb, exp}}), do: {:numb, :math.pow(base, exp)}
+  defp mk({:elev, {:elev, base, e1}, e2}), do: {:elev, mk(base), mk(mult(e1, e2))}
 
-  def mk({:elev, {:unit, uv, ut}, expon}),
+  defp mk({:elev, {:unit, uv, ut}, expon}),
     do: {:unit, mk({:elev, uv, expon}), mk({:elev, ut, expon})}
 
-  def mk({{:m, op}, lst}) when op in [:suma, :mult] and is_list(lst) do
+  defp mk({{:m, op}, lst}) when op in [:suma, :mult] and is_list(lst) do
     # Simplify each component of the list
     lst =
       lst
@@ -127,21 +131,21 @@ defmodule Exun.Simpl do
     end
   end
 
-  def mk({:fcall, name, lst}) when is_list(lst) do
+  defp mk({:fcall, name, lst}) when is_list(lst) do
     args = Enum.map(lst, &Collect.coll/1)
     Exun.Fun.fcall(name, args)
   end
 
-  def mk({:deriv, a, {:vari, x}}), do: Exun.Der.deriv(mk(a), x)
-  def mk({:integ, f, v = {:vari, _}}), do: Exun.Integral.integ(mk(f), v)
-  def mk({op, a, b}), do: {op, mk(a), mk(b)}
+  defp mk({:deriv, a, {:vari, x}}), do: Exun.Der.deriv(mk(a), x)
+  defp mk({:integ, f, v = {:vari, _}}), do: Exun.Integral.integ(mk(f), v)
+  defp mk({op, a, b}), do: {op, mk(a), mk(b)}
 
   # Fallthrough
-  def mk(tree) do
+  defp mk(tree) do
     tree
   end
 
-  def get_isol(base, lst) do
+  defp get_isol(base, lst) do
     List.zip([lst, base])
     |> Enum.reduce([], fn {a, res}, ac ->
       case res do
@@ -155,7 +159,7 @@ defmodule Exun.Simpl do
     |> Enum.reverse()
   end
 
-  def get_coefs(isol) do
+  defp get_coefs(isol) do
     isol
     |> Enum.filter(fn {_, b} -> b != nil end)
     |> Enum.reduce([], fn {_, b}, ac ->
@@ -164,7 +168,7 @@ defmodule Exun.Simpl do
     |> Enum.reverse()
   end
 
-  def get_rest(isol) do
+  defp get_rest(isol) do
     isol
     |> Enum.filter(fn {_, b} -> b == nil end)
     |> Enum.reduce([], fn {a, _}, ac ->
@@ -173,7 +177,7 @@ defmodule Exun.Simpl do
     |> Enum.reverse()
   end
 
-  def get_base(op, lst) do
+  defp get_base(op, lst) do
     pivots =
       for pivot <- lst do
         {pivot,

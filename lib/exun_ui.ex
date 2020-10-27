@@ -139,7 +139,7 @@ defmodule Exun.UI do
     {texto, pri, false, false}
   end
 
-  def sop({_, p1, d1, s1}, {_, p2, d2, s2}) do
+  defp sop({_, p1, d1, s1}, {_, p2, d2, s2}) do
     cond do
       d1 and !d2 -> false
       !d1 and d2 -> true

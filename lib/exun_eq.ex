@@ -22,7 +22,11 @@ defmodule Exun.Eq do
     :minus => 7,
     :elev => 8
   }
-
+  @doc """
+  Sort for m multiple list
+  Sorts components of lis {{:m,op},lst} in a convenient way for eq
+  and operating
+  """
   def smm(l, r) do
     tl = grt(l)
     tr = grt(r)
