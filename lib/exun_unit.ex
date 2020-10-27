@@ -325,7 +325,10 @@ defmodule Exun.Unit do
   end
 
   @doc """
-  Factorize units, as text: factorize("2[N]","[Kg]")
+  Factorize units, as text:
+  ```
+  factorize("2[N]","[Kg]")
+  ```
   """
   def factorize(e1, e2, pcontext \\ %{}) do
     {u1, _} = Exun.parse(e1, pcontext)
