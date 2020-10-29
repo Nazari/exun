@@ -36,12 +36,12 @@ defmodule Exun.Integral do
     do: parse_text("-ln(cos(" <> x <> "))")
 
   def integ({:fcall, "asin", [v = {:vari, x}]}, v) do
-    txt = "x*asin(x)+(1-x)^0.5*(1+x)^0.5"
+    txt = "x*asin(x)+(1-x^2)^0.5"
     parse_text(txt |> String.replace("x", x))
   end
 
   def integ({:fcall, "acos", [v = {:vari, x}]}, v) do
-    txt = "x*acos(x)-(1-x)^0.5*(1+x)^0.5"
+    txt = "x*acos(x)-(1-x^2)^0.5"
     parse_text(txt |> String.replace("x", x))
   end
 
