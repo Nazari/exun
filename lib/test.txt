@@ -13,5 +13,10 @@ import Exun.Eq
 import Exun.Pattern
 import Exun.UI
 import Exun.Simpl
-{exp,_} = parse "sin(x*y)/cos(x*y)"
-Exun.Fun.revert_compounds exp
+aexp = {{:m, :mult}, list} = Exun.parse_text "2*x"
+aast = Exun.parse_text("u*v'x")
+[{:ok,m1},{:ok,m2}]=Exun.Pattern.match_ast(aast, aexp)
+x="x"
+uvvdu = Exun.parse_text("u*v-$v*u'#{x},#{x}")
+Exun.Simpl.mkrec(Exun.replace uvvdu,m1)
+
