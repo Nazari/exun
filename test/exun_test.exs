@@ -3,6 +3,10 @@ defmodule ExunTest do
 
   doctest Exun
 
+  test "Match integral of product" do
+    assert Exun.Pattern.match("f'x","2*x",%{}) == ""
+  end
+
   test "[ precedes sum" do
     assert Exun.eval("1[m]+1[cm]+1[mm]") in ["1.011[m]", "101.1[cm]"]
   end
@@ -353,6 +357,39 @@ defmodule ExunTest do
                {:fcall, "f", [{{:m, :mult}, [numb: 2, vari: "x"]}]} =>
                  {:fcall, "sin", [{{:m, :mult}, [numb: 2, vari: "x"]}]}
              }
+           ]
+  end
+
+  test "Pattern 08" do
+    assert match("u*v'x", "2*x^2", %{}) == [
+             {:ok,
+              %{
+                {:vari, "u"} => {:numb, 1},
+                {:vari, "v"} =>
+                  {:integ, {{:m, :mult}, [{:numb, 2}, {:elev, {:vari, "x"}, {:numb, 2}}]},
+                   {:vari, "x"}},
+                {:deriv, {:vari, "v"}, {:vari, "x"}} =>
+                  {{:m, :mult}, [{:numb, 2}, {:elev, {:vari, "x"}, {:numb, 2}}]}
+              }},
+             {:ok,
+              %{
+                {:vari, "u"} => {:numb, 2},
+                {:vari, "v"} =>
+                  {{:m, :mult}, [{:numb, 0.3333333333333333}, {:elev, {:vari, "x"}, {:numb, 3}}]},
+                {:deriv, {:vari, "v"}, {:vari, "x"}} => {:elev, {:vari, "x"}, {:numb, 2}}
+              }},
+             {:ok,
+              %{
+                {:vari, "u"} => {{:m, :mult}, [{:numb, 2}, {:elev, {:vari, "x"}, {:numb, 2}}]},
+                {:vari, "v"} => {:vari, "x"},
+                {:deriv, {:vari, "v"}, {:vari, "x"}} => {:numb, 1}
+              }},
+             {:ok,
+              %{
+                {:vari, "u"} => {:elev, {:vari, "x"}, {:numb, 2}},
+                {:vari, "v"} => {{:m, :mult}, [numb: 2, vari: "x"]},
+                {:deriv, {:vari, "v"}, {:vari, "x"}} => {:numb, 2}
+              }}
            ]
   end
 end
