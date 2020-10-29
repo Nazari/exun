@@ -2,6 +2,6 @@ defmodule Mix.Tasks.Debg do
   use Mix.Task
 
   def run(_) do
-    Exun.eval "$sin(x^2)*cos(x^2)*x*2,x"
+    Exun.Pattern.umatch "f(g)*g'x", "3*x^2*(x^3+1)^2",[],false
   end
 end
