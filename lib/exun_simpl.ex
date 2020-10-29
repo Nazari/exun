@@ -104,6 +104,7 @@ defmodule Exun.Simpl do
 
           case counts do
             1 ->
+              # No match on more than one, leave as is
               {{:m, op}, lst}
 
             _ ->
