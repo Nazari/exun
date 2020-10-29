@@ -60,7 +60,7 @@ defmodule Exun.Pattern do
         Enum.each(map, fn {name, value} ->
           # IO.inspect(name,label: "VarName")
           # IO.inspect(value, label: "VarValue")
-          IO.puts("::>#{tostr(name)}\t=> #{tostr(value)}")
+          IO.puts("  #{tostr(name)}\t= #{tostr(value)}")
         end)
       end)
     else
@@ -71,6 +71,19 @@ defmodule Exun.Pattern do
   def match(taast, texpr, context, tconditions \\ []) do
     {aast, _} = Exun.parse(taast)
     {expr, _} = Exun.parse(texpr, context)
+
+    cond do
+      aast |> elem(0) == :error ->
+        {:error, {_, _, [msg, _]}} = aast
+        throw("Pattern #{taast} : #{msg})")
+
+      expr |> elem(0) == :error ->
+        {:error, {_, _, [msg, _]}} = expr
+        throw("Expression #{texpr} : #{msg})")
+
+      true ->
+        nil
+    end
 
     conditions =
       Enum.map(tconditions, fn cnd ->
@@ -197,8 +210,14 @@ defmodule Exun.Pattern do
       {{:elev, a, b}, {:elev, c, d}} ->
         mlist([a, b], [c, d], map)
 
+      # Handle expon==1
       {{:elev, a, b}, expr} ->
         mlist([a, b], [expr, @uno], map)
+
+      # Cannot isolate for now. Match sin(F) <= 1 would be possible
+      # if we can isolate F=acos(1) and define F as constant, a number.
+      {{:fcall, _name, _args}, {:numb, _}} ->
+        [{:ko, map}]
 
       # Function def from abstract ast match if vars are used in expr
       {a = {:fcall, _name, _args}, expr} ->
@@ -209,8 +228,8 @@ defmodule Exun.Pattern do
         mderiv(der, expr, map)
 
       # see minteg
-      {integ={:integ, {:vari, _}, _var}, expr} ->
-        minteg(integ, expr,map)
+      {integ = {:integ, {:vari, _}, _var}, expr} ->
+        minteg(integ, expr, map)
 
       # Multiple sum or product. This can produce multiple tries for matching
       # We *must* check all of them,
@@ -239,7 +258,7 @@ defmodule Exun.Pattern do
   """
 
   def mmult(aast = {{:m, op}, lsta}, east = {{:m, op}, lste}, map) do
-    # if more left matchin elements than right, complete right with unity elements
+    # if more left matching elements than right, complete right with unity elements
     east =
       if length(lsta) > length(lste) do
         unity = if op == :suma, do: {:numb, 0}, else: {:numb, 1}
@@ -249,33 +268,50 @@ defmodule Exun.Pattern do
         east
       end
 
-    # Get n sets (size of abstract list) from a list of m size (expression)
+    # IO.inspect(map, label: "mm Input map")
+    # Explore all options for matching
     combin_expand(aast, east)
     # |> IO.inspect(label: "Order Expanded")
-    # zip abstract and expresion and try to match with mnode
     |> Enum.reduce([], fn set, acc ->
+      # zip pattern and expresion and try to match with mnode with current defs map
       (List.zip([lsta, set])
        # |> IO.inspect(label: "Zipped")
-       |> Enum.reduce([{:ok, map}], fn {abs, exp}, [{res, map}] ->
-         cond do
-           res == :ok and is_list(exp) and length(exp) > 1 ->
-             mnode(abs, {{:m, op}, exp}, map)
+       |> Enum.reduce([{:ok, map}], fn {abs, exp}, maplist ->
+         if maplist == [] do
+           [{:ko, map}]
+         else
+           [{res, map}] = maplist
 
-           res == :ok and is_list(exp) ->
-             [sub] = exp
-             mnode(abs, sub, map)
+           cond do
+             res == :ok and is_list(exp) and length(exp) > 1 ->
+               mnode(abs, {{:m, op}, exp}, map)
 
-           res == :ok ->
-             mnode(abs, exp, map)
+             # |> IO.inspect(label: "mm len exp>1")
 
-           true ->
-             [{res, map}]
+             res == :ok and is_list(exp) ->
+               [sub] = exp
+               mnode(abs, sub, map)
+
+             # |> IO.inspect(label: "mm len exp==1")
+
+             res == :ok ->
+               # IO.inspect({abs, exp, map}, label: "mm not is list exp")
+
+               mnode(abs, exp, map)
+
+             # |> IO.inspect(label: "mm not is list exp")
+
+             true ->
+               [{res, map}]
+               # |> IO.inspect(label: "mm res==:ko")
+           end
          end
 
          # |> IO.inspect(label: "cond do")
        end)) ++ acc
     end)
-    |> Enum.reject(fn {res, _} -> res == :ko end)
+
+    # |> Enum.reject(fn {res, _} -> res == :ko end)
   end
 
   def mmult(aast = {{:m, op}, _lsta}, expr, map) do
@@ -283,6 +319,40 @@ defmodule Exun.Pattern do
     mmult(aast, {{:m, op}, [expr, unity]}, map)
   end
 
+  @doc """
+  Get n sets (size of abstract list) from a list of m size (expression)
+  this produces a quasy cartesian product for all combinations between
+  right and left lists. For example, if left and right has the same
+  size n, we will try all possible combinations one to one. If ther is more
+  elements on right list then we also must handle partitions (tuples) and
+  order inside... a mess you know
+  ```
+      iex(1)> Exun.Pattern.combin_expand {{:m,:mult},[1,2,3]},{{:m,:mult},["a","b","c"]}
+    [
+      ["a", "b", "c"],
+      ["a", "c", "b"],
+      ["b", "a", "c"],
+      ["b", "c", "a"],
+      ["c", "a", "b"],
+      ["c", "b", "a"]
+    ]
+      iex(2)> Exun.Pattern.combin_expand {{:m,:mult},[1,2]},{{:m,:mult},["a","b","c"]}
+    [
+      ["a", {"b", "c"}],
+      [{"b", "c"}, "a"],
+      ["a", {"c", "b"}],
+      [{"c", "b"}, "a"],
+      ["b", {"a", "c"}],
+      [{"a", "c"}, "b"],
+      ["b", {"c", "a"}],
+      [{"c", "a"}, "b"],
+      ["c", {"a", "b"}],
+      [{"a", "b"}, "c"],
+      ["c", {"b", "a"}],
+      [{"b", "a"}, "c"]
+    ]
+  ```
+  """
   def combin_expand(aast, east) do
     # Get n sets (size of abstract list) from a list of m size (expression)
     combin(aast, east)
@@ -396,7 +466,7 @@ defmodule Exun.Pattern do
         if res == :ok do
           mnode(ast, exp, smap) ++ acu
         else
-          acu
+          [{:ko, smap} | acu]
         end
       end)
     end)
