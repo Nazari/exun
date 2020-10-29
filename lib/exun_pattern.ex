@@ -49,8 +49,8 @@ defmodule Exun.Pattern do
   @doc """
   User function, try to match and prints
   """
-  def umatch(taast, texpr, tconditions \\ []) do
-    los = match(taast, texpr, %{}, tconditions)
+  def umatch(taast, texpr, tconditions \\ [], transf\\true) do
+    los = match(taast, texpr, %{}, tconditions, transf)
 
     if los != [] do
       los
@@ -68,7 +68,7 @@ defmodule Exun.Pattern do
     end
   end
 
-  def match(taast, texpr, context, tconditions \\ []) do
+  def match(taast, texpr, context, tconditions \\ [], transf \\true) do
     {aast, _} = Exun.parse(taast)
     {expr, _} = Exun.parse(texpr, context)
 
@@ -91,7 +91,7 @@ defmodule Exun.Pattern do
         res
       end)
 
-    match_ast(aast, expr, conditions)
+    match_ast(aast, expr, conditions, transf)
     |> remove_dups()
   end
 
