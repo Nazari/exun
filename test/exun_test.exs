@@ -3,6 +3,14 @@ defmodule ExunTest do
 
   doctest Exun
 
+  test "Integral poly" do
+    assert Exun.eval("$1+2*x+3*x^2+4*x^3,x")=="x*(1+x*(1+x*(1+x)))"
+  end
+
+  test "Integral type U * U'x" do
+    assert Exun.eval("$sin(x)*cos(x),x") == "0.5*sin(x)^2"
+  end
+
   test "Match integral of product" do
     assert Exun.Pattern.match("f'x", "2*x", %{}) == [
              ok: %{
