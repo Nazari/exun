@@ -93,39 +93,20 @@ defmodule Exun.Integral do
     {{:m, :suma}, Enum.map(lst, &integ(&1, v))}
   end
 
-  def integ(aexp = {{:m, :mult}, _}, v = {:vari, x}) do
-    if try_poly = integ_poly(aexp, v) do
-      try_poly
-    else
-      # try to integrate by parts. We are going to use Pattern.match over the whole expression
-      aast = Exun.parse_text("u*v'#{x}")
-      uvvdu = Exun.parse_text("u*v-$v*u'#{x},#{x}")
+  def integ(aexp = {{:m, :mult}, _}, v) do
+    # Three methods for now
+    cond do
+      try_poly = integ_poly(aexp, v) ->
+        try_poly
 
-      solutions =
-        Exun.Pattern.match_ast(aast, aexp)
-        |> Enum.reject(fn {res, _} -> res != :ok end)
-        |> Enum.map(fn {_, map} ->
-          #IO.inspect(map, label: "map")
+      try_udu = integ_udu(aexp, v) ->
+        try_udu
 
-          replace(uvvdu, map)
-          #|> mutate(:integ, :sinteg)
-          |> Exun.Simpl.mkrec()
-          #|> mutate(:sinteg, :integ)
-          #|> IO.inspect(label: "Solution")
+      try_parts = integ_parts(aexp, v) ->
+        try_parts
 
-          # Check cyclic definitions including {:integ,aexp,v}
-          # so the try will not enter an infinite loop.
-          # Integrating by parts "2*x" if u=x and v'=2 then u*v-integ(v*u')
-          # will be cyclic because v*u' is 2*x, the same original expression
-          # First sense of this problem was tryin to integrate polynomials by parts,
-          # that was solved previosly
-        end)
-        |> Enum.reject(fn {_, sol} -> symbinteg(sol) end)
-
-      case List.first(solutions) do
-        nil -> {:integ, aexp, v}
-        a -> a
-      end
+      true ->
+        {:integ, aexp, v}
     end
   end
 
@@ -136,11 +117,11 @@ defmodule Exun.Integral do
 
   def symbinteg(ast) do
     case ast do
-      {:integ, _, _} -> false
-      {:fcall, _, args} -> Enum.reduce(args, true, fn el, ac -> symbinteg(el) and ac end)
-      {{:m, _}, args} -> Enum.reduce(args, false, fn el, ac -> symbinteg(el) and ac end)
+      {:integ, _, _} -> true
+      {:fcall, _, args} -> Enum.reduce(args, true, fn el, ac -> symbinteg(el) or ac end)
+      {{:m, _}, args} -> Enum.reduce(args, false, fn el, ac -> symbinteg(el) or ac end)
       {_, l, r} -> symbinteg(l) and symbinteg(r)
-      _ -> true
+      _ -> false
     end
   end
 
@@ -175,23 +156,83 @@ defmodule Exun.Integral do
   end
 
   def integ_poly(mult = {{:m, :mult}, _}, v = {:vari, x}) do
-    case Exun.Pattern.match_ast(Exun.parse_text("ParX1*#{x}^ParX2"), mult, %{}) do
+    case Exun.Pattern.match_ast(Exun.parse_text("a*#{x}^b"), mult, %{}) do
       [] ->
         false
 
       matchlist ->
         Enum.reduce(matchlist, [], fn {_, map}, listsol ->
-          p1 = Map.fetch!(map, {:vari, "ParX1"})
-          p2 = Map.fetch!(map, {:vari, "ParX2"})
+          a = Map.fetch!(map, {:vari, "a"})
+          var = Map.fetch!(map, {:vari, "#{x}"})
+          b = Map.fetch!(map, {:vari, "b"})
 
-          if Exun.Fun.contains(p1, v) or Exun.Fun.contains(p2, v) do
+          if Exun.Fun.contains(a, v) or Exun.Fun.contains(b, v) or var != {:vari, "#{x}"} do
             listsol
           else
-            newexpon = suma(p2, @uno)
-            [mult(divi(p1, newexpon), elev(v, newexpon)) | listsol]
+            newexpon = suma(b, @uno)
+            [mult(divi(a, newexpon), elev(v, newexpon)) | listsol]
           end
         end)
         |> List.first()
+    end
+  end
+
+  def integ_udu(ast, {:vari, x}) do
+    udu = Exun.parse_text("u*u'#{x}")
+
+    case Exun.Pattern.match_ast(udu, ast) do
+      [] ->
+        false
+
+      matchlist ->
+        Enum.reduce(matchlist, [], fn {_, map}, listsol ->
+          u = Map.fetch!(map, {:vari, "u"})
+          [divi(elev(u, {:numb, 2}), {:numb, 2}) | listsol]
+        end)
+        |> List.first()
+    end
+  end
+
+  def integ_parts(aexp = {{:m, :mult}, _}, {:vari, x}) do
+    # try to integrate by parts. We are going to use Pattern.match over the whole expression
+    aast = Exun.parse_text("u*v'#{x}")
+    vdu = Exun.parse_text("v*u'#{x}")
+
+    solutions =
+      Exun.Pattern.match_ast(aast, aexp)
+      |> Enum.reject(fn {res, _} -> res != :ok end)
+      |> Enum.map(fn {_, map} ->
+        # IO.inspect(map, label: "map")
+
+        # look for the other integ, v(x) * u(x)'x, only in the event
+        # that a simplification removes the integral we can use it
+        otherInteg =
+          replace(vdu, map)
+          |> mutate(:integ, :sinteg)
+          |> Exun.Simpl.mkrec()
+          |> mutate(:sinteg, :integ)
+
+        if not symbinteg(otherInteg) do
+          uvvdu = Exun.parse_text("u*v-v*u'#{x}")
+          {:ok, replace(uvvdu, map) |> Exun.Simpl.mkrec()}
+        else
+          {:ko, nil}
+        end
+
+        # |> IO.inspect(label: "Solution")
+
+        # Check cyclic definitions including {:integ,aexp,v}
+        # so the try will not enter an infinite loop.
+        # Integrating by parts "2*x" if u=x and v'=2 then u*v-integ(v*u')
+        # will be cyclic because v*u' is 2*x, the same original expression
+        # First sense of this problem was tryin to integrate polynomials by parts,
+        # that was solved previosly
+      end)
+      |> Enum.reject(fn {r, _} -> r != :ok end)
+
+    case List.first(solutions) do
+      nil -> nil
+      {:ok, ast} -> ast
     end
   end
 end
