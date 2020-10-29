@@ -3,7 +3,7 @@ defmodule Exun.Pattern do
   import Exun.Eq
   import Exun.Collect
   import Exun.Fun
-
+  @uno {:numb, 1}
   @moduledoc """
   Match ASTs. Functions umatch and match try to match patter with a real expression. Rules for matching, by example:
   - umatch "f", "(any valid expression)"
@@ -197,6 +197,9 @@ defmodule Exun.Pattern do
       {{:elev, a, b}, {:elev, c, d}} ->
         mlist([a, b], [c, d], map)
 
+      {{:elev, a, b}, expr} ->
+        mlist([a, b], [expr, @uno], map)
+
       # Function def from abstract ast match if vars are used in expr
       {a = {:fcall, _name, _args}, expr} ->
         mfdef(a, expr, map)
@@ -206,8 +209,8 @@ defmodule Exun.Pattern do
         mderiv(der, expr, map)
 
       # see minteg
-      {{:integ, {:vari, name}, _var}, expr} ->
-        [checkmap(map, {:vari, name}, expr)]
+      {integ={:integ, {:vari, _}, _var}, expr} ->
+        minteg(integ, expr,map)
 
       # Multiple sum or product. This can produce multiple tries for matching
       # We *must* check all of them,
@@ -427,7 +430,7 @@ defmodule Exun.Pattern do
         cnd
         # |> IO.inspect(label: "conditions")
         |> Enum.map(fn exp ->
-          symbinteg(
+          Exun.Integral.symbinteg(
             Exun.ast_eval(exp, map)
             |> IO.inspect(label: "evaluted cond")
           )
@@ -435,16 +438,6 @@ defmodule Exun.Pattern do
           # |> IO.inspect(label: "In cond")
         end)
         |> Enum.all?(& &1)
-  end
-
-  defp symbinteg(ast) do
-    case ast do
-      {:integ, _, _} -> false
-      {:fcall, _, args} -> Enum.reduce(args, true, fn el, ac -> symbinteg(el) and ac end)
-      {{:m, _}, args} -> Enum.reduce(args, false, fn el, ac -> symbinteg(el) and ac end)
-      {_, l, r} -> symbinteg(l) and symbinteg(r)
-      _ -> true
-    end
   end
 
   @doc """
