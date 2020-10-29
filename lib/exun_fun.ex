@@ -1,4 +1,5 @@
 defmodule Exun.Fun do
+
   @moduledoc """
   Function management.
   @base and  @compound are the definitions of external functions.
@@ -142,6 +143,11 @@ defmodule Exun.Fun do
   """
   def rest(a, b), do: suma(a, Exun.Math.chsign(b))
 
+  @doc """
+  For convenience, creates ast {:elev,a,b}
+  """
+  def elev(a, b), do: {:elev,a,b}
+
   defp mcompose(op, a, b) do
     case {a, b} do
       {{{:m, ^op}, l1}, {{:m, ^op}, l2}} ->
@@ -184,4 +190,40 @@ defmodule Exun.Fun do
       nil
     end
   end
+
+  @doc """
+  returns true if ast is a polynomial element on v
+  """
+  def is_poly(ast,v) do
+    case ast do
+      {:numb, _} -> true
+      {:unit, _,_} -> true
+      {:vari, _} -> true
+      {:fcall,_,args} -> not Enum.any?(args, &contains(&1,v))
+      {:minus, a } -> is_poly(a, v)
+      {:deriv, f, _} -> not contains(f,v)
+      {:integ, f, _} -> not contains(f,v)
+      {{:m,:suma}, list} -> Enum.all?(list, &is_poly(&1,v))
+      {{:m,:mult}, list} -> Enum.all?(list, &is_poly(&1,v))
+      {:elev, _, b} -> not contains(b,v)
+    end
+  end
+  @doc """
+  returns true if ast contains variable vc
+  """
+  def contains(ast, vc) do
+    case ast do
+      {:numb, _} -> false
+      {:unit, _,_} -> false
+      v={:vari, _} -> v==vc
+      {:fcall,_,args} -> Enum.any?(args, &contains(&1,vc))
+      {:minus, a } -> contains(a, vc)
+      {:deriv, f, _} -> contains(f,vc)
+      {:integ, f, _} ->  contains(f,vc)
+      {{:m,:suma}, list} -> Enum.any?(list,&contains(&1,vc))
+      {{:m,:mult}, list} -> Enum.any?(list,&contains(&1,vc))
+      {:elev, a, b} -> contains(a,vc) or contains(b,vc)
+    end
+  end
+
 end
