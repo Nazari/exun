@@ -74,17 +74,20 @@ defmodule Exun do
       _ ->
         # First Collect context
         pctx =
-          for {k, v} <- pctx, into: %{} do
-            {k, coll(v)}
-          end
+         for {k, v} <- pctx, into: %{} do
+           {k, coll(v)}
+         end
 
         ast
         # |> IO.inspect(label: "eval01,AST")
         |> replace(pctx)
         # |> IO.inspect(label: "eval02,Replaced")
         |> coll()
+
+        # |> IO.inspect(label: "eval03,mkrec")
     end
   end
+
   @doc """
   Parses an expression in text format. Special symbols used:
   - An Unit: <number>[UnitExpression] : 1[m/s]
@@ -104,7 +107,10 @@ defmodule Exun do
     end
   end
 
-  defp replace(tree, pc) do
+  @doc """
+  Replace definitions in ParsedContext (pc) in tree
+  """
+  def replace(tree, pc) do
     newtree = repl(tree, pc)
 
     if not Eq.eq(tree, newtree) do
@@ -118,6 +124,9 @@ defmodule Exun do
     case tree do
       {:vari, var} ->
         Map.get(pc, {:vari, var}, {:vari, var})
+
+      {:minus, a} ->
+        {:minus, repl(a, pc)}
 
       {:fcall, name, args} ->
         args = Enum.map(args, &repl(&1, pc))
