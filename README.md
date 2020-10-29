@@ -1,7 +1,7 @@
 # Exun
 
 Symbolic math library for Elixir, with unit support.
-Alpha state, please provide feedback, this lib has to be tested deeply.
+Beta state, please provide feedback, this lib has to be deeply tested .
 
 TODO:
  - Temperature unit conversions
@@ -185,7 +185,7 @@ by adding `exun` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:exun, "~> 0.4.0"}
+    {:exun, "~> 0.4.1"}
   ]
 end
 ```
