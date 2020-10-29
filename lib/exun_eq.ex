@@ -41,7 +41,13 @@ defmodule Exun.Eq do
   end
 
   defp grt(tup) do
-    t = elem(tup,0)
-    if t == :minus, do: elem(elem(tup,1),0), else: t
+    t = elem(tup, 0)
+
+    if t == :minus do
+      #IO.inspect(tup,label: "tupla")
+      elem(elem(tup, 1), 0)
+    else
+      t
+    end
   end
 end
