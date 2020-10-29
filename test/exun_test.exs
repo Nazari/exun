@@ -4,7 +4,12 @@ defmodule ExunTest do
   doctest Exun
 
   test "Match integral of product" do
-    assert Exun.Pattern.match("f'x","2*x",%{}) == ""
+    assert Exun.Pattern.match("f'x", "2*x", %{}) == [
+             ok: %{
+               {:vari, "f"} => {:elev, {:vari, "x"}, {:numb, 2}},
+               {:deriv, {:vari, "f"}, {:vari, "x"}} => {{:m, :mult}, [numb: 2, vari: "x"]}
+             }
+           ]
   end
 
   test "[ precedes sum" do
@@ -119,9 +124,9 @@ defmodule ExunTest do
       "atanh"
     ]
     |> Enum.map(fn name ->
-      integ_fun = "$" <> name <> "(x),x"
+      integ_fun = "$#{name}(x),x"
       result_integ = Exun.eval(integ_fun)
-      deriv_fun = "(" <> result_integ <> ")'x"
+      deriv_fun = "(#{result_integ})'x"
       result_deriv_ast = Exun.eval_ast(deriv_fun)
       reverted = Exun.Fun.revert_compounds(result_deriv_ast)
 
@@ -362,34 +367,29 @@ defmodule ExunTest do
 
   test "Pattern 08" do
     assert match("u*v'x", "2*x^2", %{}) == [
-             {:ok,
-              %{
-                {:vari, "u"} => {:numb, 1},
-                {:vari, "v"} =>
-                  {:integ, {{:m, :mult}, [{:numb, 2}, {:elev, {:vari, "x"}, {:numb, 2}}]},
-                   {:vari, "x"}},
-                {:deriv, {:vari, "v"}, {:vari, "x"}} =>
-                  {{:m, :mult}, [{:numb, 2}, {:elev, {:vari, "x"}, {:numb, 2}}]}
-              }},
-             {:ok,
-              %{
-                {:vari, "u"} => {:numb, 2},
-                {:vari, "v"} =>
-                  {{:m, :mult}, [{:numb, 0.3333333333333333}, {:elev, {:vari, "x"}, {:numb, 3}}]},
-                {:deriv, {:vari, "v"}, {:vari, "x"}} => {:elev, {:vari, "x"}, {:numb, 2}}
-              }},
-             {:ok,
-              %{
-                {:vari, "u"} => {{:m, :mult}, [{:numb, 2}, {:elev, {:vari, "x"}, {:numb, 2}}]},
-                {:vari, "v"} => {:vari, "x"},
-                {:deriv, {:vari, "v"}, {:vari, "x"}} => {:numb, 1}
-              }},
-             {:ok,
-              %{
-                {:vari, "u"} => {:elev, {:vari, "x"}, {:numb, 2}},
-                {:vari, "v"} => {{:m, :mult}, [numb: 2, vari: "x"]},
-                {:deriv, {:vari, "v"}, {:vari, "x"}} => {:numb, 2}
-              }}
+             ok: %{
+               {:vari, "u"} => {:numb, 1},
+               {:vari, "v"} =>
+                 {{:m, :mult}, [{:numb, 0.6666666666666666}, {:elev, {:vari, "x"}, {:numb, 3}}]},
+               {:deriv, {:vari, "v"}, {:vari, "x"}} =>
+                 {{:m, :mult}, [{:numb, 2}, {:elev, {:vari, "x"}, {:numb, 2}}]}
+             },
+             ok: %{
+               {:vari, "u"} => {:numb, 2},
+               {:vari, "v"} =>
+                 {{:m, :mult}, [{:numb, 0.3333333333333333}, {:elev, {:vari, "x"}, {:numb, 3}}]},
+               {:deriv, {:vari, "v"}, {:vari, "x"}} => {:elev, {:vari, "x"}, {:numb, 2}}
+             },
+             ok: %{
+               {:vari, "u"} => {{:m, :mult}, [{:numb, 2}, {:elev, {:vari, "x"}, {:numb, 2}}]},
+               {:vari, "v"} => {:vari, "x"},
+               {:deriv, {:vari, "v"}, {:vari, "x"}} => {:numb, 1}
+             },
+             ok: %{
+               {:vari, "u"} => {:elev, {:vari, "x"}, {:numb, 2}},
+               {:vari, "v"} => {{:m, :mult}, [numb: 2, vari: "x"]},
+               {:deriv, {:vari, "v"}, {:vari, "x"}} => {:numb, 2}
+             }
            ]
   end
 end
