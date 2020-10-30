@@ -94,6 +94,7 @@ defmodule Exun.Integral do
   end
 
   def integ(aexp = {{:m, :mult}, _}, v) do
+    #IO.inspect(aexp,label: "integrating-----------")
     # Three methods for now
     cond do
       try_poly = integ_poly(aexp, v) ->
@@ -156,15 +157,15 @@ defmodule Exun.Integral do
   end
 
   def integ_poly(mult = {{:m, :mult}, _}, v = {:vari, x}) do
-    case Exun.Pattern.match_ast(Exun.parse_text("a*#{x}^b"), mult, %{}) do
+    case Exun.Pattern.match_ast(Exun.parse_text("coef_poly*#{x}^expon_poly"), mult, %{}) do
       [] ->
         false
 
       matchlist ->
         Enum.reduce(matchlist, [], fn {_, map}, listsol ->
-          a = Map.fetch!(map, {:vari, "a"})
+          a = Map.fetch!(map, {:vari, "coef_poly"})
           var = Map.fetch!(map, {:vari, "#{x}"})
-          b = Map.fetch!(map, {:vari, "b"})
+          b = Map.fetch!(map, {:vari, "expon_poly"})
 
           if Exun.Fun.contains(a, v) or Exun.Fun.contains(b, v) or var != {:vari, "#{x}"} do
             listsol
