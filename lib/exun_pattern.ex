@@ -296,16 +296,30 @@ defmodule Exun.Pattern do
   """
 
   def mmult(aast = {{:m, op}, lsta}, east = {{:m, op}, lste}, mainmap) do
-    # if more left matching elements than right, complete right with unity elements
-    east =
-      if length(lsta) >= length(lste) do
-        unity = if op == :suma, do: {:numb, 0}, else: {:numb, 1}
+    unity = if op == :suma, do: {:numb, 0}, else: {:numb, 1}
+    # if more or equal left matching elements than right, complete right with unity elements
 
-        {{:m, op}, lste ++ List.duplicate(unity, 1 + length(lsta) - length(lste))}
-      else
-        east
-      end
+    case length(lsta) - length(lste) do
+      a when a >= 0 ->
+        [
+          {aast, {{:m, op}, lste ++ List.duplicate(unity, a)}},
+          {aast, {{:m, op}, lste ++ List.duplicate(unity, 1 + a)}}
+        ]
 
+      _ ->
+        [{aast, east}]
+    end
+    |> Enum.reduce([], fn {aa, ea}, solutions ->
+      mmult_inner(aa, ea, mainmap) ++ solutions
+    end)
+  end
+
+  def mmult(aast = {{:m, op}, _lsta}, expr, map) do
+    unity = if op == :suma, do: {:numb, 0}, else: {:numb, 1}
+    mmult_inner(aast, {{:m, op}, [expr, unity]}, map)
+  end
+
+  def mmult_inner(aast = {{:m, op}, lsta}, east = {{:m, op}, _}, mainmap) do
     # IO.inspect(map, label: "mm Input map")
     # Explore all options for matching
     cmb = combin_expand(aast, east)
@@ -342,11 +356,6 @@ defmodule Exun.Pattern do
         # |> IO.inspect(label: "Zipped maps")
       ) ++ acc
     end)
-  end
-
-  def mmult(aast = {{:m, op}, _lsta}, expr, map) do
-    unity = if op == :suma, do: {:numb, 0}, else: {:numb, 1}
-    mmult(aast, {{:m, op}, [expr, unity]}, map)
   end
 
   def par_inspect({ast, plexp}) do

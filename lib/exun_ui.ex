@@ -35,6 +35,10 @@ defmodule Exun.UI do
   indicating if must be included in denominator of a division, and
   another flag indicatin if must be preceded with a sign - before expression
   """
+  def show({:equal, a, b}) do
+    {"#{tostr(a)}=#{tostr(b)}", 0, false,false }
+  end
+
   def show({:numb, n}),
     do: {to_string(n), 200, false, false}
 
@@ -113,9 +117,9 @@ defmodule Exun.UI do
     {_opt, pri} = if op == :suma, do: {"+", 50}, else: {"*", 90}
 
     texto =
-      Enum.map(lst, &show(&1))
+      Enum.map(lst, fn el -> {el,show(el)} end)
       |> Enum.sort(&sop/2)
-      |> Enum.reduce("", fn {t, p, d, s}, atxt ->
+      |> Enum.reduce("", fn {_,{t, p, d, s}}, atxt ->
         wp = withpar(p, pri, t)
 
         if atxt == "" do
@@ -139,13 +143,13 @@ defmodule Exun.UI do
     {texto, pri, false, false}
   end
 
-  defp sop({_, p1, d1, s1}, {_, p2, d2, s2}) do
+  defp sop({a1,{_, _, d1, s1}}, {a2,{_, _, d2, s2}}) do
     cond do
       d1 and !d2 -> false
       !d1 and d2 -> true
       s1 and !s2 -> false
       !s1 and s2 -> true
-      true -> p1 > p2
+      true -> smm(a1,a2)
     end
   end
 
