@@ -49,7 +49,7 @@ defmodule Exun.Pattern do
   @doc """
   User function, try to match and prints
   """
-  def umatch(taast, texpr, tconditions \\ [], transf\\true) do
+  def umatch(taast, texpr, tconditions \\ [], transf \\ true) do
     los = match(taast, texpr, %{}, tconditions, transf)
 
     if los != [] do
@@ -68,7 +68,7 @@ defmodule Exun.Pattern do
     end
   end
 
-  def match(taast, texpr, context, tconditions \\ [], transf \\true) do
+  def match(taast, texpr, context, tconditions \\ [], transf \\ true) do
     {aast, _} = Exun.parse(taast)
     {expr, _} = Exun.parse(texpr, context)
 
@@ -124,10 +124,48 @@ defmodule Exun.Pattern do
     |> Enum.reject(fn {res, map} ->
       res != :ok or map == %{}
     end)
+    # Check pair definitions, if the map holds f and f'x
+    # We must test if it is true
+    |> check_def_consistency()
+    # Check conditions passed by user
+    |> Enum.reject(fn {res, map} ->
+      res != :ok or map == %{}
+    end)
     |> Enum.map(fn {:ok, map} ->
       res = if check_conds(map, conditions), do: :ok, else: :nocond
       {res, map}
     end)
+  end
+
+  defp check_def_consistency(maps) when is_list(maps) do
+    maps
+    |> Enum.map(&check_def_consistency(&1))
+  end
+
+  defp check_def_consistency(tmap) when is_tuple(tmap) do
+    {:ok, map} = tmap
+
+    res =
+      Enum.reduce(map, :ok, fn {k, v}, state ->
+        if state == :ko do
+          :ko
+        else
+          # if k Is a derivate "f'x", check if exists f and test its derivative
+          case k do
+            {:deriv, {:vari, f}, {:vari, var}} ->
+              case Map.fetch(map, {:vari, f}) do
+                # No problem, user wants to identify f'x but not use f
+                :error -> :ok
+                {:ok, val} -> if eq(v, coll({:deriv, val, {:vari, var}})), do: :ok, else: :ko
+              end
+
+            _ ->
+              :ok
+          end
+        end
+      end)
+
+    {res, map}
   end
 
   def transform(expr, exec) do
@@ -257,7 +295,7 @@ defmodule Exun.Pattern do
     # For now, try direct match; sin florituras
   """
 
-  def mmult(aast = {{:m, op}, lsta}, east = {{:m, op}, lste}, map) do
+  def mmult(aast = {{:m, op}, lsta}, east = {{:m, op}, lste}, mainmap) do
     # if more left matching elements than right, complete right with unity elements
     east =
       if length(lsta) > length(lste) do
@@ -270,53 +308,56 @@ defmodule Exun.Pattern do
 
     # IO.inspect(map, label: "mm Input map")
     # Explore all options for matching
-    combin_expand(aast, east)
+    cmb = combin_expand(aast, east)
     # |> IO.inspect(label: "Order Expanded")
-    |> Enum.reduce([], fn set, acc ->
+    Enum.reduce(cmb, [], fn set, acc ->
       # zip pattern and expresion and try to match with mnode with current defs map
-      (List.zip([lsta, set])
-       # |> IO.inspect(label: "Zipped")
-       |> Enum.reduce([{:ok, map}], fn {abs, exp}, maplist ->
-         if maplist == [] do
-           [{:ko, map}]
-         else
-           [{res, map}] = maplist
+      (
+        zipped = List.zip([lsta, set])
 
-           cond do
-             res == :ok and is_list(exp) and length(exp) > 1 ->
-               mnode(abs, {{:m, op}, exp}, map)
+        Enum.reduce(zipped, [{:ok, mainmap}], fn {abs, exp}, maplist ->
+          if maplist == [] do
+            [{:ko, mainmap}]
+          else
+            [{res, map}] = maplist
+            # IO.puts(par_inspect({abs, exp}))
 
-             # |> IO.inspect(label: "mm len exp>1")
+            cond do
+              res == :ok and is_list(exp) and length(exp) > 1 ->
+                mnode(abs, {{:m, op}, exp}, map)
 
-             res == :ok and is_list(exp) ->
-               [sub] = exp
-               mnode(abs, sub, map)
+              res == :ok and is_list(exp) ->
+                [sub] = exp
+                mnode(abs, sub, map)
 
-             # |> IO.inspect(label: "mm len exp==1")
+              res == :ok ->
+                mnode(abs, exp, map)
 
-             res == :ok ->
-               # IO.inspect({abs, exp, map}, label: "mm not is list exp")
+              true ->
+                [{res, map}]
+            end
+          end
+        end)
 
-               mnode(abs, exp, map)
-
-             # |> IO.inspect(label: "mm not is list exp")
-
-             true ->
-               [{res, map}]
-               # |> IO.inspect(label: "mm res==:ko")
-           end
-         end
-
-         # |> IO.inspect(label: "cond do")
-       end)) ++ acc
+        # |> IO.inspect(label: "Zipped maps")
+      ) ++ acc
     end)
-
-    # |> Enum.reject(fn {res, _} -> res == :ko end)
   end
 
   def mmult(aast = {{:m, op}, _lsta}, expr, map) do
     unity = if op == :suma, do: {:numb, 0}, else: {:numb, 1}
     mmult(aast, {{:m, op}, [expr, unity]}, map)
+  end
+
+  def par_inspect({ast, plexp}) do
+    listornot(ast) <> "<==" <> listornot(plexp)
+  end
+
+  def listornot(plexp) do
+    cond do
+      is_list(plexp) -> "[" <> (Enum.map(plexp, &Exun.UI.tostr(&1)) |> Enum.join(";"))
+      true -> Exun.UI.tostr(plexp)
+    end
   end
 
   @doc """
@@ -383,35 +424,38 @@ defmodule Exun.Pattern do
         if eq(derivate, expr), do: [{:ok, map}], else: [{:ko, map}]
 
       :error ->
-        {res, newmap} = checkmap(map, dr, expr)
+        [checkmap(map, dr, expr)]
+        # {res, newmap} = checkmap(map, dr, expr)
+        # Include integral, or not include, that is the question
 
-        if res == :ok do
-          integral = coll({:integ, expr, {:vari, var}})
-          [checkmap(newmap, ef, integral)]
-        else
-          [{:ko, map}]
-        end
+        # if res == :ok do
+        #  integral = {:integ, expr, {:vari, var}}
+        #  [checkmap(newmap, ef, integral)]
+        # else
+        #  [{:ko, map}]
+        # end
     end
   end
 
   @doc """
   Match integral, only allowed as abstract form "$f,x"
   """
-  def minteg(itr = {:integ, ef = {:vari, func}, {:vari, var}}, expr, map) do
+  def minteg(itr = {:integ, ef = {:vari, _func}, {:vari, var}}, expr, map) do
     case Map.fetch(map, ef) do
       {:ok, funcvalue} ->
-        integral = coll({:integ, funcvalue, {:vari, var}})
-        if eq(integral, expr), do: [{:ok, map}], else: [{:ko, map}]
+        deriv_expr = coll({:deriv, expr, {:vari, var}})
+        if eq(deriv_expr, funcvalue), do: [{:ok, map}], else: [{:ko, map}]
 
       :error ->
-        {res, newmap} = checkmap(map, itr, expr)
+        [checkmap(map, itr, expr)]
+        # {res, newmap} = checkmap(map, itr, expr)
 
-        if res == :ok do
-          deriv = coll({:deriv, expr, {:vari, var}})
-          [checkmap(newmap, {:vari, func}, deriv)]
-        else
-          [{:ko, map}]
-        end
+        # if res == :ok do
+        #  deriv = coll({:deriv, expr, {:vari, var}})
+        #  [checkmap(newmap, {:vari, func}, deriv)]
+        # else
+        #  [{:ko, map}]
+        # end
     end
   end
 
@@ -421,12 +465,12 @@ defmodule Exun.Pattern do
   and equals x*y  If we use a pattern like f(x) then x must be in the expression expr
   in any way. If we use f(g(x)) then g(x) must be in the expression also
   """
-  def mfdef(acall1 = {:fcall, _, a1}, acall2 = {:fcall, _, a2}, map) do
+  def mfdef(acall1 = {:fcall, _, a1}, acall2 = {:fcall, _, a2}, mainmap) do
     if(length(a1) != length(a2)) do
-      [{:ko, map}]
+      [{:ko, mainmap}]
     else
       # Try match arguments in same order
-      mlist(a1, a2, map)
+      mlist(a1, a2, mainmap)
       # Set fname in all matching maps
       |> Enum.map(fn {_, smap} ->
         checkmap(smap, acall1, acall2)
@@ -458,10 +502,10 @@ defmodule Exun.Pattern do
     end
   end
 
-  def mlist(a1, a2, map) when is_list(a1) and is_list(a2) do
+  def mlist(a1, a2, mainmap) when is_list(a1) and is_list(a2) do
     List.zip([a1, a2])
     # |> IO.inspect(label: "mlist zipped")
-    |> Enum.reduce([{:ok, map}], fn {ast, exp}, maps ->
+    |> Enum.reduce([{:ok, mainmap}], fn {ast, exp}, maps ->
       Enum.reduce(maps, [], fn {res, smap}, acu ->
         if res == :ok do
           mnode(ast, exp, smap) ++ acu
@@ -470,7 +514,8 @@ defmodule Exun.Pattern do
         end
       end)
     end)
-    |> Enum.reject(fn {res, _} -> res != :ok end)
+
+    # |> Enum.reject(fn {res, _} -> res != :ok end)
   end
 
   def checkmap(map, key, val) do
@@ -565,10 +610,10 @@ defmodule Exun.Pattern do
     res |> Enum.reverse()
   end
 
-  def sfi(number, 1, _), do: [[number]]
-  def sfi(number, 2, _), do: for(k <- 1..floor(number / 2), do: [k, number - k])
+  defp sfi(number, 1, _), do: [[number]]
+  defp sfi(number, 2, _), do: for(k <- 1..floor(number / 2), do: [k, number - k])
 
-  def sfi(number, ngs, pivot) do
+  defp sfi(number, ngs, pivot) do
     seed = sfi(number - pivot, ngs - 1, 1)
     pivots = List.duplicate(pivot, length(seed))
 
