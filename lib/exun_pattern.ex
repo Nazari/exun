@@ -298,10 +298,10 @@ defmodule Exun.Pattern do
   def mmult(aast = {{:m, op}, lsta}, east = {{:m, op}, lste}, mainmap) do
     # if more left matching elements than right, complete right with unity elements
     east =
-      if length(lsta) > length(lste) do
+      if length(lsta) >= length(lste) do
         unity = if op == :suma, do: {:numb, 0}, else: {:numb, 1}
 
-        {{:m, op}, lste ++ List.duplicate(unity, length(lsta) - length(lste))}
+        {{:m, op}, lste ++ List.duplicate(unity, 1 + length(lsta) - length(lste))}
       else
         east
       end
