@@ -102,12 +102,12 @@ Match group ok
   v     => sin(x)
   v'    => cos(x)
 
-umatch "g'x*g^n", "3*x^2*(x^3+1)^2", [], false
+umatch "g'x*g^n", "3*x^2*(x^3+1)^2"
 Match group ok
   g     = 1+x^3
   n     = 2
   g'x   = 3*x^2
-  
+
 umatch("g(y)+f'x","1+x+y")
 Match group ok
   f     => x+0.5*x^2
