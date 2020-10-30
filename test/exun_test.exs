@@ -4,19 +4,16 @@ defmodule ExunTest do
   doctest Exun
 
   test "Integral poly" do
-    assert Exun.eval("$1+2*x+3*x^2+4*x^3,x")=="x*(1+x*(1+x*(1+x)))"
+    assert Exun.eval("$1+2*x+3*x^2+4*x^3,x") == "x*(1+x*(1+x*(x+1)))"
   end
 
   test "Integral type U * U'x" do
-    assert Exun.eval("$sin(x)*cos(x),x") == "0.5*sin(x)^2"
+    assert Exun.eval("$sin(x)*cos(x),x") == "sin(x)^2*0.5"
   end
 
   test "Match integral of product" do
     assert Exun.Pattern.match("f'x", "2*x", %{}) == [
-             ok: %{
-               {:vari, "f"} => {:elev, {:vari, "x"}, {:numb, 2}},
-               {:deriv, {:vari, "f"}, {:vari, "x"}} => {{:m, :mult}, [numb: 2, vari: "x"]}
-             }
+             ok: %{{:deriv, {:vari, "f"}, {:vari, "x"}} => {{:m, :mult}, [numb: 2, vari: "x"]}}
            ]
   end
 
@@ -75,11 +72,11 @@ defmodule ExunTest do
   end
 
   test "Powers" do
-    assert Exun.eval("(a+1)*(a+1)/(a+1)^3") == "1/(1+a)"
+    assert Exun.eval("(a+1)*(a+1)/(a+1)^3") == "1/(a+1)"
   end
 
   test "(a+1)^2/b, %{b=>a+1}" do
-    assert Exun.eval("(a+1)^2/b", %{"b" => "a+1"}) == "1+a"
+    assert Exun.eval("(a+1)^2/b", %{"b" => "a+1"}) == "a+1"
   end
 
   test "(a+1)^2/b, %{b=>a+1,a=>2}" do
@@ -87,7 +84,7 @@ defmodule ExunTest do
   end
 
   test "Order of sum" do
-    assert Exun.eval("(1+a)*(a+1)") == "(1+a)^2"
+    assert Exun.eval("(1+a)*(a+1)") == "(a+1)^2"
   end
 
   test "Context" do
@@ -96,11 +93,11 @@ defmodule ExunTest do
   end
 
   test "Sort of tree" do
-    assert Exun.eval("(1+a)*(a+1)/(a+1)^3") == "1/(1+a)"
+    assert Exun.eval("(1+a)*(a+1)/(a+1)^3") == "1/(a+1)"
   end
 
   test "der 1" do
-    assert Exun.eval("sin(f(x))'x") == "cos(f(x))*f(x)'x"
+    assert Exun.eval("sin(f(x))'x") == "f(x)'x*cos(f(x))"
   end
 
   test "der 2" do
@@ -121,15 +118,15 @@ defmodule ExunTest do
       "sin",
       "cos",
       "tan",
-      #"asin",
-      #"acos",
-      #"atan",
+      # "asin",
+      # "acos",
+      # "atan",
       "sinh",
       "cosh",
-      #"atanh",
-      "asinh",
-      #"acosh",
-      #"atanh"
+      # "atanh",
+      "asinh"
+      # "acosh",
+      # "atanh"
     ]
     |> Enum.map(fn name ->
       integ_fun = "$#{name}(x),x"
@@ -169,28 +166,22 @@ defmodule ExunTest do
           {:vari, "g"} => {:numb, 1},
           {:vari, "h"} =>
             {{:m, :mult},
-             [
-               {:fcall, "sin", [vari: "x"]},
-               {:elev, {:fcall, "cos", [vari: "x"]}, {:numb, -1}}
-             ]}
+             [{:elev, {:fcall, "cos", [vari: "x"]}, {:numb, -1}}, {:fcall, "sin", [vari: "x"]}]}
         },
         ok: %{
           {:vari, "f"} => {:numb, 1},
           {:vari, "g"} => {:numb, 0},
           {:vari, "h"} =>
             {{:m, :mult},
-             [
-               {:fcall, "sin", [vari: "x"]},
-               {:elev, {:fcall, "cos", [vari: "x"]}, {:numb, -1}}
-             ]}
+             [{:elev, {:fcall, "cos", [vari: "x"]}, {:numb, -1}}, {:fcall, "sin", [vari: "x"]}]}
         },
         ok: %{
           {:vari, "f"} =>
             {{:m, :mult},
              [
-               {:fcall, "sin", [vari: "x"]},
                {:elev, {:fcall, "cos", [vari: "x"]},
-                {{:m, :suma}, [numb: -1, minus: {:fcall, "sin", [vari: "x"]}]}}
+                {{:m, :suma}, [numb: -1, minus: {:fcall, "sin", [vari: "x"]}]}},
+               {:fcall, "sin", [vari: "x"]}
              ]},
           {:vari, "g"} => {:elev, {:fcall, "cos", [vari: "x"]}, {:fcall, "sin", [vari: "x"]}},
           {:vari, "h"} => {:numb, 0}
@@ -199,8 +190,8 @@ defmodule ExunTest do
           {:vari, "f"} =>
             {{:m, :mult},
              [
-               {:fcall, "sin", [vari: "x"]},
-               {:elev, {:fcall, "cos", [vari: "x"]}, {:fcall, "sin", [vari: "x"]}}
+               {:elev, {:fcall, "cos", [vari: "x"]}, {:fcall, "sin", [vari: "x"]}},
+               {:fcall, "sin", [vari: "x"]}
              ]},
           {:vari, "g"} =>
             {:elev, {:fcall, "cos", [vari: "x"]},
@@ -219,8 +210,8 @@ defmodule ExunTest do
           {:vari, "g"} =>
             {{:m, :mult},
              [
-               {:fcall, "sin", [vari: "x"]},
-               {:elev, {:fcall, "cos", [vari: "x"]}, {:fcall, "sin", [vari: "x"]}}
+               {:elev, {:fcall, "cos", [vari: "x"]}, {:fcall, "sin", [vari: "x"]}},
+               {:fcall, "sin", [vari: "x"]}
              ]},
           {:vari, "h"} => {:numb, 0}
         },
@@ -229,9 +220,9 @@ defmodule ExunTest do
           {:vari, "g"} =>
             {{:m, :mult},
              [
-               {:fcall, "sin", [vari: "x"]},
                {:elev, {:fcall, "cos", [vari: "x"]},
-                {{:m, :suma}, [numb: -1, minus: {:fcall, "sin", [vari: "x"]}]}}
+                {{:m, :suma}, [numb: -1, minus: {:fcall, "sin", [vari: "x"]}]}},
+               {:fcall, "sin", [vari: "x"]}
              ]},
           {:vari, "h"} => {:numb, 0}
         },
@@ -248,12 +239,10 @@ defmodule ExunTest do
     assert match("u*v'x", "x*cos(x)", %{}) == [
              ok: %{
                {:vari, "u"} => {:vari, "x"},
-               {:vari, "v"} => {:fcall, "sin", [vari: "x"]},
                {:deriv, {:vari, "v"}, {:vari, "x"}} => {:fcall, "cos", [vari: "x"]}
              },
              ok: %{
                {:vari, "u"} => {:fcall, "cos", [vari: "x"]},
-               {:vari, "v"} => {{:m, :mult}, [{:numb, 0.5}, {:elev, {:vari, "x"}, {:numb, 2}}]},
                {:deriv, {:vari, "v"}, {:vari, "x"}} => {:vari, "x"}
              }
            ]
@@ -263,12 +252,10 @@ defmodule ExunTest do
     assert match("u*v'x", "x", %{}) == [
              ok: %{
                {:vari, "u"} => {:numb, 1},
-               {:vari, "v"} => {{:m, :mult}, [{:numb, 0.5}, {:elev, {:vari, "x"}, {:numb, 2}}]},
                {:deriv, {:vari, "v"}, {:vari, "x"}} => {:vari, "x"}
              },
              ok: %{
                {:vari, "u"} => {:vari, "x"},
-               {:vari, "v"} => {:vari, "x"},
                {:deriv, {:vari, "v"}, {:vari, "x"}} => {:numb, 1}
              }
            ]
@@ -277,79 +264,54 @@ defmodule ExunTest do
   test "Patterns 05" do
     assert match("g(y)+f'x", "1+x+y", %{}) == [
              ok: %{
-               {:vari, "f"} => {:vari, "x"},
-               {:vari, "y"} => {:numb, 1},
-               {:deriv, {:vari, "f"}, {:vari, "x"}} => {:numb, 1},
-               {:fcall, "g", [vari: "y"]} => {{:m, :suma}, [vari: "y", vari: "x"]}
-             },
-             ok: %{
-               {:vari, "f"} => {:vari, "x"},
-               {:vari, "y"} => {:vari, "x"},
-               {:deriv, {:vari, "f"}, {:vari, "x"}} => {:numb, 1},
-               {:fcall, "g", [vari: "y"]} => {{:m, :suma}, [vari: "y", vari: "x"]}
-             },
-             ok: %{
-               {:vari, "f"} => {:vari, "x"},
-               {:vari, "y"} => {:vari, "y"},
-               {:deriv, {:vari, "f"}, {:vari, "x"}} => {:numb, 1},
-               {:fcall, "g", [vari: "y"]} => {{:m, :suma}, [vari: "y", vari: "x"]}
-             },
-             ok: %{
-               {:vari, "f"} => {:vari, "x"},
-               {:vari, "y"} => {{:m, :suma}, [vari: "y", vari: "x"]},
-               {:deriv, {:vari, "f"}, {:vari, "x"}} => {:numb, 1},
-               {:fcall, "g", [vari: "y"]} => {{:m, :suma}, [vari: "y", vari: "x"]}
-             },
-             ok: %{
-               {:vari, "f"} => {{:m, :mult}, [{:numb, 0.5}, {:elev, {:vari, "x"}, {:numb, 2}}]},
-               {:vari, "y"} => {:numb, 1},
-               {:deriv, {:vari, "f"}, {:vari, "x"}} => {:vari, "x"},
-               {:fcall, "g", [vari: "y"]} => {{:m, :suma}, [numb: 1, vari: "y"]}
-             },
-             ok: %{
-               {:vari, "f"} => {{:m, :mult}, [{:numb, 0.5}, {:elev, {:vari, "x"}, {:numb, 2}}]},
-               {:vari, "y"} => {:vari, "y"},
-               {:deriv, {:vari, "f"}, {:vari, "x"}} => {:vari, "x"},
-               {:fcall, "g", [vari: "y"]} => {{:m, :suma}, [numb: 1, vari: "y"]}
-             },
-             ok: %{
-               {:vari, "f"} => {{:m, :mult}, [{:numb, 0.5}, {:elev, {:vari, "x"}, {:numb, 2}}]},
-               {:vari, "y"} => {{:m, :suma}, [numb: 1, vari: "y"]},
-               {:deriv, {:vari, "f"}, {:vari, "x"}} => {:vari, "x"},
-               {:fcall, "g", [vari: "y"]} => {{:m, :suma}, [numb: 1, vari: "y"]}
-             },
-             ok: %{
-               {:vari, "f"} =>
-                 {{:m, :suma},
-                  [
-                    {{:m, :mult}, [{:numb, 0.5}, {:elev, {:vari, "x"}, {:numb, 2}}]},
-                    {:vari, "x"}
-                  ]},
                {:vari, "y"} => {:numb, 0},
                {:deriv, {:vari, "f"}, {:vari, "x"}} => {{:m, :suma}, [numb: 1, vari: "x"]},
                {:fcall, "g", [vari: "y"]} => {:vari, "y"}
              },
              ok: %{
-               {:vari, "f"} =>
-                 {{:m, :suma},
-                  [
-                    {{:m, :mult}, [{:numb, 0.5}, {:elev, {:vari, "x"}, {:numb, 2}}]},
-                    {:vari, "x"}
-                  ]},
+               {:vari, "y"} => {:numb, 1},
+               {:deriv, {:vari, "f"}, {:vari, "x"}} => {:numb, 1},
+               {:fcall, "g", [vari: "y"]} => {{:m, :suma}, [vari: "y", vari: "x"]}
+             },
+             ok: %{
+               {:vari, "y"} => {:numb, 1},
+               {:deriv, {:vari, "f"}, {:vari, "x"}} => {:vari, "x"},
+               {:fcall, "g", [vari: "y"]} => {{:m, :suma}, [numb: 1, vari: "y"]}
+             },
+             ok: %{
                {:vari, "y"} => {:numb, 1},
                {:deriv, {:vari, "f"}, {:vari, "x"}} => {{:m, :suma}, [numb: 1, vari: "x"]},
                {:fcall, "g", [vari: "y"]} => {:vari, "y"}
              },
              ok: %{
-               {:vari, "f"} =>
-                 {{:m, :suma},
-                  [
-                    {{:m, :mult}, [{:numb, 0.5}, {:elev, {:vari, "x"}, {:numb, 2}}]},
-                    {:vari, "x"}
-                  ]},
+               {:vari, "y"} => {:vari, "x"},
+               {:deriv, {:vari, "f"}, {:vari, "x"}} => {:numb, 1},
+               {:fcall, "g", [vari: "y"]} => {{:m, :suma}, [vari: "y", vari: "x"]}
+             },
+             ok: %{
+               {:vari, "y"} => {:vari, "y"},
+               {:deriv, {:vari, "f"}, {:vari, "x"}} => {:numb, 1},
+               {:fcall, "g", [vari: "y"]} => {{:m, :suma}, [vari: "y", vari: "x"]}
+             },
+             ok: %{
+               {:vari, "y"} => {:vari, "y"},
+               {:deriv, {:vari, "f"}, {:vari, "x"}} => {:vari, "x"},
+               {:fcall, "g", [vari: "y"]} => {{:m, :suma}, [numb: 1, vari: "y"]}
+             },
+             ok: %{
                {:vari, "y"} => {:vari, "y"},
                {:deriv, {:vari, "f"}, {:vari, "x"}} => {{:m, :suma}, [numb: 1, vari: "x"]},
                {:fcall, "g", [vari: "y"]} => {:vari, "y"}
+             },
+             ok: %{
+               {:vari, "y"} => {{:m, :suma}, [numb: 1, vari: "y"]},
+               {:deriv, {:vari, "f"}, {:vari, "x"}} => {:vari, "x"},
+               {:fcall, "g", [vari: "y"]} => {{:m, :suma}, [numb: 1, vari: "y"]}
+             },
+             ok: %{
+               {:vari, "y"} => {{:m, :suma}, [vari: "y", vari: "x"]},
+               {:deriv, {:vari, "f"}, {:vari, "x"}} => {:numb, 1},
+               {:fcall, "g", [vari: "y"]} => {{:m, :suma}, [vari: "y", vari: "x"]}
              }
            ]
   end
@@ -365,11 +327,17 @@ defmodule ExunTest do
 
   test "Patterns 07" do
     assert match("f(2*x)", "sin(2*x)", %{}) == [
-             ok: %{
-               {:vari, "x"} => {:vari, "x"},
-               {:fcall, "f", [{{:m, :mult}, [numb: 2, vari: "x"]}]} =>
-                 {:fcall, "sin", [{{:m, :mult}, [numb: 2, vari: "x"]}]}
-             }
+             {:ok,
+              %{
+                {:fcall, "f", [{{:m, :mult}, [numb: 2, vari: "x"]}]} =>
+                  {:fcall, "sin", [{{:m, :mult}, [numb: 2, vari: "x"]}]}
+              }},
+             {:ok,
+              %{
+                {:vari, "x"} => {:vari, "x"},
+                {:fcall, "f", [{{:m, :mult}, [numb: 2, vari: "x"]}]} =>
+                  {:fcall, "sin", [{{:m, :mult}, [numb: 2, vari: "x"]}]}
+              }}
            ]
   end
 
@@ -377,25 +345,19 @@ defmodule ExunTest do
     assert match("u*v'x", "2*x^2", %{}) == [
              ok: %{
                {:vari, "u"} => {:numb, 1},
-               {:vari, "v"} =>
-                 {{:m, :mult}, [{:numb, 0.6666666666666666}, {:elev, {:vari, "x"}, {:numb, 3}}]},
                {:deriv, {:vari, "v"}, {:vari, "x"}} =>
                  {{:m, :mult}, [{:numb, 2}, {:elev, {:vari, "x"}, {:numb, 2}}]}
              },
              ok: %{
                {:vari, "u"} => {:numb, 2},
-               {:vari, "v"} =>
-                 {{:m, :mult}, [{:numb, 0.3333333333333333}, {:elev, {:vari, "x"}, {:numb, 3}}]},
                {:deriv, {:vari, "v"}, {:vari, "x"}} => {:elev, {:vari, "x"}, {:numb, 2}}
              },
              ok: %{
                {:vari, "u"} => {{:m, :mult}, [{:numb, 2}, {:elev, {:vari, "x"}, {:numb, 2}}]},
-               {:vari, "v"} => {:vari, "x"},
                {:deriv, {:vari, "v"}, {:vari, "x"}} => {:numb, 1}
              },
              ok: %{
                {:vari, "u"} => {:elev, {:vari, "x"}, {:numb, 2}},
-               {:vari, "v"} => {{:m, :mult}, [numb: 2, vari: "x"]},
                {:deriv, {:vari, "v"}, {:vari, "x"}} => {:numb, 2}
              }
            ]

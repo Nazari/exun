@@ -14,13 +14,14 @@ defmodule Exun.Eq do
   @stype %{
     :numb => 0,
     :vari => 1,
-    :unit => 2,
-    :integ => 3,
-    :deriv => 4,
-    {:m, :sum} => 5,
-    {:m, :mult} => 6,
-    :minus => 7,
-    :elev => 8
+    :fcall => 2,
+    :unit => 3,
+    :integ => 4,
+    :deriv => 5,
+    {:m, :sum} => 6,
+    {:m, :mult} => 7,
+    :minus => 8,
+    :elev => 9
   }
   @doc """
   Sort for m multiple list
