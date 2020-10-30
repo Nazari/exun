@@ -15,8 +15,8 @@ defmodule Exun.Collect do
       tree
       # |> IO.inspect(label: "make00, orig->mkrec")
       |> Simpl.mkrec()
-      |> expand()
-      |> Simpl.mkrec()
+      #|> expand_rec()
+      #|> Simpl.mkrec()
 
     if Eq.eq(newtree, tree), do: newtree, else: coll(newtree)
   end
@@ -24,15 +24,25 @@ defmodule Exun.Collect do
   @doc """
   Expand mult(sum) to try collect more
   """
-  def expand({{:m, :suma}, l}), do: {{:m, :suma}, Enum.map(l, &expand(&1))}
-  def expand({:deriv, f, v}), do: {:deriv, expand(f), v}
-  def expand({:integ, f, v}), do: {:integ, expand(f), v}
-  def expand({:fcall, f, args}), do: {:fcall, f, Enum.map(args, &expand(&1))}
-  def expand({:unit, n, t}), do: {:unit, expand(n), t}
-  def expand({:minus, a}), do: {:minus, expand(a)}
-  def expand({:elev, b, e}), do: {:elev, expand(b), expand(e)}
+  def expand_rec(ast) do
+    newast = expand(ast)
 
-  def expand({{:m, :mult}, l}) do
+    if ast == newast do
+      newast
+    else
+      expand(newast)
+    end
+  end
+
+  defp expand({{:m, :suma}, l}), do: {{:m, :suma}, Enum.map(l, &expand(&1))}
+  defp expand({:deriv, f, v}), do: {:deriv, expand(f), v}
+  defp expand({:integ, f, v}), do: {:integ, expand(f), v}
+  defp expand({:fcall, f, args}), do: {:fcall, f, Enum.map(args, &expand(&1))}
+  defp expand({:unit, n, t}), do: {:unit, expand(n), t}
+  defp expand({:minus, a}), do: {:minus, expand(a)}
+  defp expand({:elev, b, e}), do: {:elev, expand(b), expand(e)}
+
+  defp expand({{:m, :mult}, l}) do
     tsuma = List.keyfind(l, {:m, :suma}, 0)
 
     if tsuma != nil do
@@ -45,5 +55,5 @@ defmodule Exun.Collect do
     end
   end
 
-  def expand(ast), do: ast
+  defp expand(ast), do: ast
 end

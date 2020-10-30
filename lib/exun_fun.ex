@@ -37,6 +37,7 @@ defmodule Exun.Fun do
   def base,
     do: %{
       "ln(F)" => {&:math.log/1, "F'x/F", "x*ln(F)-$(x/F),x"},
+      "exp(F)" => {&:math.exp/1, "F'x*exp(F)",nil},
       "sin(F)" => {&:math.sin/1, "F'x*cos(F)", nil},
       "cos(F)" => {&:math.cos/1, "-F'x*sin(F)", nil},
       "tan(F)" => {&:math.tan/1, "F'x/cos(F)^2", nil},
