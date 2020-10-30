@@ -181,7 +181,7 @@ by adding `exun` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:exun, "~> 0.4.1"}
+    {:exun, "~> 0.4.4"}
   ]
 end
 ```
