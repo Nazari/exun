@@ -12,7 +12,7 @@ defmodule Exun.Eq do
   end
 
   @stype %{
-    :number => 0,
+    :numb => 0,
     :vari => 1,
     :unit => 2,
     :integ => 3,
