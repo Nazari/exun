@@ -76,13 +76,6 @@ Exun.eval " f * f(x)'x * f(y)", %{"f"=>"3", "f(x)"=>"x^2"}
 
 ```
 
-Multiprocess. Base measurement for speed will be the brutal expression:
-```
-iex(5)> :timer.tc(Exun,:eval,["(g(a^b,b^a)/g(b^a,a^b))'a", %{"g(x,y)"=>"(x^y/ln(sinh(y^x))+y^tanh(x)/cos(x*y))'x'y'x"}])
-{5327979,
- "(-(-4*(-2*(-a^b^(1+a)*b^a^(1+b)/sinh(b^a^(1+b))*cosh(b^a^(1+b))*ln(b" <> ...}
- ```
-
  Integrate simple expression, not yet implemented Parts or Subst methods. Symbol for integration is $, rule "$expr,var" means integrate 'expr' for 'var'
 ```
 iex(1)> Exun.eval "$3*x^2+2*x+1,x"
@@ -109,16 +102,12 @@ Match group ok
   v     => sin(x)
   v'    => cos(x)
 
-umatch("u*v'x","x")
+umatch "g'x*g^n", "3*x^2*(x^3+1)^2", [], false
 Match group ok
-  u     => 1
-  v     => 0.5*x^2
-  v'    => x
-Match group ok
-  u     => x
-  v     => x
-  v'    => 1
-
+  g     = 1+x^3
+  n     = 2
+  g'x   = 3*x^2
+  
 umatch("g(y)+f'x","1+x+y")
 Match group ok
   f     => x+0.5*x^2
@@ -150,6 +139,13 @@ Match group ok
   f     => sin
   x     => x
 ```
+
+Multiprocess. Base measurement for speed will be the brutal expression:
+```
+iex(5)> :timer.tc(Exun,:eval,["(g(a^b,b^a)/g(b^a,a^b))'a", %{"g(x,y)"=>"(x^y/ln(sinh(y^x))+y^tanh(x)/cos(x*y))'x'y'x"}])
+{5327979,
+ "(-(-4*(-2*(-a^b^(1+a)*b^a^(1+b)/sinh(b^a^(1+b))*cosh(b^a^(1+b))*ln(b" <> ...}
+ ```
 
 
 If you are interested in parsing, use 'parse' or 'eval_ast'

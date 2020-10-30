@@ -21,8 +21,8 @@ defmodule Exun.Math do
         lst,
         0,
         chsign(List.first(lst))
-        |> Enum.sort(&smm(&1, &2))
-      )
+
+      )|> Enum.sort(&smm(&1, &2))
     }
   end
 
