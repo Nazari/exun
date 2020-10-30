@@ -49,7 +49,7 @@ defmodule Exun.Pattern do
   @doc """
   User function, try to match and prints
   """
-  def umatch(taast, texpr, tconditions \\ [], transf \\ false) do
+  def umatch(taast, texpr, tconditions \\ [], transf \\ true) do
     los = match(taast, texpr, %{}, tconditions, transf)
 
     if los != [] do
@@ -68,7 +68,7 @@ defmodule Exun.Pattern do
     end
   end
 
-  def match(taast, texpr, context, tconditions \\ [], transf \\ false) do
+  def match(taast, texpr, context, tconditions \\ [], transf \\ true) do
     {aast, _} = Exun.parse(taast)
     {expr, _} = Exun.parse(texpr, context)
 
@@ -113,7 +113,7 @@ defmodule Exun.Pattern do
   For example match "f*f'x" to "2*x^3" will match if it is transformed to
   "2*x*x^2" so f=x^2
   """
-  def match_ast(aast, aexp, conditions \\ [], dotransforms \\ false) do
+  def match_ast(aast, aexp, conditions \\ [], dotransforms \\ true) do
     aexp
     # |> IO.inspect(label: "expr")
     |> transform(dotransforms)
@@ -176,13 +176,13 @@ defmodule Exun.Pattern do
             {{:m, :mult}, lst} ->
               # Get list of posssible list for {:m,:mult}
               trx1(lst)
-              |> Enum.map(fn l ->
-                {{:m, :mult}, l}
-              end)
 
-            _ ->
-              []
+            ^expr ->
+              trx1([{:numb, 1}, expr])
           end
+          |> Enum.map(fn l ->
+            {{:m, :mult}, l}
+          end)
       ]
     else
       [expr]

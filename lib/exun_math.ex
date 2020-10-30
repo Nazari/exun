@@ -15,15 +15,9 @@ defmodule Exun.Math do
   def chsign({:numb, n}), do: {:numb, -n}
 
   def chsign({{:m, :mult}, lst}) do
-    {
-      {:m, :mult},
-      List.replace_at(
-        lst,
-        0,
-        chsign(List.first(lst))
-
-      )|> Enum.sort(&smm(&1, &2))
-    }
+    felem = List.first(lst)
+    new_list = List.replace_at(lst, 0, chsign(felem)) |> Enum.sort(&smm(&1, &2))
+    {{:m, :mult}, new_list}
   end
 
   def chsign({{:m, :suma}, lst}) do
