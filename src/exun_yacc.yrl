@@ -1,5 +1,5 @@
-Terminals  ',' '(' ')' '/' '*' '^' '+' '-' '[' ']' '\'' '=' '$' word number.
-Nonterminals main expr mmm msm uexpr variable function arg_list arguments signed_number.
+Terminals  ',' '(' ')' '/' '*' '^' '+' '-' '[' ']' '\'' '=' '$' word number '{' '}'.
+Nonterminals main expr mmm msm uexpr vector vectors matrix variable function arg_list arguments signed_number.
 Rootsymbol main.
 Right 950 '$'.
 Left 950 '\''.
@@ -39,6 +39,12 @@ signed_number -> '-' number : -extract_token('$2').
 
 variable -> word : extract_token('$1').
 
+vector -> '{' arguments '}' : {{vector, length('$2')}, lists:reverse('$2')}.
+matrix -> '{' vectors '}' : {{raw, length('$2'), vlen(lists:nth(1,'$2'))}, lists:reverse('$2')}.
+vectors -> vector ',' vector : ['$3','$1'].
+
+vectors -> vectors ',' vector : ['$3'|'$1'].
+
 function -> variable arg_list :  {fcall, '$1', '$2'}.
 arg_list -> '(' ')' : [] .
 arg_list -> '(' arguments ')' : lists:reverse('$2').
@@ -50,6 +56,9 @@ expr -> '-' expr : {minus, '$2'}.
 expr -> expr '\'' variable : {deriv, '$1', {vari, '$3'}}.
 expr -> '$' expr ',' variable : {integ, '$2', {vari, '$4'}}.
 expr -> uexpr : '$1'.
+expr -> matrix : '$1'.
+expr -> vector : '$1'.
 
 Erlang code.
 extract_token({_Token, _Line, Value}) -> Value.
+vlen(Value) -> length(element(2,Value)).

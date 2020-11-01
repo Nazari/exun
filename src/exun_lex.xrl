@@ -19,6 +19,8 @@ COMMA = \,
 DERIV =\'
 EQUAL =\=
 INTEGRAL =\$
+OPEN_MAT = \{
+CLOSE_MAT = \}
 
 SIGN = (\-|\+)
 
@@ -48,6 +50,9 @@ Rules.
 {EQUAL} : {token, {'=', TokenLine}}.
 {DERIV} : {token, {'\'', TokenLine}}.
 {INTEGRAL} : {token, {'$', TokenLine}}.
+{OPEN_MAT} : {token, {'{', TokenLine}}.
+{CLOSE_MAT} : {token, {'}', TokenLine}}.
+
 
 {WHITESPACE}+ : skip_token.
 
