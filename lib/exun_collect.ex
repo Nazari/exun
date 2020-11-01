@@ -2,9 +2,9 @@ defmodule Exun.Collect do
   @moduledoc """
   Collect Math expression, try to simplify
   """
-  alias Exun.Simpl
-  alias Exun.Eq
-  alias Exun.Fun
+  import Exun.Simpl
+  import Exun.Eq
+  import Exun.Fun
 
   @doc """
   Main collecting function. Try to simplify tree withou chaging its value
@@ -14,11 +14,11 @@ defmodule Exun.Collect do
     newtree =
       tree
       # |> IO.inspect(label: "make00, orig->mkrec")
-      |> Simpl.mkrec()
-      #|> expand_rec()
-      #|> Simpl.mkrec()
+      |> mkrec()
+      |> expand_rec()
+      |> mkrec()
 
-    if Eq.eq(newtree, tree), do: newtree, else: coll(newtree)
+    if eq(newtree, tree), do: newtree, else: coll(newtree)
   end
 
   @doc """
@@ -30,7 +30,7 @@ defmodule Exun.Collect do
     if ast == newast do
       newast
     else
-      expand(newast)
+      expand_rec(newast)
     end
   end
 
@@ -40,16 +40,17 @@ defmodule Exun.Collect do
   defp expand({:fcall, f, args}), do: {:fcall, f, Enum.map(args, &expand(&1))}
   defp expand({:unit, n, t}), do: {:unit, expand(n), t}
   defp expand({:minus, a}), do: {:minus, expand(a)}
+  defp expand({:elev,a,{:numb, n}}), do: {{:m,:mult},List.duplicate(a,n)}
   defp expand({:elev, b, e}), do: {:elev, expand(b), expand(e)}
 
   defp expand({{:m, :mult}, l}) do
     tsuma = List.keyfind(l, {:m, :suma}, 0)
 
     if tsuma != nil do
+      {_, lsuma} = tsuma
       # Convert {:m,:mult} to {:m,:suma}
       remain = {{:m, :mult}, List.delete(l, tsuma)}
-      {_, lsuma} = tsuma
-      {{:m, :suma}, Enum.map(lsuma, &Fun.mult(remain, &1))}
+      {{:m, :suma}, Enum.map(lsuma, &mult(remain, &1))}
     else
       {{:m, :mult}, Enum.map(l, &expand(&1))}
     end
