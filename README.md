@@ -121,23 +121,77 @@ Match group ok
   f     => 0.5*x^2
   f'    => x
   g     => y+1
-Match group ok
-  f     => 0.5*x^2
-  f'    => x
-  g     => 1+y
-Match group ok
-  f     => x
-  f'    => 1
-  g     => y+x
-Match group ok
-  f     => x
-  f'    => 1
-  g     => x+y
+...
 
 umatch("f(2*x)","sin(2*x)")
 Match group ok
   f     => sin
   x     => x
+```
+
+Isolation, Module Exun.Isol can isolate an ast from a tree.
+It extracts all instances of ast from the equation, so it can return
+more than one result. Ast can be any valid ast, not only a variable ({:vari, name}) 
+For example:
+```
+iex(1)> Exun.Isol.isol (Exun.parse_text "x^2-3=13"), (Exun.parse_text "x")
+[ok: {:numb, 4}]
+
+iex(2)> mp1=Exun.Isol.isol (Exun.parse_text "x^2+sin(x)-3=13"), (Exun.parse_text "x")
+[
+  ok: {:fcall, "asin",
+   [{{:m, :suma}, [numb: 16, minus: {:elev, {:vari, "x"}, {:numb, 2}}]}]},
+  ok: {:fcall, "exp",
+   [
+     {{:m, :mult},
+      [
+        {:numb, 0.5},
+        {:fcall, "ln",
+         [{{:m, :suma}, [numb: 16, minus: {:fcall, "sin", [vari: "x"]}]}]}
+      ]},
+     {:numb, 2}
+   ]}
+]
+
+iex(3)> mp1 |> Enum.map(fn {_,sol} -> Exun.UI.tostr(sol)end)
+["asin(16-x^2)", "exp(0.5*ln(16-sin(x)),2)"]
+
+iex(4)> mp1=Exun.Isol.isol (Exun.parse_text "x^2+sin(x)-3=13"), (Exun.parse_text "x^2")
+[ok: {{:m, :suma}, [numb: 16, minus: {:fcall, "sin", [vari: "x"]}]}]
+
+iex(5)> mp1 |> Enum.map(fn {_,sol} -> Exun.UI.tostr(sol)end)                           
+["16-sin(x)"]
+
+```
+
+I've createt the vector and matrix types in yecc, and a module Exun.Matrix, want to
+create basic algebraic (+,-,*,/) for those concepts and may be eigenvalues for nxn symbolic matrices. The elements for
+now are symbolic also, so you will be able to write something like the example below. The symbols
+for matrix and vector are '{}'.
+```
+iex(1)> Exun.parse_text "{{x^2,x,1},{sin(x),cos(x),tan(x)},{1,2,3}}"
+{{:raw, 3, 3},
+ [
+   {{:vector, 3}, [{:elev, {:vari, "x"}, {:numb, 2}}, {:vari, "x"}, {:numb, 1}]},
+   {{:vector, 3},
+    [
+      {:fcall, "sin", [vari: "x"]},
+      {:fcall, "cos", [vari: "x"]},
+      {:fcall, "tan", [vari: "x"]}
+    ]},
+   {{:vector, 3}, [numb: 1, numb: 2, numb: 3]}
+ ]}
+
+iex(2)> Exun.Matrix.uni_m 4
+{{:unity, 4, 4}, nil}
+
+iex(3)> Exun.Matrix.pol_m [{:numb,1},{:numb,2},{:numb,3},{:vari,"x"}]
+{{:polynom, 3, 3},
+ [
+   {:elev, {:vari, "x"}, {:numb, -1}},
+   {{:m, :mult}, [{:numb, 2}, {:elev, {:vari, "x"}, {:numb, -1}}]},
+   {{:m, :mult}, [{:numb, 3}, {:elev, {:vari, "x"}, {:numb, -1}}]}
+ ]}
 ```
 
 Multiprocess. Base measurement for speed will be the brutal expression:
