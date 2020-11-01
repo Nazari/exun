@@ -1,5 +1,4 @@
 defmodule Exun.Fun do
-
   @moduledoc """
   Function management.
   @base and  @compound are the definitions of external functions.
@@ -36,21 +35,22 @@ defmodule Exun.Fun do
   # name => Numeric implementation, Derivate, Integrate
   def base,
     do: %{
-      "ln(F)" => {&:math.log/1, "F'x/F", "x*ln(F)-$(x/F),x"},
-      "exp(F)" => {&:math.exp/1, "F'x*exp(F)",nil},
-      "sin(F)" => {&:math.sin/1, "F'x*cos(F)", nil},
-      "cos(F)" => {&:math.cos/1, "-F'x*sin(F)", nil},
-      "tan(F)" => {&:math.tan/1, "F'x/cos(F)^2", nil},
-      "acos(F)" => {&:math.acos/1, "-F'x/(1-F^2)^0.5", nil},
-      "asin(F)" => {&:math.asin/1, "F'x/(1-F^2)^0.5", nil},
-      "atan(F)" => {&:math.atan/1, "F'x/(1+F^2)", nil},
-      "sinh(F)" => {&:math.sinh/1, "F'x*cosh(F)", nil},
-      "cosh(F)" => {&:math.cosh/1, "F'x*sinh(F)", nil},
-      "tanh(F)" => {&:math.tanh/1, "F'x/cosh(F)^2", nil},
-      "asinh(F)" => {&:math.asinh/1, "F'x/(F^2+1)^0.5", nil},
-      "acosh(F)" => {&:math.acosh/1, "F'x/(F^2-1)^0.5", nil},
-      "atanh(F)" => {&:math.atanh/1, "F'x/(1-F^2)", nil}
+      "ln(F)" => {&:math.log/1, "F'x/F", "x*ln(F)-$(x/F),x", "exp"},
+      "exp(F)" => {&:math.exp/1, "F'x*exp(F)", nil, "ln"},
+      "sin(F)" => {&:math.sin/1, "F'x*cos(F)", nil, "asin"},
+      "cos(F)" => {&:math.cos/1, "-F'x*sin(F)", nil, "acos"},
+      "tan(F)" => {&:math.tan/1, "F'x/cos(F)^2", nil, "atan"},
+      "acos(F)" => {&:math.acos/1, "-F'x/(1-F^2)^0.5", nil, "cos"},
+      "asin(F)" => {&:math.asin/1, "F'x/(1-F^2)^0.5", nil, "sin"},
+      "atan(F)" => {&:math.atan/1, "F'x/(1+F^2)", nil, "tan"},
+      "sinh(F)" => {&:math.sinh/1, "F'x*cosh(F)", nil, "asinh"},
+      "cosh(F)" => {&:math.cosh/1, "F'x*sinh(F)", nil, "acosh"},
+      "tanh(F)" => {&:math.tanh/1, "F'x/cosh(F)^2", nil, "atanh"},
+      "asinh(F)" => {&:math.asinh/1, "F'x/(F^2+1)^0.5", nil, "sinh"},
+      "acosh(F)" => {&:math.acosh/1, "F'x/(F^2-1)^0.5", nil, "cosh"},
+      "atanh(F)" => {&:math.atanh/1, "F'x/(1-F^2)", nil, "tanh"}
     }
+
   @doc """
   Compounds is a map that holds synthetic definitions. Function
   revert_compounds is able to look in an ast and identify this list,
@@ -90,6 +90,7 @@ defmodule Exun.Fun do
         {:fcall, name, args}
     end
   end
+
   @doc """
   Replace arguments on ast as specified. Not intended for
   external use, mus be public for now
@@ -127,18 +128,22 @@ defmodule Exun.Fun do
       ac and elem(el, 0) == :numb
     end)
   end
+
   @doc """
   For convenience, creates ast {{:m,:mult},[a,b]}
   """
   def mult(a, b), do: mcompose(:mult, a, b)
+
   @doc """
   For convenience, creates ast {{:m,:mult},[a,b^-1]}
   """
   def divi(a, b), do: mult(a, Exun.Math.chpow(b))
+
   @doc """
   For convenience, creates ast {{:m,:suma},[a,b]}
   """
   def suma(a, b), do: mcompose(:suma, a, b)
+
   @doc """
   For convenience, creates ast {{:m,:mult},[a,-b]}
   """
@@ -147,7 +152,10 @@ defmodule Exun.Fun do
   @doc """
   For convenience, creates ast {:elev,a,b}
   """
-  def elev(a, b), do: {:elev,a,b}
+  def elev(a, b), do: {:elev, a, b}
+
+  def ln(a), do: {:fcall, "ln", [a]}
+  def exp(a,b), do: {:fcall, "exp", [a,b]}
 
   defp mcompose(op, a, b) do
     case {a, b} do
@@ -173,9 +181,9 @@ defmodule Exun.Fun do
     matches =
       compounds()
       |> Enum.map(fn {k, v} ->
-        #Compile value
+        # Compile value
         {vast, _} = Exun.parse(v, %{})
-        #Match, get the first match
+        # Match, get the first match
         res = Exun.Pattern.match_ast(vast, ast, [], false)
         {k, res |> List.first()}
       end)
@@ -195,36 +203,43 @@ defmodule Exun.Fun do
   @doc """
   returns true if ast is a polynomial element on v
   """
-  def is_poly(ast,v) do
+  def is_poly(ast, v) do
     case ast do
       {:numb, _} -> true
-      {:unit, _,_} -> true
+      {:unit, _, _} -> true
       {:vari, _} -> true
-      {:fcall,_,args} -> not Enum.any?(args, &contains(&1,v))
-      {:minus, a } -> is_poly(a, v)
-      {:deriv, f, _} -> not contains(f,v)
-      {:integ, f, _} -> not contains(f,v)
-      {{:m,:suma}, list} -> Enum.all?(list, &is_poly(&1,v))
-      {{:m,:mult}, list} -> Enum.all?(list, &is_poly(&1,v))
-      {:elev, _, b} -> not contains(b,v)
+      {:fcall, _, args} -> not Enum.any?(args, &contains(&1, v))
+      {:minus, a} -> is_poly(a, v)
+      {:deriv, f, _} -> not contains(f, v)
+      {:integ, f, _} -> not contains(f, v)
+      {{:m, :suma}, list} -> Enum.all?(list, &is_poly(&1, v))
+      {{:m, :mult}, list} -> Enum.all?(list, &is_poly(&1, v))
+      {:elev, _, b} -> not contains(b, v)
     end
   end
+
   @doc """
   returns true if ast contains variable vc
   """
   def contains(ast, vc) do
     case ast do
       {:numb, _} -> false
-      {:unit, _,_} -> false
-      v={:vari, _} -> v==vc
-      {:fcall,_,args} -> Enum.any?(args, &contains(&1,vc))
-      {:minus, a } -> contains(a, vc)
-      {:deriv, f, _} -> contains(f,vc)
-      {:integ, f, _} ->  contains(f,vc)
-      {{:m,:suma}, list} -> Enum.any?(list,&contains(&1,vc))
-      {{:m,:mult}, list} -> Enum.any?(list,&contains(&1,vc))
-      {:elev, a, b} -> contains(a,vc) or contains(b,vc)
+      {:unit, _, _} -> false
+      v = {:vari, _} -> v == vc
+      {:fcall, _, args} -> Enum.any?(args, &contains(&1, vc))
+      {:minus, a} -> contains(a, vc)
+      {:deriv, f, _} -> contains(f, vc)
+      {:integ, f, _} -> contains(f, vc)
+      {{:m, :suma}, list} -> Enum.any?(list, &contains(&1, vc))
+      {{:m, :mult}, list} -> Enum.any?(list, &contains(&1, vc))
+      {:elev, a, b} -> contains(a, vc) or contains(b, vc)
     end
   end
 
+  def finv(name) do
+    case base()["#{name}(F)"] do
+      {_,_,_,r} -> r
+      other -> other
+    end
+  end
 end
