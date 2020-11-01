@@ -23,3 +23,5 @@ erl_crash.dump
 exun-*.tar
 
 .DS_Store
+src/exun_yacc.erl
+src/exun_lex.erl
