@@ -78,7 +78,7 @@ defmodule Exun.Fun do
     cond do
       (bfunc = base()[name <> "(F)"]) != nil ->
         cond do
-          aau -> {:numb, elem(bfunc, 0).(args |> List.first() |> elem(1))}
+          aau -> {:numb, elem(bfunc, 0).(args |> List.first() |> elem(1)), 1}
           true -> {:fcall, name, args}
         end
 
@@ -129,49 +129,6 @@ defmodule Exun.Fun do
     end)
   end
 
-  @doc """
-  For convenience, creates ast {{:m,:mult},[a,b]}
-  """
-  def mult(a, b), do: mcompose(:mult, a, b)
-
-  @doc """
-  For convenience, creates ast {{:m,:mult},[a,b^-1]}
-  """
-  def divi(a, b), do: mult(a, Exun.Math.chpow(b))
-
-  @doc """
-  For convenience, creates ast {{:m,:suma},[a,b]}
-  """
-  def suma(a, b), do: mcompose(:suma, a, b)
-
-  @doc """
-  For convenience, creates ast {{:m,:mult},[a,-b]}
-  """
-  def rest(a, b), do: suma(a, Exun.Math.chsign(b))
-
-  @doc """
-  For convenience, creates ast {:elev,a,b}
-  """
-  def elev(a, b), do: {:elev, a, b}
-
-  def ln(a), do: {:fcall, "ln", [a]}
-  def exp(a,b), do: {:fcall, "exp", [a,b]}
-
-  defp mcompose(op, a, b) do
-    case {a, b} do
-      {{{:m, ^op}, l1}, {{:m, ^op}, l2}} ->
-        Exun.Collect.coll({{:m, op}, l1 ++ l2})
-
-      {{{:m, ^op}, l1}, _} ->
-        Exun.Collect.coll({{:m, op}, [b | l1]})
-
-      {_, {{:m, ^op}, l2}} ->
-        Exun.Collect.coll({{:m, op}, [a | l2]})
-
-      _ ->
-        Exun.Collect.coll({{:m, op}, [a, b]})
-    end
-  end
 
   @doc """
   Looks in compounds for a match of ast and return it.
@@ -205,7 +162,7 @@ defmodule Exun.Fun do
   """
   def is_poly(ast, v) do
     case ast do
-      {:numb, _} -> true
+      {:numb, _, _} -> true
       {:unit, _, _} -> true
       {:vari, _} -> true
       {:fcall, _, args} -> not Enum.any?(args, &contains(&1, v))
@@ -223,7 +180,7 @@ defmodule Exun.Fun do
   """
   def contains(ast, vc) do
     case ast do
-      {:numb, _} -> false
+      {:numb, _, _} -> false
       {:unit, _, _} -> false
       v = {:vari, _} -> v == vc
       {:fcall, _, args} -> Enum.any?(args, &contains(&1, vc))
@@ -238,7 +195,7 @@ defmodule Exun.Fun do
 
   def finv(name) do
     case base()["#{name}(F)"] do
-      {_,_,_,r} -> r
+      {_, _, _, r} -> r
       other -> other
     end
   end

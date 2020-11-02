@@ -1,12 +1,12 @@
 defmodule Exun.Simpl do
-  import Exun.Fun
+  alias Exun.Math
   alias Exun.Collect
   alias Exun.Unit
-  import Exun.Eq
+  alias Exun.Eq
 
-  @zero {:numb, 0}
-  @uno {:numb, 1}
-
+  @muno {:numb, -1.0, 1.0}
+  @zero {:numb, 0.0, 1.0}
+  @uno {:numb, 1.0, 1.0}
   @moduledoc """
   Simplify expressions
   """
@@ -17,7 +17,7 @@ defmodule Exun.Simpl do
   def mkrec(tree) do
     ntree = mk(tree)
 
-    if eq(ntree, tree),
+    if Eq.eq(ntree, tree),
       do: ntree,
       else: mkrec(ntree)
   end
@@ -35,17 +35,21 @@ defmodule Exun.Simpl do
     end
   end
 
+  defp mk({:minus, @zero}), do: @zero
   defp mk({:minus, a}), do: {:minus, mk(a)}
-  defp mk({:numb, n}), do: if(floor(n) == n, do: {:numb, floor(n)}, else: {:numb, n})
 
-  defp mk({:unit, val, {:numb, 1}}), do: mk(val)
+  defp mk({:unit, val, @uno}), do: mk(val)
   defp mk({:unit, val, ut}), do: Unit.toSI({:unit, mk(val), mk(ut)})
 
   defp mk({:elev, _, @zero}), do: @uno
   defp mk({:elev, a, @uno}), do: mk(a)
   defp mk({:elev, @uno, _}), do: @uno
-  defp mk({:elev, {:numb, base}, {:numb, exp}}), do: {:numb, :math.pow(base, exp)}
-  defp mk({:elev, {:elev, base, e1}, e2}), do: {:elev, mk(base), mk(mult(e1, e2))}
+  defp mk({:elev, {:numb, base, d1}, {:numb, -1, 1}}), do: {:numb, d1, base}
+
+  defp mk({:elev, {:numb, base, d1}, {:numb, exp, d2}}),
+    do: {:numb, :math.pow(base,exp/d2), :math.pow(d1,exp/d2)}
+
+  defp mk({:elev, {:elev, base, e1}, e2}), do: {:elev, mk(base), mk(Math.mult(e1, e2))}
 
   defp mk({:elev, {:unit, uv, ut}, expon}),
     do: {:unit, mk({:elev, uv, expon}), mk({:elev, ut, expon})}
@@ -70,10 +74,10 @@ defmodule Exun.Simpl do
           other -> [other | ac]
         end
       end)
-      |> Enum.sort(&smm(&1, &2))
+      |> Enum.sort(&Eq.smm(&1, &2))
 
     unity = if op == :suma, do: @zero, else: @uno
-    ufc = if op == :suma, do: &+/2, else: &*/2
+    ufc = if op == :suma, do: &Math.suma/2, else: &Math.mult/2
 
     # Collect numbers and units and simplify
     lst = collect_literals(op, lst, ufc, unity)
@@ -116,16 +120,16 @@ defmodule Exun.Simpl do
                 mkrec(
                   case op do
                     :suma ->
-                      {{:m, :mult}, [pivot, {{:m, :suma}, coefs}] |> Enum.sort(&smm(&1, &2))}
+                      {{:m, :mult}, [pivot, {{:m, :suma}, coefs}] |> Enum.sort(&Eq.smm(&1, &2))}
 
                     :mult ->
-                      {:elev, pivot, {{:m, :suma}, coefs |> Enum.sort(&smm(&1, &2))}}
+                      {:elev, pivot, {{:m, :suma}, coefs |> Enum.sort(&Eq.smm(&1, &2))}}
                   end
                 )
 
               case length(rest) do
                 0 -> isolp
-                _ -> {{:m, op}, [isolp | rest] |> Enum.sort(&smm(&1, &2))}
+                _ -> {{:m, op}, [isolp | rest] |> Enum.sort(&Eq.smm(&1, &2))}
               end
           end
       end
@@ -213,19 +217,19 @@ defmodule Exun.Simpl do
   end
 
   defp cbs(op, {:minus, a}, a) when op in [:suma, :mult] do
-    {:ok, {:numb, -1}}
+    {:ok, @muno}
   end
 
   defp cbs(op, {:elev, a, e1}, {:elev, a, e2}) do
     case op do
       :suma -> {:err, nil}
-      :mult -> {:ok, mk(divi(e2, e1))}
+      :mult -> {:ok, mk(Math.divi(e2, e1))}
     end
   end
 
   defp cbs(op, a, {:elev, a, b}) do
     case op do
-      :suma -> {:ok, mk({:elev, a, mk(rest(b, @uno))})}
+      :suma -> {:ok, mk({:elev, a, mk(Math.rest(b, @uno))})}
       :mult -> {:ok, b}
     end
   end
@@ -253,21 +257,21 @@ defmodule Exun.Simpl do
 
   defp collect_literals(op, lst, ufc, unity) do
     {n, u, lst} =
-      Enum.reduce(lst, {unity, nil, []}, fn el, {{:numb, n_ac}, u_ac, rest} ->
+      Enum.reduce(lst, {unity, nil, []}, fn el, {nd_ac = {:numb, _, _}, u_ac, rest} ->
         case el do
-          {:numb, n} ->
-            {{:numb, ufc.(n_ac, n)}, u_ac, rest}
+          nd = {:numb, _, _} ->
+            {ufc.(nd_ac, nd), u_ac, rest}
 
-          u = {:unit, {:numb, u_n}, u_t} ->
+          u = {:unit, u_nd = {:numb, _, _}, u_t} ->
             if u_ac == nil do
-              {{:numb, n_ac}, u, rest}
+              {nd_ac, u, rest}
             else
-              {:unit, {:numb, acu_n}, acu_t} = u_ac
+              {:unit, acu_nd, acu_t} = u_ac
 
               case op do
                 :mult ->
-                  sou = {:unit, {:numb, acu_n * u_n}, mult(acu_t, u_t)}
-                  {{:numb, n_ac}, sou, rest}
+                  sou = {:unit, Math.mult(acu_nd, u_nd), Math.mult(acu_t, u_t)}
+                  {nd_ac, sou, rest}
 
                 :suma ->
                   sou =
@@ -276,12 +280,12 @@ defmodule Exun.Simpl do
                       {:ok, unit} -> unit
                     end
 
-                  {{:numb, n_ac}, sou, rest}
+                  {nd_ac, sou, rest}
               end
             end
 
           other ->
-            {{:numb, n_ac}, u_ac, [other | rest]}
+            {nd_ac, u_ac, [other | rest]}
         end
       end)
 
@@ -289,7 +293,7 @@ defmodule Exun.Simpl do
       {^unity, nil} -> lst
       {^unity, unit} -> [unit | lst]
       {number, nil} -> [number | lst]
-      {{:numb, n}, {:unit, {:numb, un}, tree}} -> [{:unit, {:numb, n * un}, tree} | lst]
+      {nd, {:unit, und, tree}} -> [{:unit, Math.mult(nd, und), tree} | lst]
     end
 
     # |> IO.inspect(label: "final unit,number,lst")
@@ -322,4 +326,5 @@ defmodule Exun.Simpl do
     {res, nl |> Enum.reverse()}
     # |> IO.inspect(label: "collected minus")
   end
+
 end

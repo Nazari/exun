@@ -15,7 +15,7 @@ defmodule ExunTest do
     assert Exun.parse("x[me]/3[se]") ==
              {{{:m, :mult},
                [
-                 {:elev, {:unit, {:numb, 3}, {:vari, "se"}}, {:numb, -1}},
+                 {:elev, {:unit, {:numb, 3, 1}, {:vari, "se"}}, {:numb, -1, 1}},
                  {:unit, {:vari, "x"}, {:vari, "me"}}
                ]}, %{}}
   end
@@ -38,7 +38,7 @@ defmodule ExunTest do
 
   test "Context" do
     assert Exun.eval("(a+b)^2/c", %{"a" => "20[m]", "b" => "2[cm]", "c" => "3[s^2]"}) ==
-             "133.6001333333333[m^2/s^2]"
+             "133.60013333333333[m^2/s^2]"
   end
 
   test "Sort of tree" do
@@ -52,5 +52,4 @@ defmodule ExunTest do
   test "Factorize" do
     assert Exun.Unit.factorize("1[A*Kg*m/s^2]", "[slug*cm]") == "6.852176585682165[cm*slug*A/s^2]"
   end
-
 end

@@ -11,7 +11,10 @@ defmodule IntegralTest do
 
   test "Match integral of product" do
     assert Exun.Pattern.match("f'x", "2*x", %{}) == [
-             ok: %{{:deriv, {:vari, "f"}, {:vari, "x"}} => {{:m, :mult}, [numb: 2, vari: "x"]}}
+             ok: %{
+               {:deriv, {:vari, "f"}, {:vari, "x"}} =>
+                 {{:m, :mult}, [{:numb, 2.0, 1.0}, {:vari, "x"}]}
+             }
            ]
   end
 
@@ -25,9 +28,9 @@ defmodule IntegralTest do
       # "acos",
       # "atan",
       "sinh",
-      "cosh",
+      "cosh"
       # "atanh",
-      "asinh"
+      # "asinh"
       # "acosh",
       # "atanh"
     ]

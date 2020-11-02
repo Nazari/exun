@@ -1,13 +1,17 @@
 # Exun
 
 Symbolic math library for Elixir, with unit support.
-Beta state, please provide feedback, this lib has to be deeply tested .
+Beta state
+Cannot belive in Elixir 1-0.8 == 0.19999999999999996
+This is a big deal, if you can't trust in this basic operation
+you have a problem. I've reformulated {:numb,b} to {:numb, numerator, denominator}
+in a try to keep accuracy for the usual operations.
+All test passed.
 
 TODO:
  - Temperature unit conversions
  - Summatory
  - Fractions, to avoid decimal ops
- - Define equations, not only expressions: Isolate variables
  - Add more testing and revise docs
  
 DONE:
@@ -18,7 +22,8 @@ DONE:
  + Context definition for vars and funcs
  + Functions and User functions  
  + Partially implemented Multiprocess, make reductions in parallell via Tasks 
-
+ + Define equations, not only expressions: Isolate variables
+ 
 run "iex -S mix" inside exun dir and type:
 ```
 import Exun

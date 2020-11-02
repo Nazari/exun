@@ -1,6 +1,5 @@
 defmodule UnitTest do
   use ExUnit.Case
-  import Exun.Unit
 
   test "1[1/h^2]" do
     {ast, _ctx} = Exun.parse("1[1/h^2]")
@@ -34,7 +33,7 @@ defmodule UnitTest do
     assert tree ==
              {{:m, :mult},
               [
-                {:elev, {:unit, {:numb, 3}, {:vari, "se"}}, {:numb, -1}},
+                {:elev, {:unit, {:numb, 3, 1}, {:vari, "se"}}, {:numb, -1, 1}},
                 {:unit, {:vari, "x"}, {:vari, "me"}}
               ]}
   end

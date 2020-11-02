@@ -2,9 +2,9 @@ defmodule Exun.Collect do
   @moduledoc """
   Collect Math expression, try to simplify
   """
-  import Exun.Simpl
-  import Exun.Eq
-  import Exun.Fun
+  alias Exun.Simpl
+  alias Exun.Math
+  alias Exun.Eq
 
   @doc """
   Main collecting function. Try to simplify tree withou chaging its value
@@ -14,11 +14,11 @@ defmodule Exun.Collect do
     newtree =
       tree
       # |> IO.inspect(label: "make00, orig->mkrec")
-      |> mkrec()
+      |> Simpl.mkrec()
       |> expand_rec()
-      |> mkrec()
+      |> Simpl.mkrec()
 
-    if eq(newtree, tree), do: newtree, else: coll(newtree)
+    if Eq.eq(newtree, tree), do: newtree, else: coll(newtree)
   end
 
   @doc """
@@ -40,7 +40,7 @@ defmodule Exun.Collect do
   defp expand({:fcall, f, args}), do: {:fcall, f, Enum.map(args, &expand(&1))}
   defp expand({:unit, n, t}), do: {:unit, expand(n), t}
   defp expand({:minus, a}), do: {:minus, expand(a)}
-  defp expand({:elev,a,{:numb, n}}) when n>0 and floor(n)==n, do: {{:m,:mult},List.duplicate(a,n)}
+  defp expand({:elev,a,{:numb, n, d}}) when n>0 and d==1 and floor(n)==n, do: {{:m,:mult},List.duplicate(a,floor(n))}
   defp expand({:elev, b, e}), do: {:elev, expand(b), expand(e)}
 
   defp expand({{:m, :mult}, l}) do
@@ -50,7 +50,7 @@ defmodule Exun.Collect do
       {_, lsuma} = tsuma
       # Convert {:m,:mult} to {:m,:suma}
       remain = {{:m, :mult}, List.delete(l, tsuma)}
-      {{:m, :suma}, Enum.map(lsuma, &mult(remain, &1))}
+      {{:m, :suma}, Enum.map(lsuma, &Math.mult(remain, &1))}
     else
       {{:m, :mult}, Enum.map(l, &expand(&1))}
     end

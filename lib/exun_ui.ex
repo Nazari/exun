@@ -1,5 +1,6 @@
 defmodule Exun.UI do
   import Exun.Eq
+  @uno {:numb, 1, 1}
 
   @moduledoc """
   Parses a tree and transform to string in User Readable form
@@ -8,18 +9,17 @@ defmodule Exun.UI do
   Translate tree to human readable math expression:
   ```
     iex(1)> {_tree, _deps} = Exun.parse "4*x^(y+1)/z",%{"z"=>"y+1"}
-  {{{:m, :mult},
-  [
+    {{{:m, :mult},
+    [
     {:numb, 4},
     {:elev, {:vari, "x"}, {{:m, :suma}, [numb: 1, vari: "y"]}},
     {:elev, {:vari, "z"}, {:numb, -1}}
-  ]}, %{{:vari, "z"} => {{:m, :suma}, [numb: 1, vari: "y"]}}}
+    ]}, %{{:vari, "z"} => {{:m, :suma}, [numb: 1, vari: "y"]}}}
   ```
   """
   def tostr(tree) do
-    {t, _, d, s} =
-      show(tree)
-      #|> IO.inspect(label: "root show")
+    {t, _, d, s} = show(tree)
+    # |> IO.inspect(label: "root show")
 
     cond do
       d and s -> "-1/#{t}"
@@ -36,11 +36,22 @@ defmodule Exun.UI do
   another flag indicatin if must be preceded with a sign - before expression
   """
   def show({:equal, a, b}) do
-    {"#{tostr(a)}=#{tostr(b)}", 0, false,false }
+    {"#{tostr(a)}=#{tostr(b)}", 0, false, false}
   end
 
-  def show({:numb, n}),
-    do: {to_string(n), 200, false, false}
+  def show({:numb, n, d}) do
+    f_n = floor(n)
+    f_d = floor(d)
+    n = if n == f_n, do: f_n, else: n
+    d = if d == f_d, do: f_d, else: d
+
+    {
+      if(d == 1, do: "#{n}", else: "#{n/d}"),
+      200,
+      false,
+      false
+    }
+  end
 
   def show({:vari, v}),
     do: {v, 200, false, false}
@@ -58,8 +69,8 @@ defmodule Exun.UI do
     {withpar(p, 200, t), p, d, ns}
   end
 
-  def show({:elev, b, {:numb, nn}}) when nn < 0 do
-    {t, p, d, s} = show({:elev, b, {:numb, -nn}})
+  def show({:elev, b, {:numb, nn, nd}}) when nn / nd < 0 do
+    {t, p, d, s} = show({:elev, b, {:numb, -nn, nd}})
     # Xor denomi with returned denomi
     nd = if d, do: false, else: true
     {t, p, nd, s}
@@ -80,7 +91,7 @@ defmodule Exun.UI do
     texpo = withpar(pe, 200, te)
 
     cond do
-      e == {:numb, 1} -> {"#{tbase}", pb, d, s}
+      e == @uno -> {"#{tbase}", pb, d, s}
       true -> {"#{tbase}^#{texpo}", pb, d, s}
     end
   end
@@ -117,9 +128,9 @@ defmodule Exun.UI do
     {_opt, pri} = if op == :suma, do: {"+", 50}, else: {"*", 90}
 
     texto =
-      Enum.map(lst, fn el -> {el,show(el)} end)
+      Enum.map(lst, fn el -> {el, show(el)} end)
       |> Enum.sort(&sop/2)
-      |> Enum.reduce("", fn {_,{t, p, d, s}}, atxt ->
+      |> Enum.reduce("", fn {_, {t, p, d, s}}, atxt ->
         wp = withpar(p, pri, t)
 
         if atxt == "" do
@@ -143,15 +154,15 @@ defmodule Exun.UI do
     {texto, pri, false, false}
   end
 
-  defp sop({a1,{_, _, d1, s1}}, {a2,{_, _, d2, s2}}) do
+  defp sop({a1, {_, _, d1, s1}}, {a2, {_, _, d2, s2}}) do
     cond do
       d1 and !d2 -> false
       !d1 and d2 -> true
       s1 and !s2 -> false
       !s1 and s2 -> true
-      true -> smm(a1,a2)
+      true -> smm(a1, a2)
     end
   end
 
-  defp withpar(p, pmax, t), do: if p < pmax, do: "(#{t})", else: "#{t}"
+  defp withpar(p, pmax, t), do: if(p < pmax, do: "(#{t})", else: "#{t}")
 end

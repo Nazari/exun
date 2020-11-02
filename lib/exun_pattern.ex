@@ -1,9 +1,11 @@
 defmodule Exun.Pattern do
-  import Exun.UI
-  import Exun.Eq
-  import Exun.Collect
-  import Exun.Fun
-  @uno {:numb, 1}
+  alias Exun.UI
+  alias Exun.Eq
+  alias Exun.Collect
+  alias Exun.Math
+
+  @zero {:numb, 0, 1}
+  @uno {:numb, 1, 1}
   @moduledoc """
   Match ASTs. Functions umatch and match try to match patter with a real expression. Rules for matching, by example:
   - umatch "f", "(any valid expression)"
@@ -60,7 +62,7 @@ defmodule Exun.Pattern do
         Enum.each(map, fn {name, value} ->
           # IO.inspect(name,label: "VarName")
           # IO.inspect(value, label: "VarValue")
-          IO.puts("  #{tostr(name)}\t= #{tostr(value)}")
+          IO.puts("  #{UI.tostr(name)}\t= #{UI.tostr(value)}")
         end)
       end)
     else
@@ -100,7 +102,7 @@ defmodule Exun.Pattern do
     # |> IO.inspect(label: "init")
     |> Enum.map(fn {:ok, sol} ->
       Enum.reduce(sol, %{}, fn {k, v}, nmap ->
-        Map.put(nmap, k, coll(v))
+        Map.put(nmap, k, Collect.coll(v))
       end)
     end)
     # |> IO.inspect(label: "collected")
@@ -155,8 +157,11 @@ defmodule Exun.Pattern do
             {:deriv, {:vari, f}, {:vari, var}} ->
               case Map.fetch(map, {:vari, f}) do
                 # No problem, user wants to identify f'x but not use f
-                :error -> :ok
-                {:ok, val} -> if eq(v, coll({:deriv, val, {:vari, var}})), do: :ok, else: :ko
+                :error ->
+                  :ok
+
+                {:ok, val} ->
+                  if Eq.eq(v, Collect.coll({:deriv, val, {:vari, var}})), do: :ok, else: :ko
               end
 
             _ ->
@@ -178,7 +183,7 @@ defmodule Exun.Pattern do
               trx1(lst)
 
             ^expr ->
-              trx1([{:numb, 1}, expr])
+              trx1([@uno, expr])
           end
           |> Enum.map(fn l ->
             {{:m, :mult}, l}
@@ -208,11 +213,13 @@ defmodule Exun.Pattern do
       # IO.inspect(power,label: "power")
       remain = List.delete(lst, power)
       # |> IO.inspect(label: "remain")
-      expon1 = coll({{:m, :mult}, remain |> Enum.sort(&smm(&1, &2))})
+      expon1 = Collect.coll({{:m, :mult}, remain |> Enum.sort(&Eq.smm(&1, &2))})
       # |> IO.inspect(label: "expon1")
-      expon2 = coll(rest(b, expon1))
+      expon2 = Collect.coll(Math.rest(b, expon1))
       # |> IO.inspect(label: "expon2")
-      [coll({:elev, a, expon1}), coll({:elev, a, expon2}) | remain] |> Enum.sort(&smm(&1, &2))
+      [Collect.coll({:elev, a, expon1}), Collect.coll({:elev, a, expon2}) | remain]
+      |> Enum.sort(&Eq.smm(&1, &2))
+
       # |> IO.inspect(label: "trx1 result")
     end)
   end
@@ -241,7 +248,7 @@ defmodule Exun.Pattern do
 
     case {aast, expr} do
       # Two numbers must match exactly
-      {{:numb, n}, {:numb, n}} ->
+      {{:numb, n, d}, {:numb, n, d}} ->
         [{:ok, map}]
 
       # Base and expon must match
@@ -254,7 +261,7 @@ defmodule Exun.Pattern do
 
       # Cannot isolate for now. Match sin(F) <= 1 would be possible
       # if we can isolate F=acos(1) and define F as constant, a number.
-      {{:fcall, _name, _args}, {:numb, _}} ->
+      {{:fcall, _name, _args}, {:numb, _, _}} ->
         [{:ko, map}]
 
       # Function def from abstract ast match if vars are used in expr
@@ -296,7 +303,7 @@ defmodule Exun.Pattern do
   """
 
   def mmult(aast = {{:m, op}, lsta}, east = {{:m, op}, lste}, mainmap) do
-    unity = if op == :suma, do: {:numb, 0}, else: {:numb, 1}
+    unity = if op == :suma, do: @zero, else: @uno
     # if more or equal left matching elements than right, complete right with unity elements
 
     case length(lsta) - length(lste) do
@@ -315,7 +322,7 @@ defmodule Exun.Pattern do
   end
 
   def mmult(aast = {{:m, op}, _lsta}, expr, map) do
-    unity = if op == :suma, do: {:numb, 0}, else: {:numb, 1}
+    unity = if op == :suma, do: @zero, else: @uno
     mmult_inner(aast, {{:m, op}, [expr, unity]}, map)
   end
 
@@ -377,7 +384,7 @@ defmodule Exun.Pattern do
   elements on right list then we also must handle partitions (tuples) and
   order inside... a mess you know
   ```
-      iex(1)> Exun.Pattern.combin_expand {{:m,:mult},[1,2,3]},{{:m,:mult},["a","b","c"]}
+    iex(1)> Exun.Pattern.combin_expand {{:m,:mult},[1,2,3]},{{:m,:mult},["a","b","c"]}
     [
       ["a", "b", "c"],
       ["a", "c", "b"],
@@ -386,7 +393,7 @@ defmodule Exun.Pattern do
       ["c", "a", "b"],
       ["c", "b", "a"]
     ]
-      iex(2)> Exun.Pattern.combin_expand {{:m,:mult},[1,2]},{{:m,:mult},["a","b","c"]}
+    iex(2)> Exun.Pattern.combin_expand {{:m,:mult},[1,2]},{{:m,:mult},["a","b","c"]}
     [
       ["a", {"b", "c"}],
       [{"b", "c"}, "a"],
@@ -429,8 +436,8 @@ defmodule Exun.Pattern do
   def mderiv(dr = {:deriv, ef = {:vari, _func}, {:vari, var}}, expr, map) do
     case Map.fetch(map, ef) do
       {:ok, funcvalue} ->
-        derivate = coll({:deriv, funcvalue, {:vari, var}})
-        if eq(derivate, expr), do: [{:ok, map}], else: [{:ko, map}]
+        derivate = Collect.coll({:deriv, funcvalue, {:vari, var}})
+        if Eq.eq(derivate, expr), do: [{:ok, map}], else: [{:ko, map}]
 
       :error ->
         [checkmap(map, dr, expr)]
@@ -452,8 +459,8 @@ defmodule Exun.Pattern do
   def minteg(itr = {:integ, ef = {:vari, _func}, {:vari, var}}, expr, map) do
     case Map.fetch(map, ef) do
       {:ok, funcvalue} ->
-        deriv_expr = coll({:deriv, expr, {:vari, var}})
-        if eq(deriv_expr, funcvalue), do: [{:ok, map}], else: [{:ko, map}]
+        deriv_expr = Collect.coll({:deriv, expr, {:vari, var}})
+        if Eq.eq(deriv_expr, funcvalue), do: [{:ok, map}], else: [{:ko, map}]
 
       :error ->
         [checkmap(map, itr, expr)]
@@ -582,7 +589,7 @@ defmodule Exun.Pattern do
       {:fcall, _name, args} ->
         vars_of_expr(mapset, args)
 
-      {:numb, _} ->
+      {:numb, _, _} ->
         mapset
 
       {:unit, _, _} ->

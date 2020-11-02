@@ -1,11 +1,12 @@
 defmodule Exun.Der do
-  import Exun.Fun
+  alias Exun.Math
+  alias Exun.Fun
 
   @moduledoc """
   Derivate expressions
   """
-  @zero {:numb, 0}
-  @uno {:numb, 1}
+  @zero {:numb, 0, 1}
+  @uno {:numb, 1, 1}
   @doc """
   Derive function for variable x, may be an ast or an expresion in text mode
   ```
@@ -16,6 +17,7 @@ defmodule Exun.Der do
   ```
   deriv({:vari,"x"},"x")
   -> {:numb,1}
+  ```
   """
   def deriv(txt, x) when is_binary(txt) and is_binary(x) do
     {ast, _ctx} = Exun.parse(txt)
@@ -37,14 +39,14 @@ defmodule Exun.Der do
     search_name = name <> "(F)"
 
     cond do
-      (bfunc = base()[search_name]) != nil ->
+      (bfunc = Fun.base()[search_name]) != nil ->
         {ast, _ctx} = Exun.parse(elem(bfunc, 1))
-        replace_args_internal(ast, args, {:vari, "x"})
+        Fun.replace_args_internal(ast, args, {:vari, "x"})
 
-      (cfunc = compounds()[search_name]) != nil ->
+      (cfunc = Fun.compounds()[search_name]) != nil ->
         {ast, _ctx} = Exun.parse(cfunc)
 
-        replace_args_internal(ast, args, {:vari, "x"})
+        Fun.replace_args_internal(ast, args, {:vari, "x"})
         |> der(x)
 
       true ->
@@ -55,17 +57,17 @@ defmodule Exun.Der do
   end
 
   defp der({:minus, a}, x), do: {:minus, der(a, x)}
-  defp der({:numb, _}, _x), do: @zero
+  defp der({:numb, _, _}, _x), do: @zero
   defp der({:unit, _uv, _ut}, _x), do: @zero
   defp der({:vari, var}, {:vari, x}), do: if(var == x, do: @uno, else: @zero)
 
   defp der({:elev, base, expon}, x),
     do:
-      mult(
+      Math.mult(
         {:elev, base, expon},
-        suma(
-          mult(der(expon, x), {:fcall, "ln", [base]}),
-          mult(expon, divi(der(base, x), base))
+        Math.suma(
+          Math.mult(der(expon, x), {:fcall, "ln", [base]}),
+          Math.mult(expon, Math.divi(der(base, x), base))
         )
       )
 
@@ -80,9 +82,9 @@ defmodule Exun.Der do
     prim = List.first(lst)
     segu = {{:m, :mult}, List.delete(lst, prim)}
 
-    suma(
-      mult(prim, der(segu, x)),
-      mult(der(prim, x), segu)
+    Math.suma(
+      Math.mult(prim, der(segu, x)),
+      Math.mult(der(prim, x), segu)
     )
   end
 

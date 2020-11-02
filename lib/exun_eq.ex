@@ -28,27 +28,20 @@ defmodule Exun.Eq do
   Sorts components of lis {{:m,op},lst} in a convenient way for eq
   and operating
   """
-  def smm(l, r) do
-    tl = grt(l)
-    tr = grt(r)
+  def smm(left, right) do
+    type_l = grt(left)
+    type_r = grt(right)
 
-    lt = @stype[tl]
-    rt = @stype[tr]
+    left_index = @stype[type_l]
+    right_index = @stype[type_r]
 
     cond do
-      lt == rt -> l < r
-      true -> lt < rt
+      left_index == right_index -> left < right
+      true -> left_index < right_index
     end
   end
 
   defp grt(tup) do
-    t = elem(tup, 0)
-
-    if t == :minus do
-      #IO.inspect(tup,label: "tupla")
-      elem(elem(tup, 1), 0)
-    else
-      t
-    end
+    elem(tup, 0)
   end
 end

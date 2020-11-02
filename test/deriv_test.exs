@@ -1,6 +1,5 @@
 defmodule DerivTest do
   use ExUnit.Case
-  import Exun.Unit
 
   test "der 1" do
     assert Exun.eval("sin(f(x))'x") == "cos(f(x))*f(x)'x"

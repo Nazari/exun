@@ -29,7 +29,7 @@ defmodule Exun.Cyclic do
     for {name, _definition} <- context do
       with {:ok, tok, _} <- :exun_lex.string(String.to_charlist(name)),
            {:ok, tree} <- :exun_yacc.parse(tok) do
-        {name, tree}
+        {name, tree |> Exun.walkn()}
       end
     end
     |> Enum.reduce([], fn {v, t}, acc ->
@@ -92,7 +92,7 @@ defmodule Exun.Cyclic do
     for {var, def} <- context, into: %{} do
       with {:ok, tok, _} <- :exun_lex.string(def |> String.to_charlist()),
            {:ok, tree} <- :exun_yacc.parse(tok) do
-        {var, extract_vars(tree, MapSet.new())}
+        {var, extract_vars(tree |> Exun.walkn(), MapSet.new())}
       end
     end
   end

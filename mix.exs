@@ -4,7 +4,7 @@ defmodule Exun.MixProject do
   def project do
     [
       app: :exun,
-      version: "0.4.5",
+      version: "0.5.0",
       elixir: "~> 1.10",
       description: descripcion(),
       start_permanent: Mix.env() == :prod,
@@ -25,6 +25,7 @@ defmodule Exun.MixProject do
     [
       {:ex_doc, "~> 0.23", only: :dev, runtime: false},
       {:benchee, "~> 1.0", only: :dev},
+      {:decimal, "~> 2.0"},
     ]
   end
 

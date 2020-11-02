@@ -4,9 +4,10 @@ defmodule Exun.Integral do
   import Exun.Pattern
   import Exun
 
-  @zero {:numb, 0}
-  @uno {:numb, 1}
-  @dos {:numb, 2}
+  @muno {:numb, -1, 1}
+  @zero {:numb, 0, 1}
+  @uno {:numb, 1, 1}
+  @dos {:numb, 2, 1}
   @moduledoc """
   Try to integrate function
   """
@@ -15,14 +16,14 @@ defmodule Exun.Integral do
   Integrate function for var v. Expect an AST and return an AST.
   """
   def integ(@zero, _), do: @uno
-  def integ({:minus, @zero}, _), do: {:numb, -1}
+  def integ({:minus, @zero}, _), do: @muno
   def integ({:minus, a}, v), do: {:minus, integ(a, v)}
-  def integ(n = {:numb, _}, v), do: mult(n, v)
-  def integ(v = {:vari, _}, v), do: mult({:numb, 0.5}, {:elev, v, @dos})
+  def integ(n = {:numb, _, _}, v), do: mult(n, v)
+  def integ(v = {:vari, _}, v), do: mult({:numb, 1, 2}, {:elev, v, @dos})
   def integ({:deriv, f, x}, x), do: f
   def integ({:vari, a}, v), do: mult({:vari, a}, v)
 
-  def integ({:elev, {:vari, v}, expon = {:numb, _}}, {:vari, v}) do
+  def integ({:elev, {:vari, v}, expon = {:numb, _, _}}, {:vari, v}) do
     newexp = suma(expon, @uno)
     mult({:elev, {:vari, v}, newexp}, chpow(newexp))
   end
@@ -95,7 +96,7 @@ defmodule Exun.Integral do
   end
 
   def integ(aexp = {{:m, :mult}, _}, v) do
-    #IO.inspect(aexp,label: "integrating-----------")
+    # IO.inspect(aexp,label: "integrating-----------")
     # Three methods for now
     cond do
       try_poly = integ_poly(aexp, v) ->
@@ -134,7 +135,7 @@ defmodule Exun.Integral do
   """
   def mutate(ast, from, to) do
     case ast do
-      {^from, _} = {:numb, n} -> {to, n}
+      {^from, _, _} = {:numb, n, d} -> {to, n, d}
       {^from, _, _} = {:unit, a, b} -> {to, mutate(a, from, to), mutate(b, from, to)}
       {^from, _} = {:vari, a} -> {to, a}
       {^from, _, _} = {:fcall, f, args} -> {to, f, Enum.map(args, &mutate(&1, from, to))}
@@ -144,7 +145,7 @@ defmodule Exun.Integral do
       {^from, _} = {{:m, :suma}, list} -> {to, Enum.map(list, &mutate(&1, from, to))}
       {^from, _} = {{:m, :mult}, list} -> {to, Enum.map(list, &mutate(&1, from, to))}
       {^from, _, _} = {:elev, a, b} -> {to, mutate(a, from, to), mutate(b, from, to)}
-      {:numb, n} -> {:numb, n}
+      {:numb, n, d} -> {:numb, n, d}
       {:unit, a, b} -> {:unit, mutate(a, from, to), mutate(b, from, to)}
       {:vari, a} -> {:vari, a}
       {:fcall, f, args} -> {:fcall, f, Enum.map(args, &mutate(&1, from, to))}
@@ -158,7 +159,6 @@ defmodule Exun.Integral do
   end
 
   def integ_poly(mult = {{:m, :mult}, _}, v = {:vari, x}) do
-
     case match_ast(parse_text("a*#{x}^b"), mult, %{}) do
       [] ->
         false
@@ -168,6 +168,7 @@ defmodule Exun.Integral do
           a = Map.fetch!(map, {:vari, "a"})
           var = Map.fetch!(map, {:vari, "#{x}"})
           b = Map.fetch!(map, {:vari, "b"})
+
           if Exun.Fun.contains(a, v) or Exun.Fun.contains(b, v) or var != {:vari, "#{x}"} do
             listsol
           else
@@ -189,7 +190,7 @@ defmodule Exun.Integral do
       matchlist ->
         Enum.reduce(matchlist, [], fn {_, map}, listsol ->
           u = Map.fetch!(map, {:vari, "u"})
-          [divi(elev(u, {:numb, 2}), {:numb, 2}) | listsol]
+          [divi(elev(u, @dos), @dos) | listsol]
         end)
         |> List.first()
     end

@@ -1,6 +1,7 @@
 defmodule Exun do
   alias Exun.Cyclic
-  import Exun.Collect
+  alias Exun.Simpl
+  alias Exun.Collect
   alias Exun.Eq
   alias Exun.UI
 
@@ -13,7 +14,7 @@ defmodule Exun do
   For example, express 'x' squared meters, and then define x to be 3.
   ```
     iex> Exun.parse( "x[m^2]", %{"x"=>"3"})
-    {{:unit, {:vari, "x"}, {:elev, {:vari, "m"}, {:numb, 2}}}, %{{:vari, "x"} => {:numb, 3}}}
+    {{:unit, {:vari, "x"}, {:elev, {:vari, "m"}, {:numb, 2, 1}}}, %{{:vari, "x"} => {:numb, 3, 1}}}
 
   ```
   returns a tuple {expression, parsed_context} where
@@ -74,15 +75,15 @@ defmodule Exun do
       _ ->
         # First Collect context
         pctx =
-         for {k, v} <- pctx, into: %{} do
-           {k, coll(v)}
-         end
+          for {k, v} <- pctx, into: %{} do
+            {k, Collect.coll(v)}
+          end
 
         ast
         # |> IO.inspect(label: "eval01,AST")
         |> replace(pctx)
         # |> IO.inspect(label: "eval02,Replaced")
-        |> coll()
+        |> Simpl.mkrec()
 
         # |> IO.inspect(label: "eval03,mkrec")
     end
@@ -104,6 +105,7 @@ defmodule Exun do
     with {:ok, toks, _} <- :exun_lex.string(txt |> String.to_charlist()),
          {:ok, tree} <- :exun_yacc.parse(toks) do
       tree
+      |> walkn()
     end
   end
 
@@ -189,6 +191,37 @@ defmodule Exun do
 
       other ->
         other
+    end
+  end
+
+  @doc """
+  Changes all numbers to Decimal struct
+  """
+  def walkn(ast) do
+    case ast do
+      {:numb, n} ->
+        {:numb, n, 1}
+
+      {:fcall, name, args} ->
+        {:fcall, name, Enum.map(args, &walkn/1)}
+
+      {{:m, op}, list} ->
+        {{:m, op}, Enum.map(list, &walkn/1)}
+
+      {:vari, x} ->
+        {:vari, x}
+
+      {:minus, a} ->
+        {:minus, walkn(a)}
+
+      {{:vector, n}, l} ->
+        {:vector, n, Enum.map(l,&walkn/1)}
+
+      {{:raw,a,b},list,[],[]} ->
+        {{:raw,a,b},Enum.map(list,&walkn/1),[],[]}
+
+      {op, n, t} ->
+        {op, walkn(n), walkn(t)}
     end
   end
 end
