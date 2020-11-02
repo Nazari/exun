@@ -40,7 +40,7 @@ defmodule Exun.Collect do
   defp expand({:fcall, f, args}), do: {:fcall, f, Enum.map(args, &expand(&1))}
   defp expand({:unit, n, t}), do: {:unit, expand(n), t}
   defp expand({:minus, a}), do: {:minus, expand(a)}
-  defp expand({:elev,a,{:numb, n}}) when n>0, do: {{:m,:mult},List.duplicate(a,n)}
+  defp expand({:elev,a,{:numb, n}}) when n>0 and floor(n)==n, do: {{:m,:mult},List.duplicate(a,n)}
   defp expand({:elev, b, e}), do: {:elev, expand(b), expand(e)}
 
   defp expand({{:m, :mult}, l}) do
