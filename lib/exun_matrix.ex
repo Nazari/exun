@@ -1,5 +1,6 @@
 defmodule Exun.Matrix do
   import Exun.Fun
+  import Exun.Collect
 
   @moduledoc """
   Manage symbolic matrices, simple operations as add, rest, mult and divi; and
@@ -16,6 +17,7 @@ defmodule Exun.Matrix do
   """
   @uno {:numb, 1}
   @zero {:numb, 0}
+
   @doc """
   Return quadratic (nxn) identity matrix
   """
@@ -61,5 +63,58 @@ defmodule Exun.Matrix do
         |> elem(1)
         |> Enum.at(col)
     end
+  end
+
+  @doc """
+  Return row number row from matrix
+  """
+  def get_row(a = {{type, rows, cols}, val}, row) do
+    case type do
+      :unity ->
+        List.duplicate({:numb, 0}, rows) |> List.replace_at(row, {:numb, 1})
+
+      :polynom ->
+        case row do
+          0 ->
+            val
+
+          _ ->
+            for c <- 0..(cols - 1), do: get_elem(a, row, c)
+        end
+
+      :raw ->
+        for c <- 0..(cols - 1), do: get_elem(a, row, c)
+    end
+  end
+
+  def get_col(a = {{_, rows, _}, _}, col) do
+    for i <- 0..(rows - 1) do
+      get_elem(a, i, col)
+    end
+  end
+
+  def mult_matrix(a = {{_, ra, ca}, _}, b = {{_, rb, cb}, _}) do
+    if ca != rb, do: throw("Cannot multiply matrices #{ra}x#{ca} and #{rb}x#{cb}")
+
+    content =
+      for rown_a <- 0..(ra - 1) do
+        row_a = get_row(a, rown_a)
+
+        {{:vector, ra},
+         for coln_b <- 0..(cb - 1) do
+           col_b = get_col(b, coln_b)
+           mult_list(row_a, col_b)
+         end}
+      end
+
+    {{:raw, ra, cb}, content}
+  end
+
+  defp mult_list(rlist, clist) when is_list(rlist) and is_list(clist) do
+    coll(
+      {{:m, :suma},
+       List.zip([clist, rlist])
+       |> Enum.map(fn {r, c} -> mult(r, c) end)}
+    )
   end
 end
