@@ -39,11 +39,10 @@ signed_number -> '-' number : -extract_token('$2').
 
 variable -> word : extract_token('$1').
 
-vector -> '{' arguments '}' : {{vector, length('$2')}, lists:reverse('$2')}.
 matrix -> '{' vectors '}' : {{raw, length('$2'), vlen(lists:nth(1,'$2'))}, lists:reverse('$2'),[],[]}.
 vectors -> vector ',' vector : ['$3','$1'].
-
 vectors -> vectors ',' vector : ['$3'|'$1'].
+vector -> '{' arguments '}' : {{vector, length('$2')}, lists:reverse('$2')}.
 
 function -> variable arg_list :  {fcall, '$1', '$2'}.
 arg_list -> '(' ')' : [] .
