@@ -100,7 +100,6 @@ defmodule Exun do
   - You can sum units: 1[m]+1[cm] if are of the same magnitude. For example 1[m]+1[s] will
   throw an exception. You can multiple/divide any two unis.
   """
-  @spec parse_text(binary) :: any
   def parse_text(txt) do
     with {:ok, toks, _} <- :exun_lex.string(txt |> String.to_charlist()),
          {:ok, tree} <- :exun_yacc.parse(toks) do
@@ -160,12 +159,8 @@ defmodule Exun do
 
         user_function =
           Map.keys(pc)
-          # |> IO.inspect(label: "user_function1")
           |> Enum.filter(fn el -> elem(el, 0) == :fcall end)
-          # |> IO.inspect(label: "user_function2")
           |> Enum.filter(fn el -> elem(el, 1) == name and length(elem(el, 2)) == arity end)
-
-        # |> IO.inspect(label: "#{Exun.UI.tostr({:fcall, name, args})}")
 
         cond do
           length(user_function) > 1 ->
@@ -221,8 +216,17 @@ defmodule Exun do
       {{:raw, a, b}, list, [], []} ->
         {{:raw, a, b}, Enum.map(list, &walkn/1), [], []}
 
-      {op, n, t} ->
-        {op, walkn(n), walkn(t)}
+      {:deriv, f, v} ->
+        {:deriv, walkn(f), walkn(v)}
+
+      {:integ, f, v} ->
+        {:integ, walkn(f), walkn(v)}
+
+      {:unit, v, t} ->
+        {:unit, walkn(v), walkn(t)}
+
+      other ->
+        throw("Unknown in walkn #{Exun.UI.tostr(other)}")
     end
   end
 end
