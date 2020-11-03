@@ -11,7 +11,7 @@ you have a problem. I've reformulated {:numb,b} to {:numb, numerator, denominato
 in a try to keep accuracy for the usual operations, specially for exponents algebraic.
 
 Exun.eval("1-0.8") returns "0.2", and Exun.eval("0.1+0.1+0.1") returns "0.3", 
-the same operation in iex returns "0.30000000000000004"
+the same operation in iex returns "0.30000000000000004".
 
 All test passed.
 
