@@ -182,7 +182,7 @@ defmodule Exun do
                 Map.put(ac, n, v)
               end)
 
-            replace_args(ast, nv)
+            replace(ast, nv)
 
           true ->
             {:fcall, name, args}
@@ -193,25 +193,6 @@ defmodule Exun do
     end
 
     # |> IO.inspect(label: label)
-  end
-
-  defp replace_args(ast, nv) do
-    case ast do
-      {:vari, v} ->
-        Map.get(nv, {:vari, v}, {:vari, v})
-
-      {:unit, un, ut} ->
-        {:unit, replace_args(un, nv), replace_args(ut, nv)}
-
-      {:fcall, subname, subargs} ->
-        {:fcall, subname, subargs |> Enum.map(&replace_args(&1, nv))}
-
-      {op, l, r} ->
-        {op, replace_args(l, nv), replace_args(r, nv)}
-
-      other ->
-        other
-    end
   end
 
   @doc """
