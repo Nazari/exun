@@ -27,3 +27,4 @@ src/exun_yacc.erl
 src/exun_lex.erl
 src/exun_yacc.erl
 src/exun_lex.erl
+.DS_Store

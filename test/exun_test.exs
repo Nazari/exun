@@ -52,4 +52,8 @@ defmodule ExunTest do
   test "Factorize" do
     assert Exun.Unit.factorize("1[A*Kg*m/s^2]", "[slug*cm]") == "6.852176585682165[cm*slug*A/s^2]"
   end
+
+  test "Param substitution" do
+    assert Exun.eval("f(y,3)", %{"f(a,b)"=>"a^2+a*b+b^2"}) == "9+3*y+y^2"
+  end
 end

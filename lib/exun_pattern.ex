@@ -16,7 +16,7 @@ defmodule Exun.Pattern do
 
   - umatch "f'x", "exp"
 
-  Match f'x as exp AND f as $exp,x
+  Match f'x as exp
 
   Ex: umatch "f'x", "-cos(x)"
 
@@ -24,15 +24,15 @@ defmodule Exun.Pattern do
 
   Will tray to match f and g against exp using <op>=*,+,-,/,^ on any possible combination
 
-  Ex: umatch "a+b", "2**x^2+3"
+  Ex: umatch "a+b", "2*x^2+3"
 
-  - umatch "f**f'x", "exp"
+  - umatch "f*f'x", "exp"
 
   Will match if can find a product on exp of the form f ** d(f)/dx
 
   Ex: umatch "sin(x)*cos(x)"
 
-  - umatch "f**$f,x"
+  - umatch "f*$f,x"
 
   Will match if can find a product on exp of the form f ** integ(f,x)
 
@@ -40,11 +40,11 @@ defmodule Exun.Pattern do
 
   Will match if exp is a function call and can match x and y with its arguments.
 
-  Ex: umatch "f(a,b)", "function(2**x,y^3)"
+  Ex: umatch "f(a,b)", "function(2*x,y^3)"
 
-  - umatch "u**v'x","sin(x)*cos(x)", ["v**u'x"]
+  - umatch "u*v'x","sin(x) * cos(x)", ["v*u'x"]
 
-  Will match u and v against "sin(x)**cos(x)" and checks that condition "v**u'x" does not contains a symbolic integral. This
+  Will match u and v against "sin(x)*cos(x)" and checks that condition "v**u'x" does not contains a symbolic integral. This
   case is used for integrate by parts: $u**v'x,x = u**v - $v**u'x,x
 
   """

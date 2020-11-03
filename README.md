@@ -1,20 +1,25 @@
 # Exun
 
 Symbolic math library for Elixir, with unit support.
-Beta state
+
+*Beta state.*
+
 Cannot belive in Elixir 1-0.8 == 0.19999999999999996
+
 This is a big deal, if you can't trust in this basic operation
 you have a problem. I've reformulated {:numb,b} to {:numb, numerator, denominator}
-in a try to keep accuracy for the usual operations, specially for exponents algebraic
-there is a basic need for be accurate
+in a try to keep accuracy for the usual operations, specially for exponents algebraic.
+
+Exun.eval("1-0.8") returns "0.2", and Exun.eval("0.1+0.1+0.1") returns "0.3", 
+the same operation in iex returns "0.30000000000000004"
+
 All test passed.
 
 TODO:
  - Temperature unit conversions
  - Summatory
- - Fractions, to avoid decimal ops
- - Add more testing and revise docs
- 
+ - End Matrix and Vector support. 
+
 DONE:
  + Symbolic math pattern match expressions
  + Derivate
@@ -24,6 +29,8 @@ DONE:
  + Functions and User functions  
  + Partially implemented Multiprocess, make reductions in parallell via Tasks 
  + Define equations, not only expressions: Isolate variables
+ + Fractions, to avoid decimal ops
+ + Add more testing and revise docs
  
 run "iex -S mix" inside exun dir and type:
 ```
@@ -74,9 +81,8 @@ eval "(x^2+x)'x+1"
 Define functions in context
 Vars and functions can be named with the same name, like in elixir, arity in a name makes it different so:
 ```
-Buggy...
 Exun.eval "f*f(y)*f(y,3)", %{"f"=>"3", "f(x)"=>"x^2", "f(a,b)"=>"a^2+a*b+b^2"}
-"3*(9+3*y+y^2)*y^2"
+"3*y^2*(9+3*y+y^2)"
 
 Exun.eval " f * f(x)'x * f(y)", %{"f"=>"3", "f(x)"=>"x^2"}
 "6*x*y^2"
@@ -91,9 +97,8 @@ iex(1)> Exun.eval "$3*x^2+2*x+1,x"
 iex(5)> Exun.eval "$sin(x),x"     
 "-cos(x)"
 
-Buggy...
 iex(6)> Exun.eval "$ln(f(x)),x"
-"-$x/f(x),x+x*ln(f(x))"
+"x*ln(f(x))-($(x/f(x)),x)"
 ```
 
 Pattern Match expressions in module Pattern:
@@ -120,7 +125,7 @@ Match group ok
   g     = 1+x^3
   n     = 2
   g'x   = 3*x^2
-
+:ok
 iex(3)> umatch("g(y)+f'x","1+x+y")
 Match group ok
   f     => x+0.5*x^2
@@ -135,11 +140,16 @@ Match group ok
   f'    => x
   g     => y+1
 ...
-
+:ok
 iex(4)> umatch("f(2*x)","sin(2*x)")
 Match group ok
   f     => sin
   x     => x
+:ok
+iex(5)> umatch("f*f'x","sin(x)*cos(x)"
+Match group ok
+  f     = sin(x)
+:ok
 ```
 
 Isolation, Module Exun.Isol can isolate an ast from a tree.
