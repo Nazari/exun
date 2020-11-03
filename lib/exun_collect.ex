@@ -36,6 +36,12 @@ defmodule Exun.Collect do
 
   defp expand(ast) do
     case ast do
+      {:numb, _, _} ->
+        ast
+
+      {:vari, _} ->
+        ast
+
       {:deriv, f, v} ->
         {:deriv, expand(f), v}
 
