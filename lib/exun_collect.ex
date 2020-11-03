@@ -34,27 +34,52 @@ defmodule Exun.Collect do
     end
   end
 
-  defp expand({{:m, :suma}, l}), do: {{:m, :suma}, Enum.map(l, &expand(&1))}
-  defp expand({:deriv, f, v}), do: {:deriv, expand(f), v}
-  defp expand({:integ, f, v}), do: {:integ, expand(f), v}
-  defp expand({:fcall, f, args}), do: {:fcall, f, Enum.map(args, &expand(&1))}
-  defp expand({:unit, n, t}), do: {:unit, expand(n), t}
-  defp expand({:minus, a}), do: {:minus, expand(a)}
-  defp expand({:elev,a,{:numb, n, d}}) when n>0 and d==1 and floor(n)==n, do: {{:m,:mult},List.duplicate(a,floor(n))}
-  defp expand({:elev, b, e}), do: {:elev, expand(b), expand(e)}
+  defp expand(ast) do
+    case ast do
+      {:deriv, f, v} ->
+        {:deriv, expand(f), v}
 
-  defp expand({{:m, :mult}, l}) do
-    tsuma = List.keyfind(l, {:m, :suma}, 0)
+      {:integ, f, v} ->
+        {:integ, expand(f), v}
 
-    if tsuma != nil do
-      {_, lsuma} = tsuma
-      # Convert {:m,:mult} to {:m,:suma}
-      remain = {{:m, :mult}, List.delete(l, tsuma)}
-      {{:m, :suma}, Enum.map(lsuma, &Math.mult(remain, &1))}
-    else
-      {{:m, :mult}, Enum.map(l, &expand(&1))}
+      {:fcall, f, args} ->
+        {:fcall, f, Enum.map(args, &expand(&1))}
+
+      {:unit, n, t} ->
+        {:unit, expand(n), t}
+
+      {:minus, a} ->
+        {:minus, expand(a)}
+
+      {:elev, a, {:numb, n, d}} when n > 0 and d == 1 and floor(n) == n ->
+        {{:m, :mult}, List.duplicate(a, floor(n))}
+
+      {:elev, b, e} ->
+        {:elev, expand(b), expand(e)}
+
+      {{:vector, s}, l} ->
+        {{:vector, s}, l |> Enum.map(&expand/1)}
+
+      {{t, rs, cs}, list, mr, mc} ->
+        {{t, rs, cs}, list |> Enum.map(&expand/1), mr, mc}
+
+      {{:m, :suma}, l} ->
+        {{:m, :suma}, Enum.map(l, &expand(&1))}
+
+      {{:m, :mult}, l} ->
+        tsuma = List.keyfind(l, {:m, :suma}, 0)
+
+        if tsuma != nil do
+          {_, lsuma} = tsuma
+          # Convert {:m,:mult} to {:m,:suma}
+          remain = {{:m, :mult}, List.delete(l, tsuma)}
+          {{:m, :suma}, Enum.map(lsuma, &Math.mult(remain, &1))}
+        else
+          {{:m, :mult}, Enum.map(l, &expand(&1))}
+        end
+
+      unknown ->
+        throw("Unknown at collect: #{Exun.UI.tostr(unknown)}")
     end
   end
-
-  defp expand(ast), do: ast
 end
