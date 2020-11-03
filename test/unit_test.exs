@@ -7,8 +7,7 @@ defmodule UnitTest do
   end
 
   test "1[slug/N]" do
-    {u2, _ctx} = Exun.parse("1[slug/N]")
-    assert Exun.Unit.toSI(u2) |> Exun.UI.tostr() == "143.11732813057753[s^2/m]"
+    assert Exun.Unit.toSI(Exun.eval_ast("1[slug/N]")) |> Exun.UI.tostr() == "143.11732813057753[s^2/m]"
   end
 
   test "1[m]+3[cm]+2[dm]+4[mm]" do
@@ -16,7 +15,7 @@ defmodule UnitTest do
   end
 
   test "(3[Kg] + 2[slug]) / (23[g] + 16[lb])" do
-    assert Exun.eval("(3[Kg] + 2[slug]) / (23[g] + 16[lb])") == "4.421111667130774"
+    assert Exun.eval("(3[Kg] + 2[slug]) / (23[g] + 16[lb])") == "4.421111667130775"
   end
 
   test "1[mm]/2+1[m]/2" do

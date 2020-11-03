@@ -82,9 +82,10 @@ defmodule Exun.Integral do
 
   def integ({:fcall, name, args}, v) do
     case base()[name <> "(F)"] do
-      {_, _, val} when val != nil ->
+      {_, _, val, _} when val != nil ->
         {ast, _} = Exun.parse(val)
-        replace_args_internal(ast, args, v)
+        mapdef = %{{:vari, "F"} => args |> List.first(), {:vari, "x"} => {:vari, "x"}}
+        Exun.replace(ast, mapdef)
 
       _ ->
         {:integ, {:fcall, name, args}, v}
@@ -105,8 +106,8 @@ defmodule Exun.Integral do
       try_udu = integ_udu(aexp, v) ->
         try_udu
 
-      try_parts = integ_parts(aexp, v) ->
-        try_parts
+      #try_parts = integ_parts(aexp, v) ->
+        #try_parts
 
       true ->
         {:integ, aexp, v}

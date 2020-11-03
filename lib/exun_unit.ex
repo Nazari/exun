@@ -418,7 +418,7 @@ defmodule Exun.Unit do
     {:unit, r,
      Collect.coll(
        e
-       |> Enum.reject(fn {_a, b} -> b == 0 end)
+       |> Enum.reject(fn {_a, b} -> b == @zero end)
        |> Enum.reduce(@uno, fn {var, expon}, tree ->
          mult(tree, {:elev, {:vari, var}, expon})
        end)

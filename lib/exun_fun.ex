@@ -84,42 +84,11 @@ defmodule Exun.Fun do
 
       (cfunc = compounds()[name <> "(F)"]) != nil ->
         {ast, _ctx} = Exun.parse(cfunc)
-        replace_args_internal(ast, args, {:vari, "x"})
+        mapdef = %{{:vari, "F"} => args |> List.first(), {:vari, "x"} => {:vari, "x"}}
+        Exun.replace(ast, mapdef)
 
       true ->
         {:fcall, name, args}
-    end
-  end
-
-  @doc """
-  Replace arguments on ast as specified. Not intended for
-  external use, mus be public for now
-  """
-  def replace_args_internal(ast, args, vari) do
-    case ast do
-      {:vari, "F"} ->
-        args |> List.first()
-
-      {:vari, "x"} ->
-        vari
-
-      {:fcall, name, [{:vari, "F"}]} ->
-        {:fcall, name, args}
-
-      {:unit, uv, ut} ->
-        {:unit, replace_args_internal(uv, args, vari), ut}
-
-      {{:m, op}, lst} ->
-        {{:m, op}, Enum.map(lst, &replace_args_internal(&1, args, vari))}
-
-      {:minus, a} ->
-        {:minus, replace_args_internal(a, args, vari)}
-
-      {op, l, r} ->
-        {op, replace_args_internal(l, args, vari), replace_args_internal(r, args, vari)}
-
-      _ ->
-        ast
     end
   end
 
@@ -128,7 +97,6 @@ defmodule Exun.Fun do
       ac and elem(el, 0) == :numb
     end)
   end
-
 
   @doc """
   Looks in compounds for a match of ast and return it.
@@ -151,7 +119,7 @@ defmodule Exun.Fun do
     if match != nil do
       {tk, {:ok, map}} = match
       {atk, _} = Exun.parse(tk, %{})
-      replace_args_internal(atk, [Map.fetch!(map, {:vari, "F"})], nil)
+      Exun.replace(atk, map)
     else
       nil
     end

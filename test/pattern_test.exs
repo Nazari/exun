@@ -386,58 +386,28 @@ defmodule PatternTest do
              {
                :ok,
                %{
-                 {:vari, "u"} => {
-                   {:m, :mult},
-                   [{:numb, 2.0, 1.0}, {:elev, {:vari, "x"}, {:numb, 2.0, 1.0}}]
-                 },
+                 {:vari, "u"} =>
+                   {{:m, :mult}, [{:numb, 2, 1}, {:elev, {:vari, "x"}, {:numb, 2, 1}}]},
                  {:deriv, {:vari, "v"}, {:vari, "x"}} => {:numb, 1, 1}
                }
              },
-             {
-               :ok,
-               %{
-                 {:vari, "u"} => {
-                   {:m, :mult},
-                   [{:numb, 2.0, 1.0}, {:elev, {:vari, "x"}, {:numb, 2.0, 1.0}}]
-                 },
-                 {:deriv, {:vari, "v"}, {:vari, "x"}} => {:numb, 1.0, 1.0}
-               }
-             },
-             {
-               :ok,
-               %{
-                 {:vari, "u"} => {:elev, {:vari, "x"}, {:numb, 2.0, 1.0}},
-                 {:deriv, {:vari, "v"}, {:vari, "x"}} => {:numb, 2, 1}
-               }
-             },
-             {
-               :ok,
-               %{
-                 {:vari, "u"} => {:elev, {:vari, "x"}, {:numb, 2.0, 1.0}},
-                 {:deriv, {:vari, "v"}, {:vari, "x"}} => {:numb, 2.0, 1.0}
-               }
-             },
              {:ok,
               %{
-                {:vari, "u"} => {:numb, 1, 1},
-                {:deriv, {:vari, "v"}, {:vari, "x"}} =>
-                  {{:m, :mult}, [{:numb, 2.0, 1.0}, {:elev, {:vari, "x"}, {:numb, 2.0, 1.0}}]}
+                {:vari, "u"} => {:elev, {:vari, "x"}, {:numb, 2, 1}},
+                {:deriv, {:vari, "v"}, {:vari, "x"}} => {:numb, 2, 1}
               }},
+             {
+               :ok,
+               %{
+                 {:vari, "u"} => {:numb, 1, 1},
+                 {:deriv, {:vari, "v"}, {:vari, "x"}} =>
+                   {{:m, :mult}, [{:numb, 2, 1}, {:elev, {:vari, "x"}, {:numb, 2, 1}}]}
+               }
+             },
              {:ok,
               %{
                 {:vari, "u"} => {:numb, 2, 1},
-                {:deriv, {:vari, "v"}, {:vari, "x"}} => {:elev, {:vari, "x"}, {:numb, 2.0, 1.0}}
-              }},
-             {:ok,
-              %{
-                {:vari, "u"} => {:numb, 1.0, 1.0},
-                {:deriv, {:vari, "v"}, {:vari, "x"}} =>
-                  {{:m, :mult}, [{:numb, 2.0, 1.0}, {:elev, {:vari, "x"}, {:numb, 2.0, 1.0}}]}
-              }},
-             {:ok,
-              %{
-                {:vari, "u"} => {:numb, 2.0, 1.0},
-                {:deriv, {:vari, "v"}, {:vari, "x"}} => {:elev, {:vari, "x"}, {:numb, 2.0, 1.0}}
+                {:deriv, {:vari, "v"}, {:vari, "x"}} => {:elev, {:vari, "x"}, {:numb, 2, 1}}
               }}
            ]
   end

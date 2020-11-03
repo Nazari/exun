@@ -4,9 +4,9 @@ defmodule Exun.Simpl do
   alias Exun.Unit
   alias Exun.Eq
 
-  @muno {:numb, -1.0, 1.0}
-  @zero {:numb, 0.0, 1.0}
-  @uno {:numb, 1.0, 1.0}
+  @muno {:numb, -1, 1}
+  @zero {:numb, 0, 1}
+  @uno {:numb, 1, 1}
   @moduledoc """
   Simplify expressions
   """
@@ -23,6 +23,7 @@ defmodule Exun.Simpl do
   end
 
   # simplify
+
   defp mk({:minus, {:minus, a}}), do: mk(a)
 
   defp mk({:minus, {{:m, :mult}, list}}) do
@@ -36,6 +37,7 @@ defmodule Exun.Simpl do
   end
 
   defp mk({:minus, @zero}), do: @zero
+  defp mk({:minus, {:numb, n, d}}), do: {:numb, -n, d}
   defp mk({:minus, a}), do: {:minus, mk(a)}
 
   defp mk({:unit, val, @uno}), do: mk(val)
@@ -47,7 +49,7 @@ defmodule Exun.Simpl do
   defp mk({:elev, {:numb, base, d1}, {:numb, -1, 1}}), do: {:numb, d1, base}
 
   defp mk({:elev, {:numb, base, d1}, {:numb, exp, d2}}),
-    do: {:numb, :math.pow(base,exp/d2), :math.pow(d1,exp/d2)}
+    do: {:numb, :math.pow(base, exp / d2), :math.pow(d1, exp / d2)}
 
   defp mk({:elev, {:elev, base, e1}, e2}), do: {:elev, mk(base), mk(Math.mult(e1, e2))}
 
@@ -76,14 +78,12 @@ defmodule Exun.Simpl do
       end)
       |> Enum.sort(&Eq.smm(&1, &2))
 
-    unity = if op == :suma, do: @zero, else: @uno
-    ufc = if op == :suma, do: &Math.suma/2, else: &Math.mult/2
-
     # Collect numbers and units and simplify
-    lst = collect_literals(op, lst, ufc, unity)
+    lst = collect_literals({{:m, op}, lst})
 
     # Remove zeroes or ones, 0+any=any, 1*any=any and may be the nil
     # introduced by the last command
+    unity = if op == :suma, do: @zero, else: @uno
     lst = Enum.reject(lst, &(&1 == unity or &1 == nil))
     # |> IO.inspect(label: "post literals")
 
@@ -255,7 +255,13 @@ defmodule Exun.Simpl do
     if c1 > c2, do: a1, else: a2
   end
 
-  defp collect_literals(op, lst, ufc, unity) do
+  @doc """
+  Reduce literals to une unit or one constant if possible
+  """
+  def collect_literals({{:m, op}, lst}) do
+    unity = if op == :suma, do: @zero, else: @uno
+    ufc = if op == :suma, do: &Math.suma/2, else: &Math.mult/2
+
     {n, u, lst} =
       Enum.reduce(lst, {unity, nil, []}, fn el, {nd_ac = {:numb, _, _}, u_ac, rest} ->
         case el do
@@ -326,5 +332,4 @@ defmodule Exun.Simpl do
     {res, nl |> Enum.reverse()}
     # |> IO.inspect(label: "collected minus")
   end
-
 end

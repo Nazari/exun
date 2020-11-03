@@ -95,7 +95,8 @@ defmodule Exun.Matrix do
         end
 
       :raw ->
-        for c <- 0..(cols - 1), do: get_elem(a, row, c)
+        Enum.at(val,row)
+        |> elem(1)
     end
   end
 

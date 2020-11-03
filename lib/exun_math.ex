@@ -54,23 +54,30 @@ defmodule Exun.Math do
   def chpow(s = {{:m, :suma}, _}), do: {:elev, s, @muno}
   def chpow(ast), do: {:elev, ast, @muno}
 
-  def signof({:numb,a,b}) do
-    r=a/b
+  def signof({:numb, a, b}) do
+    r = a / b
+
     cond do
-      r<0 -> :neg
-      r>0 -> :pos
+      r < 0 -> :neg
+      r > 0 -> :pos
       true -> :zero
     end
   end
 
-  defp mknum(n, d) do
-    if floor(n)==n and floor(d)==d do
-      n=floor(n)
-      d=floor(d)
-      mcd = Integer.gcd(n, d)
-      {:numb, n / mcd, d / mcd}
-    else
-      {:numb, n, d}
+  @doc """
+  Try to keep at least 3 decimals of precission
+  """
+  def mknum(n, d) do
+    f_n = floor(n)
+    f_d = floor(d)
+
+    cond do
+      f_n == n and f_d == d ->
+        mcd = Integer.gcd(f_n, f_d)
+        {:numb, floor(n / mcd), floor(d / mcd)}
+
+      true ->
+        {:numb, n, d}
     end
   end
 
@@ -102,7 +109,7 @@ defmodule Exun.Math do
   For convenience, creates ast {:elev,a,b}
   """
   def elev({:numb, n1, d1}, {:numb, n2, d2}),
-    do: {:numb, :math.pow(n1,n2/d2), :math.pow(d1,n2/d2)}
+    do: {:numb, :math.pow(n1, n2 / d2), :math.pow(d1, n2 / d2)}
 
   def elev(a, b), do: {:elev, a, b}
 

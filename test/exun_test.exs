@@ -46,7 +46,7 @@ defmodule ExunTest do
   end
 
   test "Convert unit" do
-    assert Exun.Unit.convert("70[mi/h]", "Km/h") == "112.65408[Km/h]"
+    assert Exun.Unit.convert("70[mi/h]", "Km/h") == "112.65408000000001[Km/h]"
   end
 
   test "Factorize" do

@@ -7,7 +7,7 @@ defmodule Exun.Isol do
   import Exun.Collect
   import Exun.Eq
 
-  @zero {:numb, 0,1}
+  @zero {:numb, 0, 1}
   @doc """
   Return a list of tuples of form {:ok, solution} where olution is the isolated tree for original ast
   May be return more than one, if we can not collect ast in a single place of eqzero.
@@ -17,8 +17,7 @@ defmodule Exun.Isol do
 
     downtrace(eqzero, ast, @zero)
     |> Enum.reject(fn {res, _} -> res == :ko end)
-    |> Enum.map(fn {res,sol} -> {res,coll(sol)} end)
-
+    |> Enum.map(fn {res, sol} -> {res, coll(sol)} end)
   end
 
   defp downtrace(expr, ast, right) do
@@ -36,8 +35,9 @@ defmodule Exun.Isol do
         downtrace(f, ast, {:deriv, right, v})
 
       {:elev, a, b} ->
-        downtrace(a, ast, exp(divi(ln(right), b), b)) ++
-          downtrace(b, ast, divi(ln(right), ln(a)))
+        try_base = downtrace(a, ast, elev(right,chpow(b)))
+        try_expo = downtrace(b, ast, divi(ln(right),ln(a)))
+        try_base ++ try_expo
 
       {:fcall, name, args} ->
         case finv(name) do

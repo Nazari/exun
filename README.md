@@ -5,7 +5,8 @@ Beta state
 Cannot belive in Elixir 1-0.8 == 0.19999999999999996
 This is a big deal, if you can't trust in this basic operation
 you have a problem. I've reformulated {:numb,b} to {:numb, numerator, denominator}
-in a try to keep accuracy for the usual operations.
+in a try to keep accuracy for the usual operations, specially for exponents algebraic
+there is a basic need for be accurate
 All test passed.
 
 TODO:
@@ -36,22 +37,22 @@ eval "1[m]+1[cm]"
 "1.01[m]"
 
 factorize "1[A*Kg*m/s^2]","[slug*cm]"
-"6.852176585682164[slug*cm*A/s^2]"
+"6.852176585682165[cm*slug*A/s^2]"
 
 "120[Km/h]" |> convert("m/s")
-"33.3333333333[m/s]"
+"33.333333333333336[m/s]"
 ```
 
 Call Exun.Unit.help for a list of supported units, you can also add new units via context (a map that holds definitions you can use inside expression)
 ```
 eval "25[Km/h]+14[myunit^2]", %{ "myunit" => "(m/s)^0.5" }
-"20.94444444444444[m/s]"
+"20.944444444444443[m/s]"
 ```
 
 You can put 'context' also, passing a map that defines values for variables:
 ```
 eval "(a+1)^2/b", %{"b"=>"a+1"}
-"a+1"
+"1+a"
 
 eval "(a+b)^2/c", %{"a"=>"20[m]","b"=>"2[cm]","c"=>"3[s^2]"}
 "133.60013333333333[m^2/s^2]"
@@ -60,19 +61,20 @@ eval "(a+b)^2/c", %{"a"=>"20[m]","b"=>"2[cm]","c"=>"3[s^2]"}
 Derivate and support some functions (trigonometrics, hyperbolics, ln):
 Operator ' is derivate, so "f'x" is df(x)/dx; rule "expr'var" means derivate 'expr' for 'var'. 
 ```
-eval "(1+x)^2'x"
+eval "((1+x)^2)'x"
 "2*(1+x)"
 
 eval "sin(2*x)'x"
-"2*cos(x)"
+"2*cos(2*x)"
 
 eval "(x^2+x)'x+1"
-"2*x+2"
+"2*(1+x)"
 ```
 
 Define functions in context
 Vars and functions can be named with the same name, like in elixir, arity in a name makes it different so:
 ```
+Buggy...
 Exun.eval "f*f(y)*f(y,3)", %{"f"=>"3", "f(x)"=>"x^2", "f(a,b)"=>"a^2+a*b+b^2"}
 "3*(9+3*y+y^2)*y^2"
 
@@ -89,6 +91,7 @@ iex(1)> Exun.eval "$3*x^2+2*x+1,x"
 iex(5)> Exun.eval "$sin(x),x"     
 "-cos(x)"
 
+Buggy...
 iex(6)> Exun.eval "$ln(f(x)),x"
 "-$x/f(x),x+x*ln(f(x))"
 ```
@@ -97,23 +100,28 @@ Pattern Match expressions in module Pattern:
 ```
 import Exun.Pattern
 
-umatch "u*v'x","x*cos(x)"
+iex(1)> umatch "u*v'x","x*cos(x)"
 Match group ok
-  u     => cos(x)
-  v     => 0.5*x^2
-  v'    => x
+  u     = x
+  v'x   = cos(x)
 Match group ok
-  u     => x
-  v     => sin(x)
-  v'    => cos(x)
+  u     = x*cos(x)
+  v'x   = 1
+Match group ok
+  u     = cos(x)
+  v'x   = x
+Match group ok
+  u     = 1
+  v'x   = x*cos(x)
 
-umatch "g'x*g^n", "3*x^2*(x^3+1)^2"
+Buggy...
+iex(2)> umatch "g'x*g^n", "3*x^2*(x^3+1)^2"
 Match group ok
   g     = 1+x^3
   n     = 2
   g'x   = 3*x^2
 
-umatch("g(y)+f'x","1+x+y")
+iex(3)> umatch("g(y)+f'x","1+x+y")
 Match group ok
   f     => x+0.5*x^2
   f'    => x+1
@@ -128,7 +136,7 @@ Match group ok
   g     => y+1
 ...
 
-umatch("f(2*x)","sin(2*x)")
+iex(4)> umatch("f(2*x)","sin(2*x)")
 Match group ok
   f     => sin
   x     => x
@@ -139,10 +147,16 @@ It extracts all instances of ast from the equation, so it can return
 more than one result. Ast can be any valid ast, not only a variable ({:vari, name}) 
 For example:
 ```
-iex(1)> Exun.Isol.isol (Exun.parse_text "x^2-3=13"), (Exun.parse_text "x")
+iex(1)> import Exun.Isol
+Exun.Isol
+iex(2)> import Exun
+Exun
+iex(3)> import Exun.UI
+Exun.UI
+iex(4)> isol (parse_text "x^2-3=13"), (parse_text "x")
 [ok: {:numb, 4}]
 
-iex(2)> mp1=Exun.Isol.isol (Exun.parse_text "x^2+sin(x)-3=13"), (Exun.parse_text "x")
+iex(5)> mp1=isol (parse_text "x^2+sin(x)-3=13"), (parse_text "x")
 [
   ok: {:fcall, "asin",
    [{{:m, :suma}, [numb: 16, minus: {:elev, {:vari, "x"}, {:numb, 2}}]}]},
@@ -158,13 +172,13 @@ iex(2)> mp1=Exun.Isol.isol (Exun.parse_text "x^2+sin(x)-3=13"), (Exun.parse_text
    ]}
 ]
 
-iex(3)> mp1 |> Enum.map(fn {_,sol} -> Exun.UI.tostr(sol)end)
+iex(6)> mp1 |> Enum.map(fn {_,sol} -> tostr(sol)end)
 ["asin(16-x^2)", "exp(0.5*ln(16-sin(x)),2)"]
 
-iex(4)> mp1=Exun.Isol.isol (Exun.parse_text "x^2+sin(x)-3=13"), (Exun.parse_text "x^2")
+iex(7)> mp1=isol (parse_text "x^2+sin(x)-3=13"), (parse_text "x^2")
 [ok: {{:m, :suma}, [numb: 16, minus: {:fcall, "sin", [vari: "x"]}]}]
 
-iex(5)> mp1 |> Enum.map(fn {_,sol} -> Exun.UI.tostr(sol)end)                           
+iex(8)> mp1 |> Enum.map(fn {_,sol} -> tostr(sol)end)                           
 ["16-sin(x)"]
 
 ```
@@ -190,7 +204,7 @@ iex(1)> Exun.parse_text "{{x^2,x,1},{sin(x),cos(x),tan(x)},{1,2,3}}"
 iex(2)> Exun.Matrix.uni_m 4
 {{:unity, 4, 4}, nil}
 
-iex(3)> Exun.Matrix.pol_m [{:numb,1},{:numb,2},{:numb,3},{:vari,"x"}]
+iex(3)> Exun.Matrix.pol_m [{:numb,1,1},{:numb,2,1},{:numb,3,1},{:vari,"x"}]
 {{:polynom, 3, 3},
  [
    {:elev, {:vari, "x"}, {:numb, -1}},

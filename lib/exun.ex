@@ -124,11 +124,35 @@ defmodule Exun do
 
   defp repl(tree, pc) do
     case tree do
+      {:unit, uv, ut} ->
+        {:unit, replace(uv, pc), replace(ut, pc)}
+
       {:vari, var} ->
         Map.get(pc, {:vari, var}, {:vari, var})
 
       {:minus, a} ->
         {:minus, repl(a, pc)}
+
+      {:numb, _, _} ->
+        tree
+
+      {{:vector, s}, l} ->
+        {{:vector, s}, Enum.map(l, &replace(&1, pc))}
+
+      {{t, rs, cs}, list, mr, mc} ->
+        {{t, rs, cs}, list |> Enum.map(&replace(&1, pc)), mr, mc}
+
+      {{:m, op}, lst} ->
+        {{:m, op}, Enum.map(lst, &replace(&1, pc))}
+
+      {:elev, l, r} ->
+        {:elev, replace(l, pc), replace(r, pc)}
+
+      {:integ, f, v = {:vari, _}} ->
+        {:integ, replace(f, pc), replace(v, pc)}
+
+      {:deriv, f, v = {:vari, _}} ->
+        {:deriv, replace(f, pc), replace(v, pc)}
 
       {:fcall, name, args} ->
         args = Enum.map(args, &repl(&1, pc))
@@ -141,7 +165,7 @@ defmodule Exun do
           # |> IO.inspect(label: "user_function2")
           |> Enum.filter(fn el -> elem(el, 1) == name and length(elem(el, 2)) == arity end)
 
-        # |> IO.inspect(label: "user_function3")
+        # |> IO.inspect(label: "#{Exun.UI.tostr({:fcall, name, args})}")
 
         cond do
           length(user_function) > 1 ->
@@ -164,15 +188,11 @@ defmodule Exun do
             {:fcall, name, args}
         end
 
-      {{:m, op}, lst} ->
-        {{:m, op}, Enum.map(lst, &replace(&1, pc))}
-
-      {op, l, r} ->
-        {op, replace(l, pc), replace(r, pc)}
-
-      _ ->
-        tree
+      unknown ->
+        throw("Replace unknown #{Exun.UI.tostr(unknown)}")
     end
+
+    # |> IO.inspect(label: label)
   end
 
   defp replace_args(ast, nv) do
@@ -200,7 +220,7 @@ defmodule Exun do
   def walkn(ast) do
     case ast do
       {:numb, n} ->
-        {:numb, n, 1}
+        Exun.Math.mknum(n * 1000, 1000)
 
       {:fcall, name, args} ->
         {:fcall, name, Enum.map(args, &walkn/1)}
@@ -215,10 +235,10 @@ defmodule Exun do
         {:minus, walkn(a)}
 
       {{:vector, n}, l} ->
-        {:vector, n, Enum.map(l,&walkn/1)}
+        {{:vector, n}, Enum.map(l, &walkn/1)}
 
-      {{:raw,a,b},list,[],[]} ->
-        {{:raw,a,b},Enum.map(list,&walkn/1),[],[]}
+      {{:raw, a, b}, list, [], []} ->
+        {{:raw, a, b}, Enum.map(list, &walkn/1), [], []}
 
       {op, n, t} ->
         {op, walkn(n), walkn(t)}

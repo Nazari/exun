@@ -41,12 +41,14 @@ defmodule Exun.Der do
     cond do
       (bfunc = Fun.base()[search_name]) != nil ->
         {ast, _ctx} = Exun.parse(elem(bfunc, 1))
-        Fun.replace_args_internal(ast, args, {:vari, "x"})
+        mapdef = %{{:vari, "F"} => args |> List.first(), {:vari, "x"} => {:vari, "x"}}
+        Exun.replace(ast, mapdef)
 
       (cfunc = Fun.compounds()[search_name]) != nil ->
         {ast, _ctx} = Exun.parse(cfunc)
+        mapdef = %{{:vari, "F"} => args |> List.first(), {:vari, "x"} => {:vari, "x"}}
 
-        Fun.replace_args_internal(ast, args, {:vari, "x"})
+        Exun.replace(ast, mapdef)
         |> der(x)
 
       true ->

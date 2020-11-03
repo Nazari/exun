@@ -1,6 +1,10 @@
 defmodule IntegralTest do
   use ExUnit.Case
 
+  test "Integral ln" do
+    assert Exun.eval("$ln(f(x)),x") == "x*ln(f(x))-($(x/f(x)),x)"
+  end
+
   test "Integral poly" do
     assert Exun.eval("$1+2*x+3*x^2+4*x^3,x") == "x*(1+x*(1+x*(1+x)))"
   end

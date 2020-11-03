@@ -39,6 +39,22 @@ defmodule Exun.UI do
     {"#{tostr(a)}=#{tostr(b)}", 0, false, false}
   end
 
+  def show({{:vector, _}, list}) do
+    {"{#{show_list(list)}}", 200, false, false}
+  end
+
+  def show(m = {{:raw, _, _}, _, _, _}) do
+    {"{#{show_matrix(m)}}", 200, false, false}
+  end
+
+  def show(m = {{:polynom, _, _}, _, _, _}) do
+    {"{#{show_matrix(m)}}", 200, false, false}
+  end
+
+  def show(m = {{:unity, _, _}, _, _, _}) do
+    {"{#{show_matrix(m)}}", 200, false, false}
+  end
+
   def show({:numb, n, d}) do
     f_n = floor(n)
     f_d = floor(d)
@@ -46,7 +62,7 @@ defmodule Exun.UI do
     d = if d == f_d, do: f_d, else: d
 
     {
-      if(d == 1, do: "#{n}", else: "#{n/d}"),
+      if(d == 1, do: "#{n}", else: "#{n / d}"),
       200,
       false,
       false
@@ -112,14 +128,7 @@ defmodule Exun.UI do
   end
 
   def show({:fcall, n, a}) do
-    targs =
-      Enum.reduce(a, [], fn arg, ltxt ->
-        t = tostr(arg)
-        [t | ltxt]
-      end)
-      |> Enum.reverse()
-      |> Enum.join(",")
-
+    targs = show_list(a)
     {"#{n}(#{targs})", 200, false, false}
   end
 
@@ -152,6 +161,22 @@ defmodule Exun.UI do
       end)
 
     {texto, pri, false, false}
+  end
+
+  defp show_list(a) do
+    Enum.reduce(a, [], fn arg, ltxt ->
+      t = tostr(arg)
+      [t | ltxt]
+    end)
+    |> Enum.reverse()
+    |> Enum.join(",")
+  end
+
+  defp show_matrix(matrix = {{_, rs, _}, _, _, _}) do
+    for r <- 0..(rs - 1) do
+      "{#{show_list(Exun.Matrix.get_row(matrix, r))}}"
+    end
+    |> Enum.join(",")
   end
 
   defp sop({a1, {_, _, d1, s1}}, {a2, {_, _, d2, s2}}) do
