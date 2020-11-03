@@ -10,7 +10,7 @@ Left 650 '+' '-'.
 Unary 0 variable.
 
 main -> expr : '$1' .
-main -> expr '=' expr : {equal, '$1', '$3' }.
+main -> expr '=' expr : {equal, '$1', '$3'}.
 
 expr -> '(' expr ')' : '$2'.
 
@@ -40,6 +40,7 @@ signed_number -> '-' number : -extract_token('$2').
 variable -> word : extract_token('$1').
 
 matrix -> '{' vectors '}' : {{raw, length('$2'), vlen(lists:nth(1,'$2'))}, lists:reverse('$2'),[],[]}.
+matrix -> '{' vector '}' : {{raw, 1, vlen('$2')}, ['$2'],[],[]}.
 vectors -> vector ',' vector : ['$3','$1'].
 vectors -> vectors ',' vector : ['$3'|'$1'].
 vector -> '{' arguments '}' : {{vector, length('$2')}, lists:reverse('$2')}.
