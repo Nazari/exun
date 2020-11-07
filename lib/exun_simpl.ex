@@ -1,12 +1,11 @@
 defmodule Exun.Simpl do
-  alias Exun.Math
-  alias Exun.Collect
-  alias Exun.Unit
-  alias Exun.Eq
+  alias Exun.Collect, as: C
+  alias Exun.Unit, as: Un
+  alias Exun.Eq, as: E
 
-  @muno {:numb, -1, 1}
   @zero {:numb, 0, 1}
   @uno {:numb, 1, 1}
+  @muno {:numb, -1, 1}
   @moduledoc """
   Simplify expressions
   """
@@ -14,245 +13,262 @@ defmodule Exun.Simpl do
   Recursively try to simplify expression. Multiple tries are performed.
   For a more agressive simplify, use Exun.Collect.coll
   """
-  def mkrec(tree) do
-    ntree = mk(tree)
+  def mkrec(ast) when is_tuple(ast) do
+    nast = mk(ast)
 
-    if Eq.eq(ntree, tree),
-      do: ntree,
-      else: mkrec(ntree)
+    if E.eq(nast, ast),
+      do: nast,
+      else: nast |> mkrec
+  end
+
+  def mkrec(%Exun{ast: ast, pc: pc}) do
+    %Exun{ast: mkrec(ast), pc: pc}
   end
 
   # simplify
+  def mk(ast) do
+    case ast do
+      {:numb, n, d} ->
+        mknum(n, d)
 
-  defp mk({:minus, {:minus, a}}), do: mk(a)
+      {:minus, {:minus, a}} ->
+        mk(a)
 
-  defp mk({:minus, {{:m, :mult}, list}}) do
-    {res, nlist} = collect_minus(list)
+      {:minus, @zero} ->
+        @zero
 
-    if res do
-      mk({{:m, :mult}, nlist})
-    else
-      {:minus, mk({{:m, :mult}, list})}
-    end
-  end
+      {:minus, a} ->
+        chsign(mk(a))
 
-  defp mk({:minus, @zero}), do: @zero
-  defp mk({:minus, {:numb, n, d}}), do: {:numb, -n, d}
-  defp mk({:minus, a}), do: {:minus, mk(a)}
+      {:unit, val, @uno} ->
+        mk(val)
 
-  defp mk({:unit, val, @uno}), do: mk(val)
-  defp mk({:unit, val, ut}), do: Unit.toSI({:unit, mk(val), mk(ut)})
+      {:unit, val, ut} ->
+        Un.toSI({:unit, mk(val), mk(ut)})
 
-  defp mk({:elev, _, @zero}), do: @uno
-  defp mk({:elev, a, @uno}), do: mk(a)
-  defp mk({:elev, @uno, _}), do: @uno
-  defp mk({:elev, {:numb, base, d1}, {:numb, -1, 1}}), do: {:numb, d1, base}
+      {:elev, _, @zero} ->
+        @uno
 
-  defp mk({:elev, {:numb, base, d1}, {:numb, exp, d2}}),
-    do: {:numb, :math.pow(base, exp / d2), :math.pow(d1, exp / d2)}
+      {:elev, a, @uno} ->
+        mk(a)
 
-  defp mk({:elev, {:elev, base, e1}, e2}), do: {:elev, mk(base), mk(Math.mult(e1, e2))}
+      {:elev, @uno, _} ->
+        @uno
 
-  defp mk({:elev, {:unit, uv, ut}, expon}),
-    do: {:unit, mk({:elev, uv, expon}), mk({:elev, ut, expon})}
+      {:elev, {:numb, base, d1}, {:numb, -1, 1}} ->
+        {:numb, d1, base}
 
-  defp mk({{:m, op}, lst}) when op in [:suma, :mult] and is_list(lst) do
-    # Simplify each component of the list
-    lst =
-      lst
-      # |> IO.inspect(label: "pre mk #{op}")
-      |> Enum.map(&mkrec(&1))
+      {:elev, {:numb, base, d1}, {:numb, exp, d2}} ->
+        {:numb, :math.pow(base, exp / d2), :math.pow(d1, exp / d2)}
 
-    # |> IO.inspect(label: ":m foreach el mkrec done")
+      {:elev, {:elev, base, e1}, e2} ->
+        {:elev, mk(base), mk(mult(e1, e2))}
 
-    # |> IO.inspect(label: "post mk #{op} mk each")
+      {:elev, {:unit, uv, ut}, expon} ->
+        {:unit, mk({:elev, uv, expon}), mk({:elev, ut, expon})}
 
-    # Promote sublist, so if ther is a element in lst of class {:m,op}
-    # include sublist in main list
-    lst =
-      Enum.reduce(lst, [], fn el, ac ->
-        case el do
-          {{:m, ^op}, sublist} -> sublist ++ ac
-          other -> [other | ac]
-        end
-      end)
-      |> Enum.sort(&Eq.smm(&1, &2))
+      {:fcall, name, lst} ->
+        args = Enum.map(lst, &C.coll/1)
+        Exun.Fun.fcall(name, args)
 
-    # Collect numbers and units and simplify
-    lst = collect_literals({{:m, op}, lst})
+      {:deriv, f, v} ->
+        Exun.Der.deriv({:deriv, mk(f), v})
 
-    # Remove zeroes or ones, 0+any=any, 1*any=any and may be the nil
-    # introduced by the last command
-    unity = if op == :suma, do: @zero, else: @uno
-    lst = Enum.reject(lst, &(&1 == unity or &1 == nil))
-    # |> IO.inspect(label: "post literals")
+      {:integ, f, v = {:vari, _}} ->
+        Exun.Integral.integ({:integ, mk(f), v})
 
-    # if a multiple mult {:m,:mult} check if zero is a component
-    if op == :mult and @zero in lst do
-      @zero
-    else
-      case length(lst) do
-        # No more elements in list, return unity
-        0 ->
-          unity
+      {{:m, op}, lst} ->
+        # Simplify each component of the list
+        lst = Enum.map(lst, &mkrec(&1))
 
-        # Only one element, replace {{}:m,op},lst} with it
-        1 ->
-          List.first(lst)
+        # Promote sublist, so if ther is a element in lst of class {:m,op}
+        # include sublist in main list
+        lst = promote_sublist(op, lst)
 
-        # Let's play
-        _ ->
-          # IO.inspect(lst,label: "lst for pivot")
-          {pivot, base, counts} = get_base(op, lst)
-          # |> IO.inspect(label: "pivot,base,counts")
+        # Collect numbers and units and simplify
+        lst = collect_literals({{:m, op}, lst})
 
-          case counts do
+        # Remove zeroes or ones, 0+any=any, 1*any=any and may be the nil
+        # introduced by the last command
+        unity = if op == :suma, do: @zero, else: @uno
+        lst = Enum.reject(lst, &(&1 == unity or &1 == nil))
+        # |> IO.inspect(label: "post literals")
+
+        # if a multiple mult {:m,:mult} check if zero is a component
+        if op == :mult and @zero in lst do
+          @zero
+        else
+          case length(lst) do
+            # No more elements in list, return unity
+            0 ->
+              unity
+
+            # Only one element, replace {{}:m,op},lst} with it
             1 ->
-              # No match on more than one, leave as is
-              {{:m, op}, lst}
+              List.first(lst)
 
+            # Let's play, try to extract commons from list
             _ ->
-              isol = get_isol(base, lst)
-              coefs = get_coefs(isol)
-              rest = get_rest(isol)
-
-              isolp =
-                mkrec(
-                  case op do
-                    :suma ->
-                      {{:m, :mult}, [pivot, {{:m, :suma}, coefs}] |> Enum.sort(&Eq.smm(&1, &2))}
-
-                    :mult ->
-                      {:elev, pivot, {{:m, :suma}, coefs |> Enum.sort(&Eq.smm(&1, &2))}}
-                  end
-                )
-
-              case length(rest) do
-                0 -> isolp
-                _ -> {{:m, op}, [isolp | rest] |> Enum.sort(&Eq.smm(&1, &2))}
-              end
+              isolate({{:m, op}, lst})
           end
-      end
+        end
+
+      {op, a, b} ->
+        {op, mk(a), mk(b)}
+
+      tree ->
+        tree
     end
   end
 
-  defp mk({:fcall, name, lst}) when is_list(lst) do
-    args = Enum.map(lst, &Collect.coll/1)
-    Exun.Fun.fcall(name, args)
-  end
+  def isolate({{:m, op}, list}) do
+    best_match =
+      Enum.map(list, fn pivot ->
+        coefs =
+          Enum.map(list, fn ast ->
+            case {op, pivot, ast} do
+              {op, a, a} when op in [:suma, :mult] ->
+                {:ok, pivot, @uno}
 
-  defp mk({:deriv, a, {:vari, x}}), do: Exun.Der.deriv(mk(a), x)
-  defp mk({:integ, f, v = {:vari, _}}), do: Exun.Integral.integ(mk(f), v)
-  defp mk({op, a, b}), do: {op, mk(a), mk(b)}
+              {op, {:minus, a}, a} when op in [:suma, :mult] ->
+                {:ok, pivot, @muno}
 
-  # Fallthrough
-  defp mk(tree) do
-    tree
-  end
+              {op, {:elev, a, e1}, {:elev, a, e2}} ->
+                case op do
+                  :suma -> {:err, nil, ast}
+                  :mult -> {:ok, pivot, mk(divi(e2, e1))}
+                end
 
-  defp get_isol(base, lst) do
-    List.zip([lst, base])
-    |> Enum.reduce([], fn {a, res}, ac ->
-      case res do
-        {:ok, b} ->
-          [{a, b} | ac]
+              {op, a, {:elev, a, b}} ->
+                case op do
+                  :suma -> {:ok, pivot, mk({:elev, a, mk(rest(b, @uno))})}
+                  :mult -> {:ok, pivot, b}
+                end
 
-        {:err, _} ->
-          [{a, nil} | ac]
-      end
-    end)
-    |> Enum.reverse()
-  end
+              {:suma, a, {{:m, :mult}, lst}} ->
+                if a in lst,
+                  do: {:ok, pivot, {{:m, :mult}, lst |> List.delete(a)}},
+                  else: {:err, nil, ast}
 
-  defp get_coefs(isol) do
-    isol
-    |> Enum.filter(fn {_, b} -> b != nil end)
-    |> Enum.reduce([], fn {_, b}, ac ->
-      [b | ac]
-    end)
-    |> Enum.reverse()
-  end
+              _ ->
+                {:err, nil, ast}
+            end
+          end)
 
-  defp get_rest(isol) do
-    isol
-    |> Enum.filter(fn {_, b} -> b == nil end)
-    |> Enum.reduce([], fn {a, _}, ac ->
-      [a | ac]
-    end)
-    |> Enum.reverse()
-  end
-
-  defp get_base(op, lst) do
-    pivots =
-      for pivot <- lst do
-        {pivot,
-         Enum.reduce(lst, [], fn expr, ac ->
-           [cbs(op, pivot, expr) | ac]
-         end)
-         |> Enum.reverse()}
-      end
-
-    counts =
-      pivots
-      |> Enum.reduce([], fn {pivot, bases}, ac ->
-        [
-          {pivot, bases,
-           bases
-           |> Enum.reduce(0, fn {result, _}, ac ->
-             case result do
-               :ok -> ac + 1
-               _ -> ac
-             end
-           end)}
-          | ac
-        ]
+        # Count matches for pivot
+        matches = Enum.count(coefs, fn {res, _, _} -> res == :ok end)
+        {matches, coefs}
       end)
-      |> Enum.reverse()
+      |> Enum.reject(fn {matches, _} -> matches < 2 end)
+      |> Enum.sort(fn {e1, _}, {e2, _} -> e1 < e2 end)
+      |> List.first()
 
-    maxbase(counts)
+    case best_match do
+      {_, coefs} ->
+        {pivot, iso, notiso} =
+          Enum.reduce(coefs, {nil, [], []}, fn item, {piv, iso, noiso} ->
+            case item do
+              {:ok, pivot, coef} ->
+                {pivot, [coef | iso], noiso}
+
+              {:err, _, ast} ->
+                {piv, iso, [ast | noiso]}
+            end
+          end)
+
+        sum_coefs = mk({{:m, :suma}, iso})
+
+        case {op, length(iso), length(notiso)} do
+          {_, 0, 1} ->
+            List.first(notiso)
+
+          {:suma, 0, 0} ->
+            @zero
+
+          {:suma, 1, 0} ->
+            {{:m, :mult}, [pivot, List.first(iso)]}
+
+          {:suma, 0, 1} ->
+            List.first(notiso)
+
+          {:suma, 1, 1} ->
+            {{:m, :suma}, [{{:m, :mult}, [pivot, List.first(iso)]}, List.first(notiso)]}
+
+          {:suma, _, 0} ->
+            {{:m, :mult}, [pivot, sum_coefs]}
+
+          {:suma, 0, _} ->
+            {{:m, :suma}, notiso}
+
+          {:suma, _, _} ->
+            {{:m, :suma}, [{{:m, :mult}, [pivot, sum_coefs]} | notiso]}
+
+          {:mult, 0, 0} ->
+            @uno
+
+          {:mult, 1, 0} ->
+            {:elev, pivot, List.first(iso)}
+
+          {:mult, 0, 1} ->
+            List.first(notiso)
+
+          {:mult, 1, 1} ->
+            {{:m, :mult}, [{:elev, pivot, List.first(iso)}, List.first(notiso)]}
+
+          {:mult, _, 0} ->
+            {:elev, pivot, sum_coefs}
+
+          {:mult, 0, _} ->
+            {{:m, :mult}, notiso}
+
+          {:mult, _, _} ->
+            {{:m, :mult}, [{:elev, pivot, sum_coefs} | notiso]}
+        end
+        |> mk()
+
+      nil ->
+        {{:m, op}, list}
+    end
   end
 
-  defp cbs(op, a, a) when op in [:suma, :mult] do
-    {:ok, @uno}
-  end
-
-  defp cbs(op, {:minus, a}, a) when op in [:suma, :mult] do
-    {:ok, @muno}
-  end
-
-  defp cbs(op, {:elev, a, e1}, {:elev, a, e2}) do
+  defp promote_sublist(op, list) when is_list(list) do
     case op do
-      :suma -> {:err, nil}
-      :mult -> {:ok, mk(Math.divi(e2, e1))}
+      :suma ->
+        Enum.reduce(list, [], fn elem, newlist ->
+          case elem do
+            {{:m, :suma}, sublist} ->
+              sublist ++ newlist
+
+            {:minus, {{:m, :suma}, sublist}} ->
+              Enum.map(sublist, &chsign/1) ++ newlist
+
+            other ->
+              [other | newlist]
+          end
+        end)
+
+      :mult ->
+        {sign, nlist} =
+          Enum.reduce(list, {true, []}, fn elem, {sign, newlist} ->
+            case elem do
+              {{:m, :mult}, sublist} ->
+                {sign, sublist ++ newlist}
+
+              {:minus, {{:m, :mult}, sublist}} ->
+                {if(sign, do: false, else: true), sublist ++ newlist}
+
+              other ->
+                {sign, [other | newlist]}
+            end
+          end)
+
+        if sign do
+          nlist
+        else
+          List.replace_at(nlist, 0, chsign(List.first(nlist)))
+        end
     end
-  end
-
-  defp cbs(op, a, {:elev, a, b}) do
-    case op do
-      :suma -> {:ok, mk({:elev, a, mk(Math.rest(b, @uno))})}
-      :mult -> {:ok, b}
-    end
-  end
-
-  defp cbs(:suma, a, {{:m, :mult}, lst}) do
-    cond do
-      a in lst ->
-        {:ok, {{:m, :mult}, lst |> List.delete(a)}}
-
-      true ->
-        {:err, nil}
-    end
-  end
-
-  defp cbs(_op, _t1, _t2) do
-    {:err, nil}
-  end
-
-  defp maxbase([a]), do: a
-  defp maxbase([h | t]), do: Enum.reduce(t, h, &maxbasef/2)
-
-  defp maxbasef(a1 = {_, _, c1}, a2 = {_, _, c2}) do
-    if c1 > c2, do: a1, else: a2
+    |> Enum.sort(&Exun.Eq.smm/2)
   end
 
   @doc """
@@ -260,7 +276,7 @@ defmodule Exun.Simpl do
   """
   def collect_literals({{:m, op}, lst}) do
     unity = if op == :suma, do: @zero, else: @uno
-    ufc = if op == :suma, do: &Math.suma/2, else: &Math.mult/2
+    ufc = if op == :suma, do: &suma/2, else: &mult/2
 
     {n, u, lst} =
       Enum.reduce(lst, {unity, nil, []}, fn el, {nd_ac = {:numb, _, _}, u_ac, rest} ->
@@ -276,7 +292,7 @@ defmodule Exun.Simpl do
 
               case op do
                 :mult ->
-                  sou = {:unit, Math.mult(acu_nd, u_nd), Math.mult(acu_t, u_t)}
+                  sou = {:unit, mult(acu_nd, u_nd), mult(acu_t, u_t)}
                   {nd_ac, sou, rest}
 
                 :suma ->
@@ -299,37 +315,168 @@ defmodule Exun.Simpl do
       {^unity, nil} -> lst
       {^unity, unit} -> [unit | lst]
       {number, nil} -> [number | lst]
-      {nd, {:unit, und, tree}} -> [{:unit, Math.mult(nd, und), tree} | lst]
+      {nd, {:unit, und, tree}} -> [{:unit, mult(nd, und), tree} | lst]
     end
 
     # |> IO.inspect(label: "final unit,number,lst")
   end
 
-  # return {flag,newlist} if l is from mult and can extract signs
-  # from its operands
-  def acollect_minus(l) do
-    {false, l}
+  @doc """
+  Change sign of AST
+  """
+  def chsign(ast) do
+    case ast do
+      {:minus, a} ->
+        a
+
+      {:unit, a, b} ->
+        {:unit, chsign(a), b}
+
+      {:numb, n, d} ->
+        {:numb, -n, d}
+
+      {{:m, :suma}, list} ->
+        {{:m, :suma}, Enum.map(list, &chsign(&1))}
+
+      {{:m, :mult}, list} ->
+        # sign true is positive, false is negative
+        {res, nl} =
+          Enum.reduce(list, {true, []}, fn opand, {sign, nl} ->
+            case opand do
+              {:numb, -1, 1} ->
+                {not sign, nl}
+
+              {:minus, minusop} ->
+                {not sign, [minusop | nl]}
+
+              _ ->
+                {sign, [opand | nl]}
+            end
+          end)
+
+        nl = nl |> Enum.reverse()
+
+        if res do
+          {:minus, {{:m, :mult}, nl}}
+        else
+          {{:m, :mult}, nl}
+        end
+
+      other ->
+        {:minus, other}
+    end
   end
 
-  def collect_minus(l) do
-    {res, nl, _} =
-      Enum.reduce(l, {false, [], false}, fn opand, {flag, nl, selected} ->
-        case opand do
-          {:minus, minusop} ->
-            nflag = if flag, do: false, else: true
+  @doc """
+  Change power sign of AST (expon * -1 or 1/tree)
+  """
+  def chpow(ast) do
+    case ast do
+      {:elev, algo, @muno} ->
+        algo
 
-            if selected do
-              {nflag, [opand | nl], true}
-            else
-              {nflag, [minusop | nl], true}
-            end
+      {:elev, a, b} ->
+        {:elev, a, chsign(b)}
 
-          _ ->
-            {flag, [opand | nl], selected}
-        end
-      end)
+      {:unit, a, b} ->
+        {:unit, chpow(a), chpow(b)}
 
-    {res, nl |> Enum.reverse()}
-    # |> IO.inspect(label: "collected minus")
+      {:numb, n, d} ->
+        {:numb, d, n}
+
+      {{:m, :mult}, lst} ->
+        {{:m, :mult}, Enum.map(lst, &chpow(&1))}
+
+      other ->
+        {:elev, other, @muno}
+    end
+  end
+
+  @doc """
+  Try to keep at least 3 decimals of precission
+  """
+  def mknum(n, d) do
+    # Preserve sign on numerator, if denominator<0 change both
+    # signs
+    {n, d} =
+      if d < 0 do
+        {-n, -d}
+      else
+        {n, d}
+      end
+
+    # If are integers, substirute floats
+    f_n = floor(n)
+    f_d = floor(d)
+
+    cond do
+      f_n == n and f_d == d ->
+        mcd = Integer.gcd(f_n, f_d)
+        {:numb, floor(n / mcd), floor(d / mcd)}
+
+      f_d == d ->
+        {:numb, n, f_d}
+
+      f_n == n ->
+        {:numb, f_n, d}
+
+      true ->
+        {:numb, n, d}
+    end
+  end
+
+  @doc """
+  For convenience, creates ast {{:m,:mult},[a,b]}
+  """
+  def mult({:numb, n1, d1}, {:numb, n2, d2}), do: mknum(n1 * n2, d1 * d2)
+  def mult(a, b), do: mcompose(:mult, a, b)
+
+  @doc """
+  For convenience, creates ast {{:m,:mult},[a,b^-1]}
+  """
+  def divi({:numb, n1, d1}, {:numb, n2, d2}), do: mknum(n1 * d2, d1 * n2)
+  def divi(a, b), do: mult(a, chpow(b))
+
+  @doc """
+  For convenience, creates ast {{:m,:suma},[a,b]}
+  """
+  def suma({:numb, n1, d1}, {:numb, n2, d2}), do: mknum(n1 * d2 + n2 * d1, d1 * d2)
+  def suma(a, b), do: mcompose(:suma, a, b)
+
+  @doc """
+  For convenience, creates ast {{:m,:mult},[a,-b]}
+  """
+  def rest({:numb, n1, d1}, {:numb, n2, d2}), do: mknum(n1 * d2 - n2 * d1, d1 * d2)
+  def rest(a, b), do: suma(a, chsign(b))
+
+  @doc """
+  For convenience, creates ast {:elev,a,b}
+  """
+  def elev({:numb, n1, d1}, {:numb, n2, d2}),
+    do: {:numb, :math.pow(n1, n2 / d2), :math.pow(d1, n2 / d2)}
+
+  def elev(a, b), do: {:elev, a, b}
+
+  def minus(a), do: {:minus, a}
+
+  def ln(a), do: {:fcall, "ln", [a]}
+  def exp(a, b), do: {:fcall, "exp", [a, b]}
+
+  defp mcompose(op, a, b) do
+    C.coll(
+      case {a, b} do
+        {{{:m, ^op}, l1}, {{:m, ^op}, l2}} ->
+          {{:m, op}, l1 ++ l2}
+
+        {{{:m, ^op}, l1}, _} ->
+          {{:m, op}, [b | l1]}
+
+        {_, {{:m, ^op}, l2}} ->
+          {{:m, op}, [a | l2]}
+
+        _ ->
+          {{:m, op}, [a, b]}
+      end
+    )
   end
 end

@@ -1,11 +1,12 @@
 defmodule Exun.Pattern do
-  alias Exun.UI
-  alias Exun.Eq
-  alias Exun.Collect
-  alias Exun.Math
+  alias Exun.UI, as: U
+  alias Exun.Eq, as: E
+  alias Exun.Collect, as: C
+  alias Exun.Simpl, as: S
 
   @zero {:numb, 0, 1}
   @uno {:numb, 1, 1}
+
   @moduledoc """
   Match ASTs. Functions umatch and match try to match patter with a real expression. Rules for matching, by example:
   - umatch "f", "(any valid expression)"
@@ -62,7 +63,7 @@ defmodule Exun.Pattern do
         Enum.each(map, fn {name, value} ->
           # IO.inspect(name,label: "VarName")
           # IO.inspect(value, label: "VarValue")
-          IO.puts("  #{UI.tostr(name)}\t= #{UI.tostr(value)}")
+          IO.puts("  #{U.tostr(name)}\t= #{U.tostr(value)}")
         end)
       end)
     else
@@ -71,8 +72,8 @@ defmodule Exun.Pattern do
   end
 
   def match(taast, texpr, context, tconditions \\ [], transf \\ true) do
-    {aast, _} = Exun.parse(taast)
-    {expr, _} = Exun.parse(texpr, context)
+    aast = Exun.new(taast).ast
+    expr = Exun.new(texpr, context).ast
 
     cond do
       aast |> elem(0) == :error ->
@@ -89,8 +90,7 @@ defmodule Exun.Pattern do
 
     conditions =
       Enum.map(tconditions, fn cnd ->
-        {res, _} = Exun.parse(cnd)
-        res
+        Exun.new(cnd).ast
       end)
 
     match_ast(aast, expr, conditions, transf)
@@ -102,7 +102,7 @@ defmodule Exun.Pattern do
     # |> IO.inspect(label: "init")
     |> Enum.map(fn {:ok, sol} ->
       Enum.reduce(sol, %{}, fn {k, v}, nmap ->
-        Map.put(nmap, k, Collect.coll(v))
+        Map.put(nmap, k, C.coll(v))
       end)
     end)
     # |> IO.inspect(label: "collected")
@@ -161,7 +161,7 @@ defmodule Exun.Pattern do
                   :ok
 
                 {:ok, val} ->
-                  if Eq.eq(v, Collect.coll({:deriv, val, {:vari, var}})), do: :ok, else: :ko
+                  if E.eq(v, C.coll({:deriv, val, {:vari, var}})), do: :ok, else: :ko
               end
 
             _ ->
@@ -213,12 +213,12 @@ defmodule Exun.Pattern do
       # IO.inspect(power,label: "power")
       remain = List.delete(lst, power)
       # |> IO.inspect(label: "remain")
-      expon1 = Collect.coll({{:m, :mult}, remain |> Enum.sort(&Eq.smm(&1, &2))})
+      expon1 = C.coll({{:m, :mult}, remain |> Enum.sort(&E.smm(&1, &2))})
       # |> IO.inspect(label: "expon1")
-      expon2 = Collect.coll(Math.rest(b, expon1))
+      expon2 = C.coll(S.rest(b, expon1))
       # |> IO.inspect(label: "expon2")
-      [Collect.coll({:elev, a, expon1}), Collect.coll({:elev, a, expon2}) | remain]
-      |> Enum.sort(&Eq.smm(&1, &2))
+      [C.coll({:elev, a, expon1}), C.coll({:elev, a, expon2}) | remain]
+      |> Enum.sort(&E.smm(&1, &2))
 
       # |> IO.inspect(label: "trx1 result")
     end)
@@ -327,7 +327,7 @@ defmodule Exun.Pattern do
   end
 
   def mmult_inner(aast = {{:m, op}, lsta}, east = {{:m, op}, _}, mainmap) do
-    # IO.inspect(map, label: "mm Input map")
+    # IO.inspect(mainmap, label: "mm Input map")
     # Explore all options for matching
     cmb = combin_expand(aast, east)
     # |> IO.inspect(label: "Order Expanded")
@@ -335,14 +335,9 @@ defmodule Exun.Pattern do
       # zip pattern and expresion and try to match with mnode with current defs map
       (
         zipped = List.zip([lsta, set])
-
+        # |> IO.inspect(label: "zipped")
         Enum.reduce(zipped, [{:ok, mainmap}], fn {abs, exp}, maplist ->
-          if maplist == [] do
-            [{:ko, mainmap}]
-          else
-            [{res, map}] = maplist
-            # IO.puts(par_inspect({abs, exp}))
-
+          Enum.reduce(maplist, [], fn {res, map}, acu ->
             cond do
               res == :ok and is_list(exp) and length(exp) > 1 ->
                 mnode(abs, {{:m, op}, exp}, map)
@@ -355,9 +350,9 @@ defmodule Exun.Pattern do
                 mnode(abs, exp, map)
 
               true ->
-                [{res, map}]
-            end
-          end
+                []
+            end ++ acu
+          end)
         end)
 
         # |> IO.inspect(label: "Zipped maps")
@@ -429,15 +424,14 @@ defmodule Exun.Pattern do
 
   @doc """
   deriv match in two situations: if name is yet in map, its definition must be equal
-  to exp. If not it will match if we can integrate expr; initially we ca use symbolic
-  integration, but if in conditions name is used without deriv, the condition will no
-  be true if we can not integrate it.
+  to exp. If not it will match the expression and wait to end to verify that the integral
+  is used on pattern matchin string, if it is the case, check if f' is equal to this.
   """
   def mderiv(dr = {:deriv, ef = {:vari, _func}, {:vari, var}}, expr, map) do
     case Map.fetch(map, ef) do
       {:ok, funcvalue} ->
-        derivate = Collect.coll({:deriv, funcvalue, {:vari, var}})
-        if Eq.eq(derivate, expr), do: [{:ok, map}], else: [{:ko, map}]
+        derivate = C.coll({:deriv, funcvalue, {:vari, var}})
+        if E.eq(derivate, expr), do: [{:ok, map}], else: [{:ko, map}]
 
       :error ->
         [checkmap(map, dr, expr)]
@@ -459,8 +453,8 @@ defmodule Exun.Pattern do
   def minteg(itr = {:integ, ef = {:vari, _func}, {:vari, var}}, expr, map) do
     case Map.fetch(map, ef) do
       {:ok, funcvalue} ->
-        deriv_expr = Collect.coll({:deriv, expr, {:vari, var}})
-        if Eq.eq(deriv_expr, funcvalue), do: [{:ok, map}], else: [{:ko, map}]
+        deriv_expr = C.coll({:deriv, expr, {:vari, var}})
+        if E.eq(deriv_expr, funcvalue), do: [{:ok, map}], else: [{:ko, map}]
 
       :error ->
         [checkmap(map, itr, expr)]
@@ -562,8 +556,8 @@ defmodule Exun.Pattern do
         # |> IO.inspect(label: "conditions")
         |> Enum.map(fn exp ->
           Exun.Integral.symbinteg(
-            Exun.ast_eval(exp, map)
-            |> IO.inspect(label: "evaluted cond")
+            Exun.eval(%Exun{ast: exp, pc: map}).ast
+            # |> IO.inspect(label: "evaluted cond")
           )
 
           # |> IO.inspect(label: "In cond")

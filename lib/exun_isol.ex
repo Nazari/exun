@@ -2,22 +2,22 @@ defmodule Exun.Isol do
   @moduledoc """
   Isolation module. Try to isolate an ast from other AST.
   """
-  import Exun.Fun
-  import Exun.Math
-  import Exun.Collect
-  import Exun.Eq
+  alias Exun.Fun, as: F
+  alias Exun.Simpl, as: S
+  alias Exun.Collect, as: C
+  alias Exun.Eq, as: E
 
-  @zero {:numb, 0, 1}
+  @zero {:numb,0,1}
   @doc """
   Return a list of tuples of form {:ok, solution} where olution is the isolated tree for original ast
   May be return more than one, if we can not collect ast in a single place of eqzero.
   """
   def isol({:equal, left, right}, ast) do
-    eqzero = coll(rest(left, right))
+    eqzero = C.coll(S.rest(left, right))
 
     downtrace(eqzero, ast, @zero)
     |> Enum.reject(fn {res, _} -> res == :ko end)
-    |> Enum.map(fn {res, sol} -> {res, coll(sol)} end)
+    |> Enum.map(fn {res, sol} -> {res, C.coll(sol)} end)
   end
 
   defp downtrace(expr, ast, right) do
@@ -35,12 +35,12 @@ defmodule Exun.Isol do
         downtrace(f, ast, {:deriv, right, v})
 
       {:elev, a, b} ->
-        try_base = downtrace(a, ast, elev(right,chpow(b)))
-        try_expo = downtrace(b, ast, divi(ln(right),ln(a)))
+        try_base = downtrace(a, ast, S.elev(right,S.chpow(b)))
+        try_expo = downtrace(b, ast, S.divi(S.ln(right),S.ln(a)))
         try_base ++ try_expo
 
       {:fcall, name, args} ->
-        case finv(name) do
+        case F.finv(name) do
           nil ->
             [{:ko, right}]
 
@@ -51,14 +51,14 @@ defmodule Exun.Isol do
         end
 
       {{:m, op}, opands} ->
-        rev = if op == :suma, do: &chsign/1, else: &chpow/1
+        rev = if op == :suma, do: &S.chsign/1, else: &S.chpow/1
 
         Enum.reduce(opands, [], fn opand, acu ->
           newlist =
             List.delete(opands, opand)
             |> Enum.map(rev)
             |> List.insert_at(0, right)
-            |> Enum.sort(&smm/2)
+            |> Enum.sort(&E.smm/2)
 
           downtrace(opand, ast, {{:m, op}, newlist}) ++ acu
         end)

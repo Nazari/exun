@@ -14,243 +14,124 @@ defmodule PatternTest do
 
   test "Patterns 02" do
     assert(
-      match("h+f*g", "sin(x)/cos(x)", %{}) == [
-        {
-          :ok,
-          %{
-            {:vari, "f"} => {
-              {:m, :mult},
-              [
-                {:elev, {:fcall, "cos", [vari: "x"]},
-                 {{:m, :suma}, [{:numb, -1.0, 1.0}, {:minus, {:fcall, "sin", [vari: "x"]}}]}},
-                {:fcall, "sin", [vari: "x"]}
-              ]
-            },
-            {:vari, "g"} => {
-              :elev,
-              {:fcall, "cos", [vari: "x"]},
+      match("f*g", "sin(x)/cos(x)", %{}) == [
+        ok: %{
+          {:vari, "f"} => {
+            {:m, :mult},
+            [
+              {
+                :elev,
+                {:fcall, "cos", [vari: "x"]},
+                {
+                  {:m, :suma},
+                  [{:numb, -1, 1}, {:minus, {:fcall, "sin", [vari: "x"]}}]
+                }
+              },
               {:fcall, "sin", [vari: "x"]}
-            },
-            {:vari, "h"} => {:numb, 0, 1}
+            ]
+          },
+          {:vari, "g"} => {
+            :elev,
+            {:fcall, "cos", [vari: "x"]},
+            {:fcall, "sin", [vari: "x"]}
           }
         },
-        {
-          :ok,
-          %{
-            {:vari, "f"} => {
-              {:m, :mult},
-              [
-                {:elev, {:fcall, "cos", [vari: "x"]}, {:fcall, "sin", [vari: "x"]}},
+        ok: %{
+          {:vari, "f"} => {
+            {:m, :mult},
+            [
+              {
+                :elev,
+                {:fcall, "cos", [vari: "x"]},
                 {:fcall, "sin", [vari: "x"]}
-              ]
-            },
-            {:vari, "g"} => {
-              :elev,
-              {:fcall, "cos", [vari: "x"]},
-              {{:m, :suma}, [{:numb, -1.0, 1.0}, {:minus, {:fcall, "sin", [vari: "x"]}}]}
-            },
-            {:vari, "h"} => {:numb, 0, 1}
-          }
-        },
-        {
-          :ok,
-          %{
-            {:vari, "f"} => {
-              {:m, :mult},
-              [
-                {:elev, {:fcall, "cos", [vari: "x"]}, {:numb, -1, 1}},
-                {:fcall, "sin", [vari: "x"]}
-              ]
-            },
-            {:vari, "g"} => {:numb, 1, 1},
-            {:vari, "h"} => {:numb, 0, 1}
-          }
-        },
-        {
-          :ok,
-          %{
-            {:vari, "f"} => {
-              :elev,
-              {:fcall, "cos", [vari: "x"]},
-              {{:m, :suma}, [{:numb, -1.0, 1.0}, {:minus, {:fcall, "sin", [vari: "x"]}}]}
-            },
-            {:vari, "g"} => {
-              {:m, :mult},
-              [
-                {:elev, {:fcall, "cos", [vari: "x"]}, {:fcall, "sin", [vari: "x"]}},
-                {:fcall, "sin", [vari: "x"]}
-              ]
-            },
-            {:vari, "h"} => {:numb, 0, 1}
-          }
-        },
-        {
-          :ok,
-          %{
-            {:vari, "f"} => {
-              :elev,
-              {:fcall, "cos", [vari: "x"]},
-              {{:m, :suma},
-               [
-                 {:numb, -1.0, 1.0},
-                 {{:m, :mult},
-                  [
-                    {{:m, :suma},
-                     [
-                       {:numb, 1.0, 1.0},
-                       {:elev, {:fcall, "sin", [vari: "x"]}, {:numb, -2.0, 1.0}}
-                     ]},
-                    {:fcall, "sin", [vari: "x"]}
-                  ]}
-               ]}
-            },
-            {:vari, "g"} => {:fcall, "sin", [vari: "x"]},
-            {:vari, "h"} => {:numb, 0, 1}
-          }
-        },
-        {
-          :ok,
-          %{
-            {:vari, "f"} => {
-              :elev,
-              {:fcall, "cos", [vari: "x"]},
+              },
               {:fcall, "sin", [vari: "x"]}
-            },
-            {:vari, "g"} => {
-              {:m, :mult},
-              [
-                {:elev, {:fcall, "cos", [vari: "x"]},
-                 {{:m, :suma}, [{:numb, -1.0, 1.0}, {:minus, {:fcall, "sin", [vari: "x"]}}]}},
-                {:fcall, "sin", [vari: "x"]}
-              ]
-            },
-            {:vari, "h"} => {:numb, 0, 1}
-          }
-        },
-        {
-          :ok,
-          %{
-            {:vari, "f"} => {:elev, {:fcall, "cos", [vari: "x"]}, {:numb, -1, 1}},
-            {:vari, "g"} => {:fcall, "sin", [vari: "x"]},
-            {:vari, "h"} => {:numb, 0, 1}
-          }
-        },
-        {
-          :ok,
-          %{
-            {:vari, "f"} => {:fcall, "sin", [vari: "x"]},
-            {:vari, "g"} => {
-              :elev,
-              {:fcall, "cos", [vari: "x"]},
-              {{:m, :suma},
-               [
-                 {:numb, -1.0, 1.0},
-                 {{:m, :mult},
-                  [
-                    {{:m, :suma},
-                     [
-                       {:numb, 1.0, 1.0},
-                       {:elev, {:fcall, "sin", [vari: "x"]}, {:numb, -2.0, 1.0}}
-                     ]},
-                    {:fcall, "sin", [vari: "x"]}
-                  ]}
-               ]}
-            },
-            {:vari, "h"} => {:numb, 0, 1}
-          }
-        },
-        {
-          :ok,
-          %{
-            {:vari, "f"} => {:fcall, "sin", [vari: "x"]},
-            {:vari, "g"} => {:elev, {:fcall, "cos", [vari: "x"]}, {:numb, -1, 1}},
-            {:vari, "h"} => {:numb, 0, 1}
-          }
-        },
-        {
-          :ok,
-          %{
-            {:vari, "f"} => {:numb, 0, 1},
-            {:vari, "g"} => {:numb, 1, 1},
-            {:vari, "h"} => {
-              {:m, :mult},
-              [
-                {:elev, {:fcall, "cos", [vari: "x"]},
-                 {{:m, :suma},
-                  [
-                    {:numb, -1.0, 1.0},
-                    {{:m, :mult},
-                     [
-                       {{:m, :suma},
-                        [
-                          {:numb, 1.0, 1.0},
-                          {:elev, {:fcall, "sin", [vari: "x"]}, {:numb, -2.0, 1.0}}
-                        ]},
-                       {:fcall, "sin", [vari: "x"]}
-                     ]}
-                  ]}},
-                {:fcall, "sin", [vari: "x"]}
-              ]
+            ]
+          },
+          {:vari, "g"} => {
+            :elev,
+            {:fcall, "cos", [vari: "x"]},
+            {
+              {:m, :suma},
+              [{:numb, -1, 1}, {:minus, {:fcall, "sin", [vari: "x"]}}]
             }
           }
         },
-        {:ok,
-         %{
-           {:vari, "f"} => {:numb, 0, 1},
-           {:vari, "g"} => {:numb, 1, 1},
-           {:vari, "h"} =>
-             {{:m, :mult},
-              [
-                {:elev, {:fcall, "cos", [vari: "x"]}, {:numb, -1, 1}},
+        ok: %{
+          {:vari, "f"} => {
+            {:m, :mult},
+            [
+              {:elev, {:fcall, "cos", [vari: "x"]}, {:numb, -1, 1}},
+              {:fcall, "sin", [vari: "x"]}
+            ]
+          },
+          {:vari, "g"} => {:numb, 1, 1}
+        },
+        ok: %{
+          {:vari, "f"} => {
+            :elev,
+            {:fcall, "cos", [vari: "x"]},
+            {
+              {:m, :suma},
+              [{:numb, -1, 1}, {:minus, {:fcall, "sin", [vari: "x"]}}]
+            }
+          },
+          {:vari, "g"} => {
+            {:m, :mult},
+            [
+              {
+                :elev,
+                {:fcall, "cos", [vari: "x"]},
                 {:fcall, "sin", [vari: "x"]}
-              ]}
-         }},
-        {:ok,
-         %{
-           {:vari, "f"} => {:numb, 1, 1},
-           {:vari, "g"} =>
-             {{:m, :mult},
-              [
-                {:elev, {:fcall, "cos", [vari: "x"]}, {:numb, -1, 1}},
-                {:fcall, "sin", [vari: "x"]}
-              ]},
-           {:vari, "h"} => {:numb, 0, 1}
-         }},
-        {:ok,
-         %{
-           {:vari, "f"} => {:numb, 1, 1},
-           {:vari, "g"} => {:numb, 0, 1},
-           {:vari, "h"} =>
-             {{:m, :mult},
-              [
-                {:elev, {:fcall, "cos", [vari: "x"]},
-                 {{:m, :suma},
-                  [
-                    {:numb, -1.0, 1.0},
-                    {{:m, :mult},
-                     [
-                       {{:m, :suma},
-                        [
-                          {:numb, 1.0, 1.0},
-                          {:elev, {:fcall, "sin", [vari: "x"]}, {:numb, -2.0, 1.0}}
-                        ]},
-                       {:fcall, "sin", [vari: "x"]}
-                     ]}
-                  ]}},
-                {:fcall, "sin", [vari: "x"]}
-              ]}
-         }},
-        {:ok,
-         %{
-           {:vari, "f"} => {:numb, 1, 1},
-           {:vari, "g"} => {:numb, 0, 1},
-           {:vari, "h"} =>
-             {{:m, :mult},
-              [
-                {:elev, {:fcall, "cos", [vari: "x"]}, {:numb, -1, 1}},
-                {:fcall, "sin", [vari: "x"]}
-              ]}
-         }}
+              },
+              {:fcall, "sin", [vari: "x"]}
+            ]
+          }
+        },
+        ok: %{
+          {:vari, "f"} => {
+            :elev,
+            {:fcall, "cos", [vari: "x"]},
+            {:fcall, "sin", [vari: "x"]}
+          },
+          {:vari, "g"} => {
+            {:m, :mult},
+            [
+              {
+                :elev,
+                {:fcall, "cos", [vari: "x"]},
+                {
+                  {:m, :suma},
+                  [{:numb, -1, 1}, {:minus, {:fcall, "sin", [vari: "x"]}}]
+                }
+              },
+              {:fcall, "sin", [vari: "x"]}
+            ]
+          }
+        },
+        ok: %{
+          {:vari, "f"} => {
+            :elev,
+            {:fcall, "cos", [vari: "x"]},
+            {:numb, -1, 1}
+          },
+          {:vari, "g"} => {:fcall, "sin", [vari: "x"]}
+        },
+        ok: %{
+          {:vari, "f"} => {:fcall, "sin", [vari: "x"]},
+          {:vari, "g"} => {
+            :elev,
+            {:fcall, "cos", [vari: "x"]},
+            {:numb, -1, 1}
+          }
+        },
+        ok: %{
+          {:vari, "f"} => {:numb, 1, 1},
+          {:vari, "g"} => {
+            {:m, :mult},
+            [{:elev, {:fcall, "cos", [vari: "x"]}, {:numb, -1, 1}}, {:fcall, "sin", [vari: "x"]}]
+          }
+        }
       ]
     )
   end

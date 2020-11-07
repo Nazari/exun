@@ -1,12 +1,13 @@
 defmodule Exun.Der do
-  alias Exun.Math
-  alias Exun.Fun
+  alias Exun.Simpl, as: S
+  alias Exun.Fun, as: F
 
+  @zero {:numb, 0, 1}
+  @uno {:numb, 1, 1}
   @moduledoc """
   Derivate expressions
   """
-  @zero {:numb, 0, 1}
-  @uno {:numb, 1, 1}
+
   @doc """
   Derive function for variable x, may be an ast or an expresion in text mode
   ```
@@ -20,77 +21,105 @@ defmodule Exun.Der do
   ```
   """
   def deriv(txt, x) when is_binary(txt) and is_binary(x) do
-    {ast, _ctx} = Exun.parse(txt)
+    ast = Exun.new(txt).ast
 
     deriv(ast, x)
     # |> IO.inspect(label: "reduced")
     |> Exun.UI.tostr()
   end
 
-  def deriv(ast, name) when is_tuple(ast) and is_binary(name) do
-    der(ast, {:vari, name})
+  def deriv({:deriv, f, v}) do
+    der(f, v)
   end
 
-  defp der({:deriv, fun, x1}, x2) do
-    der(der(fun, x1), x2)
-  end
+  defp der(ast, x) do
+    case ast do
+      {:numb, _, _} ->
+        @zero
 
-  defp der({:fcall, name, args}, x) do
-    search_name = name <> "(F)"
+      {:unit, _uv, _ut} ->
+        @zero
 
-    cond do
-      (bfunc = Fun.base()[search_name]) != nil ->
-        {ast, _ctx} = Exun.parse(elem(bfunc, 1))
-        mapdef = %{{:vari, "F"} => args |> List.first(), {:vari, "x"} => {:vari, "x"}}
-        Exun.replace(ast, mapdef)
+      ^x ->
+        @uno
 
-      (cfunc = Fun.compounds()[search_name]) != nil ->
-        {ast, _ctx} = Exun.parse(cfunc)
-        mapdef = %{{:vari, "F"} => args |> List.first(), {:vari, "x"} => {:vari, "x"}}
+      {:vari, _} ->
+        @zero
 
-        Exun.replace(ast, mapdef)
-        |> der(x)
+      {:deriv, f2, v2} ->
+        der(der(f2, v2), x)
 
-      true ->
-        {:deriv, {:fcall, name, args}, x}
-    end
+      {:fcall, name, args} ->
+        search_name = "#{name}(F)"
 
-    # |> IO.inspect(label: "der fcall")
-  end
+        cond do
+          (bfunc = F.base()[search_name]) != nil ->
+            ast = Exun.new(elem(bfunc, 1)).ast
+            mapdef = %{{:vari, "F"} => args |> List.first(), {:vari, "x"} => {:vari, "x"}}
+            Exun.replace(ast, mapdef)
 
-  defp der({:minus, a}, x), do: {:minus, der(a, x)}
-  defp der({:numb, _, _}, _x), do: @zero
-  defp der({:unit, _uv, _ut}, _x), do: @zero
-  defp der({:vari, var}, {:vari, x}), do: if(var == x, do: @uno, else: @zero)
+          (cfunc = F.compounds()[search_name]) != nil ->
+            ast = Exun.new(cfunc).ast
+            mapdef = %{{:vari, "F"} => args |> List.first(), {:vari, "x"} => {:vari, "x"}}
 
-  defp der({:elev, base, expon}, x),
-    do:
-      Math.mult(
-        {:elev, base, expon},
-        Math.suma(
-          Math.mult(der(expon, x), {:fcall, "ln", [base]}),
-          Math.mult(expon, Math.divi(der(base, x), base))
+            Exun.replace(ast, mapdef)
+            |> der(x)
+
+          true ->
+            {:deriv, {:fcall, name, args}, x}
+        end
+
+      {:minus, a} ->
+        {:minus, der(a,x)}
+
+      {:elev, base, expon} ->
+        S.mult(
+          {:elev, base, expon},
+          S.suma(
+            S.mult(der(expon, x), {:fcall, "ln", [base]}),
+            S.mult(expon, S.divi(der(base, x), base))
+          )
         )
-      )
 
-  defp der({:integ, f, x}, x), do: f
+      {:integ, f, ^x} ->
+        f
 
-  defp der({{:m, :suma}, lst}, x),
-    do: {{:m, :suma}, Enum.map(lst, &der(&1, x))}
+      {{:m, :suma}, lst} ->
+        {{:m, :suma}, Enum.map(lst, &der(&1, x))}
 
-  defp der({{:m, :mult}, [a]}, x), do: der(a, x)
+      {{:m, :mult}, lst} ->
+        case length(lst) do
+          0 ->
+            @zero
 
-  defp der({{:m, :mult}, lst}, x) when is_list(lst) do
-    prim = List.first(lst)
-    segu = {{:m, :mult}, List.delete(lst, prim)}
+          1 ->
+            der(lst |> List.first(), x)
 
-    Math.suma(
-      Math.mult(prim, der(segu, x)),
-      Math.mult(der(prim, x), segu)
-    )
+          2 ->
+            [prim, segu] = lst
+            derprod(prim, segu, x)
+
+          _ ->
+            prim = List.first(lst)
+            segu = {{:m, :mult}, List.delete(lst, prim)}
+            derprod(prim, segu, x)
+        end
+
+      {tt = {:vector, _}, list} ->
+        {tt, list |> Enum.map(&deriv({:deriv, &1, x}))}
+
+      {tt = {:raw, _, _}, list, mr, mc} ->
+        {tt, list |> Enum.map(&deriv({:deriv, &1, x})), mr, mc}
+
+      _other ->
+        @zero
+    end
   end
 
-  defp der(f, x) do
-    {:deriv, f, x}
+  defp derprod(prim, segu, x) do
+    S.suma(
+      S.mult(prim, der(segu, x)),
+      S.mult(der(prim, x), segu)
+    )
   end
 end

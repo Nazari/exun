@@ -1,11 +1,12 @@
 defmodule Exun.Unit do
-  alias Exun.Collect
-  alias Exun.UI
-  import Exun.Math
-  @uno {:numb, 1, 1}
-  @muno {:numb, -1,1}
-  @zero {:numb, 0, 1}
+  alias Exun.Simpl, as: S
+  alias Exun.Collect, as: C
+  alias Exun.UI, as: U
 
+
+  @zero {:numb, 0, 1}
+  @uno {:numb, 1, 1}
+  @muno {:numb, -1, 1}
   @moduledoc """
   Handle Units, converts, sum, multiply, transform to SI and factorize
   """
@@ -260,9 +261,9 @@ defmodule Exun.Unit do
     {res2, exps2} = to_si2({@uno, t2}, pcontext, @uno, %{})
 
     if exps1 != exps2 do
-      {:err, "Inconsisten units " <> UI.tostr(t1) <> " and " <> UI.tostr(t2)}
+      {:err, "Inconsisten units " <> U.tostr(t1) <> " and " <> U.tostr(t2)}
     else
-      val = divi(suma(mult(a, res1), mult(b, res2)), res1)
+      val = S.divi(S.suma(S.mult(a, res1), S.mult(b, res2)), res1)
       {:ok, {:unit, val, t1}}
     end
   end
@@ -282,9 +283,9 @@ defmodule Exun.Unit do
     # |> IO.inspect(label: "convert to unit2")
 
     if exps1 != exps2 do
-      {:err, "Inconsisten units " <> UI.tostr(t1) <> " and " <> UI.tostr(t2)}
+      {:err, "Inconsisten units " <> U.tostr(t1) <> " and " <> U.tostr(t2)}
     else
-      {:ok, {:unit, divi(mult(n, res1), res2), t2}}
+      {:ok, {:unit, S.divi(S.mult(n, res1), res2), t2}}
     end
   end
 
@@ -298,12 +299,12 @@ defmodule Exun.Unit do
   """
 
   def convert(tu1, tu2, pcontext \\ %{}) when is_binary(tu1) and is_binary(tu2) do
-    {u1, _} = Exun.parse(tu1)
-    {u2, _} = Exun.parse("1[" <> tu2 <> "]")
+    u1 = Exun.new(tu1).ast
+    u2 = Exun.new("1[" <> tu2 <> "]").ast
 
     case convert_ast(u1, u2, pcontext) do
       {:err, msg} -> throw(msg)
-      {:ok, res} -> UI.tostr(res)
+      {:ok, res} -> U.tostr(res)
     end
   end
 
@@ -319,8 +320,8 @@ defmodule Exun.Unit do
   """
   def factorize_ast({:unit, n = {:numb, _, _}, t1}, {:unit, {:numb, _n2, _d2}, t2}, pcontext) do
     # Divide t1 by t2, reduce to si and multiply by t2
-    {nres, exps} = to_si2({n, divi(t1, t2)}, pcontext, @uno, %{})
-    "#{UI.tostr(nres)}[#{UI.tostr(t2)}#{exps_tostr(exps)}]"
+    {nres, exps} = to_si2({n, S.divi(t1, t2)}, pcontext, @uno, %{})
+    "#{U.tostr(nres)}[#{U.tostr(t2)}#{exps_tostr(exps)}]"
   end
 
   @doc """
@@ -330,8 +331,8 @@ defmodule Exun.Unit do
   ```
   """
   def factorize(e1, e2, pcontext \\ %{}) do
-    {u1, _} = Exun.parse(e1, pcontext)
-    {u2, _} = Exun.parse("1" <> e2, pcontext)
+    u1 = Exun.new(e1, pcontext).ast
+    u2 = Exun.new("1" <> e2, pcontext).ast
     factorize_ast(u1, u2, pcontext)
   end
 
@@ -342,31 +343,31 @@ defmodule Exun.Unit do
   defp to_si2({nn, {{:m, :mult}, lst}}, pcontext, curre, exps) do
     Enum.reduce(lst, {nn, exps}, fn opand, {acu_nn, acu_e} ->
       {new_n, ne} = to_si2({@uno, opand}, pcontext, curre, acu_e)
-      {mult(acu_nn, new_n), ne}
+      {S.mult(acu_nn, new_n), ne}
     end)
   end
 
   defp to_si2({nn, {:elev, left, nnexp = {:numb, _, _}}}, pcontext, curre, exps) do
-    {left_n, exps} = to_si2({@uno, left}, pcontext, mult(curre, nnexp), exps)
-    {mult(nn, elev(left_n, nnexp)), exps}
+    {left_n, exps} = to_si2({@uno, left}, pcontext, S.mult(curre, nnexp), exps)
+    {S.mult(nn, S.elev(left_n, nnexp)), exps}
   end
 
   defp to_si2({n, {:vari, var}}, pcontext, curre, exps) do
     case @fundamental_units[var] do
       nil ->
         {:unit, vdef = {:numb, _, _}, tdef} = get_def(var, pcontext)
-        to_si2({mult(n, vdef), tdef}, pcontext, curre, exps)
+        to_si2({S.mult(n, vdef), tdef}, pcontext, curre, exps)
 
       true ->
         x1 = Map.get(exps, var, @zero)
-        x2 = suma(curre, x1)
+        x2 = S.suma(curre, x1)
         {n, Map.put(exps, var, x2)}
     end
   end
 
   defp to_si2({a, b}, _pcontext, _curr_exp, _exps) do
     # IO.inspect({:unit, {:numb, a}, b}, label: "For unit:")
-    throw("Invalid unit definition: " <> UI.tostr({:unit, {:numb, a, 1}, b}))
+    throw("Invalid unit definition: " <> U.tostr({:unit, {:numb, a, 1}, b}))
   end
 
   defp get_def(name, pcontext) do
@@ -378,8 +379,7 @@ defmodule Exun.Unit do
         {:unit, @uno, {:vari, name}}
 
       @conversions[name] != nil ->
-        @conversions[name]
-        |> Exun.parse_text()
+        Exun.new(@conversions[name]).ast
 
       pcontext[name] != nil ->
         pcontext[name]
@@ -389,7 +389,7 @@ defmodule Exun.Unit do
         {:unit, val, tree} = get_def(rest, pcontext)
         # IO.inspect(pref_val,label: "pref_val")
         # IO.inspect(val,label: "val")
-        {:unit, mult(pref_val, val), tree}
+        {:unit, S.mult(pref_val, val), tree}
 
       true ->
         throw("Undefined unit #{name}")
@@ -403,8 +403,8 @@ defmodule Exun.Unit do
         exp == @zero -> ac
         exp == @uno -> "#{ac}*#{var}"
         exp == @muno -> "#{ac}/#{var}"
-        signof(exp)==:neg -> "#{ac}/#{var}^#{UI.tostr(chsign(exp))}"
-        true -> "#{ac}*#{var}^#{UI.tostr(exp)}"
+        signof(exp)==:neg -> "#{ac}/#{var}^#{U.tostr(S.chsign(exp))}"
+        true -> "#{ac}*#{var}^#{U.tostr(exp)}"
       end
     end)
   end
@@ -413,15 +413,26 @@ defmodule Exun.Unit do
   Converts unit to International System
   """
   def toSI({:unit, uv, ut}) do
-    {r, e} = to_si2({:unit, Collect.coll(uv), Collect.coll(ut)})
+    {r, e} = to_si2({:unit, C.coll(uv), C.coll(ut)})
 
     {:unit, r,
-     Collect.coll(
+     C.coll(
        e
        |> Enum.reject(fn {_a, b} -> b == @zero end)
        |> Enum.reduce(@uno, fn {var, expon}, tree ->
-         mult(tree, {:elev, {:vari, var}, expon})
+        S.mult(tree, {:elev, {:vari, var}, expon})
        end)
      )}
+  end
+
+
+  defp signof({:numb, a, b}) do
+    r = a / b
+
+    cond do
+      r < 0 -> :neg
+      r > 0 -> :pos
+      true -> :zero
+    end
   end
 end

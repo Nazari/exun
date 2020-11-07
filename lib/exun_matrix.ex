@@ -1,8 +1,10 @@
 defmodule Exun.Matrix do
-  alias Exun.Collect
-  alias Exun.Math
-  require Integer
+  alias Exun.Collect, as: C
+  alias Exun.Simpl, as: S
 
+  require Integer
+  @zero {:numb, 0, 1}
+  @uno {:numb, 1, 1}
   @moduledoc """
   Manage symbolic matrices, simple operations as add, rest, mult and divi; and
   calculate eigenvalues; could be interesting for solve n-polynomies.
@@ -23,14 +25,12 @@ defmodule Exun.Matrix do
 
   Of course, we will support symbolic matrices, each element of the matrix is an ast
   """
-  @uno {:numb, 1, 1}
-  @zero {:numb, 0, 1}
 
   @doc """
   Return quadratic (nxn) identity matrix
   """
   def uni_m(n) when is_number(n) do
-    {{:unity, n, n}, nil,[],[]}
+    {{:unity, n, n}, nil, [], []}
   end
 
   @doc """
@@ -41,11 +41,11 @@ defmodule Exun.Matrix do
 
     first_row =
       tail
-      |> Enum.map(&Math.divi(&1, h))
+      |> Enum.map(&S.divi(&1, h))
       |> Enum.reverse()
 
     l = length(first_row)
-    {{:polynom, l, l}, first_row,[],[]}
+    {{:polynom, l, l}, first_row, [], []}
   end
 
   @doc """
@@ -121,6 +121,7 @@ defmodule Exun.Matrix do
       get_elem(a, i, col)
     end
   end
+
   @doc """
   Multiplies two matrices a and b
   """
@@ -142,12 +143,13 @@ defmodule Exun.Matrix do
   end
 
   defp mult_list(rlist, clist) when is_list(rlist) and is_list(clist) do
-    Collect.coll(
+    C.coll(
       {{:m, :suma},
        List.zip([clist, rlist])
-       |> Enum.map(fn {r, c} -> Math.mult(r, c) end)}
+       |> Enum.map(fn {r, c} -> S.mult(r, c) end)}
     )
   end
+
   @doc """
   Calculates determinant from matrix
   """
@@ -157,24 +159,28 @@ defmodule Exun.Matrix do
     a01 = get_elem(a, 0, 1)
     a10 = get_elem(a, 1, 0)
 
-    Collect.coll(
-      Math.rest(
-        Math.mult(a00, a11),
-        Math.mult(a01, a10)
+    C.coll(
+      S.rest(
+        S.mult(a00, a11),
+        S.mult(a01, a10)
       )
     )
   end
 
+  def det(%Exun{ast: tree, pc: pc}) do
+    %Exun{ast: det(tree), pc: pc}
+  end
+
   def det(a = {{_, n, n}, _, _, _}) do
-    Collect.coll(
+    C.coll(
       {{:m, :suma},
        for i <- 0..(n - 1) do
          pivot = get_elem(a, 0, i)
 
          if Integer.is_odd(n) do
-           Math.minus(Math.mult(pivot, det(mask(a, 0, i))))
+           S.minus(S.mult(pivot, det(mask(a, 0, i))))
          else
-           Math.mult(pivot, det(mask(a, 0, i)))
+           S.mult(pivot, det(mask(a, 0, i)))
          end
        end}
     )

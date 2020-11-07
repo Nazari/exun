@@ -13,7 +13,8 @@ in a try to keep accuracy for the usual operations, specially for exponents alge
 Exun.eval("1-0.8") returns "0.2", and Exun.eval("0.1+0.1+0.1") returns "0.3", 
 the same operation in iex returns "0.30000000000000004".
 
-All test passed.
+All test passed. Version 0.5.0 is renewed completely for programatic use. Created Exun struct that holds ast and context,
+and created to_string and inspect on it. Maybe i can create macros to use *,+,-,/ with %Exun{}
 
 TODO:
  - Temperature unit conversions
@@ -37,10 +38,10 @@ run "iex -S mix" inside exun dir and type:
 import Exun
 import Exun.Unit
 
-eval "(1+a)*(a+1)/(a+1)^3"
+eval2str "(1+a)*(a+1)/(a+1)^3"
 "1/(1+a)"
 
-eval "1[m]+1[cm]"
+eval2str "1[m]+1[cm]"
 "1.01[m]"
 
 factorize "1[A*Kg*m/s^2]","[slug*cm]"
@@ -58,46 +59,46 @@ eval "25[Km/h]+14[myunit^2]", %{ "myunit" => "(m/s)^0.5" }
 
 You can put 'context' also, passing a map that defines values for variables:
 ```
-eval "(a+1)^2/b", %{"b"=>"a+1"}
+eval2str "(a+1)^2/b", %{"b"=>"a+1"}
 "1+a"
 
-eval "(a+b)^2/c", %{"a"=>"20[m]","b"=>"2[cm]","c"=>"3[s^2]"}
+eval2str "(a+b)^2/c", %{"a"=>"20[m]","b"=>"2[cm]","c"=>"3[s^2]"}
 "133.60013333333333[m^2/s^2]"
 ```
 
 Derivate and support some functions (trigonometrics, hyperbolics, ln):
 Operator ' is derivate, so "f'x" is df(x)/dx; rule "expr'var" means derivate 'expr' for 'var'. 
 ```
-eval "((1+x)^2)'x"
+eval2str "((1+x)^2)'x"
 "2*(1+x)"
 
-eval "sin(2*x)'x"
+eval2str "sin(2*x)'x"
 "2*cos(2*x)"
 
-eval "(x^2+x)'x+1"
+eval2str "(x^2+x)'x+1"
 "2*(1+x)"
 ```
 
 Define functions in context
 Vars and functions can be named with the same name, like in elixir, arity in a name makes it different so:
 ```
-Exun.eval "f*f(y)*f(y,3)", %{"f"=>"3", "f(x)"=>"x^2", "f(a,b)"=>"a^2+a*b+b^2"}
+Exun.eval2str "f*f(y)*f(y,3)", %{"f"=>"3", "f(x)"=>"x^2", "f(a,b)"=>"a^2+a*b+b^2"}
 "3*y^2*(9+3*y+y^2)"
 
-Exun.eval " f * f(x)'x * f(y)", %{"f"=>"3", "f(x)"=>"x^2"}
+Exun.eval2str " f * f(x)'x * f(y)", %{"f"=>"3", "f(x)"=>"x^2"}
 "6*x*y^2"
 
 ```
 
  Integrate simple expression, not yet implemented Parts or Subst methods. Symbol for integration is $, rule "$expr,var" means integrate 'expr' for 'var'
 ```
-iex(1)> Exun.eval "$3*x^2+2*x+1,x"
+iex(1)> Exun.eval2str "$3*x^2+2*x+1,x"
 "x*(1+x*(1+x))"
 
-iex(5)> Exun.eval "$sin(x),x"     
+iex(5)> Exun.eval2str "$sin(x),x"     
 "-cos(x)"
 
-iex(6)> Exun.eval "$ln(f(x)),x"
+iex(6)> Exun.eval2str "$ln(f(x)),x"
 "x*ln(f(x))-($(x/f(x)),x)"
 ```
 
@@ -198,23 +199,18 @@ create basic algebraic (+,-,*,/) for those concepts and may be eigenvalues for n
 now are symbolic also, so you will be able to write something like the example below. The symbols
 for matrix and vector are '{}'.
 ```
-iex(1)> Exun.parse_text "{{x^2,x,1},{sin(x),cos(x),tan(x)},{1,2,3}}"
-{{:raw, 3, 3},
- [
-   {{:vector, 3}, [{:elev, {:vari, "x"}, {:numb, 2}}, {:vari, "x"}, {:numb, 1}]},
-   {{:vector, 3},
-    [
-      {:fcall, "sin", [vari: "x"]},
-      {:fcall, "cos", [vari: "x"]},
-      {:fcall, "tan", [vari: "x"]}
-    ]},
-   {{:vector, 3}, [numb: 1, numb: 2, numb: 3]}
- ]}
+iex> mat = Exun.new "{{x^2,x,1},{sin(x),cos(x),tan(x)},{1,2,3}}"
+#Exun  {{x^2,x,1},{sin(x),cos(x),tan(x)},{1,2,3}}
 
-iex(2)> Exun.Matrix.uni_m 4
+iex> import Exun.Matrix
+iex> import Exun.UI
+iex> det mat
+#Exun  -(cos(x)*-tan(x)+cos(x)*tan(x))-(x*cos(x)*-tan(x)+x*cos(x)*tan(x))
+
+iex> Exun.Matrix.uni_m 4
 {{:unity, 4, 4}, nil}
 
-iex(3)> Exun.Matrix.pol_m [{:numb,1,1},{:numb,2,1},{:numb,3,1},{:vari,"x"}]
+iex> Exun.Matrix.pol_m [{:numb,1,1},{:numb,2,1},{:numb,3,1},{:vari,"x"}]
 {{:polynom, 3, 3},
  [
    {:elev, {:vari, "x"}, {:numb, -1}},
@@ -231,20 +227,15 @@ iex(5)> :timer.tc(Exun,:eval,["(g(a^b,b^a)/g(b^a,a^b))'a", %{"g(x,y)"=>"(x^y/ln(
  ```
 
 
-If you are interested in parsing, use 'parse' or 'eval_ast'
+If you are interested in parsing, use 'new' to create an Exun struct, and its field 'ast' to show the expression AST.
 ```
-parse "(a+b)^2/c"
-{{{:m, :mult},
-  [
-    {:elev, {:vari, "c"}, {:numb, -1}},
-    {:elev, {{:m, :suma}, [vari: "a", vari: "b"]}, {:numb, 2}}
-  ]}, %{}}
-
-eval_ast "(a+b)^2/c", %{"a"=>"20[m]","b"=>"2[cm]","c"=>"3[s^2]"}
-{:m, :mult},
+iex(2)> exp = Exun.new "(a+b)^2/c"
+#Exun  ((a+b)^2)/c
+iex(3)> exp.ast
+{{:m, :mult},
  [
-   {:elev, {:vari, "c"}, {:numb, -1}},
-   {:elev, {{:m, :suma}, [vari: "a", vari: "b"]}, {:numb, 2}}
+   {:elev, {:vari, "c"}, {:numb, -1, 1}},
+   {:elev, {{:m, :suma}, [vari: "a", vari: "b"]}, {:numb, 2, 1}}
  ]}
 ```
 

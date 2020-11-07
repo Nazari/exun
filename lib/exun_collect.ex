@@ -2,29 +2,32 @@ defmodule Exun.Collect do
   @moduledoc """
   Collect Math expression, try to simplify
   """
-  alias Exun.Simpl
-  alias Exun.Math
-  alias Exun.Eq
+  alias Exun.Simpl, as: S
+  alias Exun.Eq, as: E
 
   @doc """
   Main collecting function. Try to simplify tree withou chaging its value
   Gets and returns an AST, as produced by Exun.parse.
   """
-  def coll(tree) do
+  def coll(tree) when is_tuple(tree) do
     newtree =
       tree
       # |> IO.inspect(label: "make00, orig->mkrec")
-      |> Simpl.mkrec()
+      |> S.mkrec()
       |> expand_rec()
-      |> Simpl.mkrec()
+      |> S.mkrec()
 
-    if Eq.eq(newtree, tree), do: newtree, else: coll(newtree)
+    if E.eq(newtree, tree), do: newtree, else: coll(newtree)
+  end
+
+  def coll(%Exun{ast: ast, pc: pc}) do
+    %Exun{ast: coll(ast), pc: pc}
   end
 
   @doc """
   Expand mult(sum) to try collect more
   """
-  def expand_rec(ast) do
+  def expand_rec(ast) when is_tuple(ast) do
     newast = expand(ast)
 
     if ast == newast do
@@ -32,6 +35,10 @@ defmodule Exun.Collect do
     else
       expand_rec(newast)
     end
+  end
+
+  def expand_rec(%Exun{ast: ast, pc: pc}) do
+    %Exun{ast: expand_rec(ast), pc: pc}
   end
 
   defp expand(ast) do
@@ -79,7 +86,7 @@ defmodule Exun.Collect do
           {_, lsuma} = tsuma
           # Convert {:m,:mult} to {:m,:suma}
           remain = {{:m, :mult}, List.delete(l, tsuma)}
-          {{:m, :suma}, Enum.map(lsuma, &Math.mult(remain, &1))}
+          {{:m, :suma}, Enum.map(lsuma, &S.mult(remain, &1))}
         else
           {{:m, :mult}, Enum.map(l, &expand(&1))}
         end

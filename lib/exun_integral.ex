@@ -1,122 +1,119 @@
 defmodule Exun.Integral do
-  import Exun.Fun
-  import Exun.Math
-  import Exun.Pattern
+  alias Exun.Fun, as: F
+  alias Exun.Simpl, as: S
+  alias Exun.Pattern, as: P
   import Exun
 
-  @muno {:numb, -1, 1}
-  @zero {:numb, 0, 1}
-  @uno {:numb, 1, 1}
-  @dos {:numb, 2, 1}
   @moduledoc """
   Try to integrate function
   """
+  @zero {:numb, 0, 1}
+  @uno {:numb, 1, 1}
+  @muno {:numb, -1, 1}
+  @dos {:numb, 2, 1}
 
   @doc """
   Integrate function for var v. Expect an AST and return an AST.
   """
-  def integ(@zero, _), do: @uno
-  def integ({:minus, @zero}, _), do: @muno
-  def integ({:minus, a}, v), do: {:minus, integ(a, v)}
-  def integ(n = {:numb, _, _}, v), do: mult(n, v)
-  def integ(v = {:vari, _}, v), do: mult({:numb, 1, 2}, {:elev, v, @dos})
-  def integ({:deriv, f, x}, x), do: f
-  def integ({:vari, a}, v), do: mult({:vari, a}, v)
+  def integ({:integ, ast, var}) do
+    case {ast, var} do
+      {@zero, _} ->
+        @uno
 
-  def integ({:elev, {:vari, v}, expon = {:numb, _, _}}, {:vari, v}) do
-    newexp = suma(expon, @uno)
-    mult({:elev, {:vari, v}, newexp}, chpow(newexp))
-  end
+      {{:minus, @zero}, _} ->
+        @muno
 
-  def integ({:fcall, "sin", [v = {:vari, x}]}, v),
-    do: parse_text("-cos(" <> x <> ")")
+      {{:minus, a}, v} ->
+        {:minus, integ({:integ, a, v})}
 
-  def integ({:fcall, "cos", [v = {:vari, x}]}, v),
-    do: parse_text("sin(" <> x <> ")")
+      {n = {:numb, _, _}, v} ->
+        S.mult(n, v)
 
-  def integ({:fcall, "tan", [v = {:vari, x}]}, v),
-    do: parse_text("-ln(cos(" <> x <> "))")
+      {v = {:vari, _}, v} ->
+        S.mult({:numb, 1, 2}, {:elev, v, @dos})
 
-  def integ({:fcall, "asin", [v = {:vari, x}]}, v) do
-    txt = "x*asin(x)+(1-x^2)^0.5"
-    parse_text(txt |> String.replace("x", x))
-  end
+      {{:deriv, f, x}, x} ->
+        f
 
-  def integ({:fcall, "acos", [v = {:vari, x}]}, v) do
-    txt = "x*acos(x)-(1-x^2)^0.5"
-    parse_text(txt |> String.replace("x", x))
-  end
+      {{:vari, a}, v} ->
+        S.mult({:vari, a}, v)
 
-  def integ({:fcall, "atan", [v = {:vari, x}]}, v) do
-    txt = "-ln(x^2+1)-2*x*atan(x)/2"
-    parse_text(txt |> String.replace("x", x))
-  end
+      {{:elev, {:vari, v}, expon = {:numb, _, _}}, {:vari, v}} ->
+        newexp = S.suma(expon, @uno)
+        S.mult({:elev, {:vari, v}, newexp}, S.chpow(newexp))
 
-  def integ({:fcall, "sinh", [v = {:vari, _x}]}, v) do
-    {:fcall, "cosh", [v]}
-  end
+      {{:fcall, "sin", [v = {:vari, x}]}, v} ->
+        snew("-cos(x)", x)
 
-  def integ({:fcall, "cosh", [v = {:vari, _x}]}, v) do
-    {:fcall, "sinh", [v]}
-  end
+      {{:fcall, "cos", [v = {:vari, x}]}, v} ->
+        snew("sin(x)", x)
 
-  def integ({:fcall, "tanh", [v = {:vari, x}]}, v) do
-    txt = "ln(cosh(x))"
-    parse_text(txt |> String.replace("x", x))
-  end
+      {{:fcall, "tan", [v = {:vari, x}]}, v} ->
+        snew("-ln(cos(x))", x)
 
-  def integ({:fcall, "asinh", [v = {:vari, x}]}, v) do
-    txt = "x*asinh(x)-(x^2+1)^0.5"
-    parse_text(txt |> String.replace("x", x))
-  end
+      {{:fcall, "asin", [v = {:vari, x}]}, v} ->
+        snew("x*asin(x)+(1-x^2)^0.5", x)
 
-  def integ({:fcall, "acosh", [v = {:vari, x}]}, v) do
-    txt = "x*acosh(x)-(x-1)^0.5*(x+1)^0.5"
-    parse_text(txt |> String.replace("x", x))
-  end
+      {{:fcall, "acos", [v = {:vari, x}]}, v} ->
+        snew("x*acos(x)-(1-x^2)^0.5", x)
 
-  def integ({:fcall, "atanh", [v = {:vari, x}]}, v) do
-    txt = "(ln(1+x)+2*x*atanh(x)+ln(1-x))/2"
-    parse_text(txt |> String.replace("x", x))
-  end
+      {{:fcall, "atan", [v = {:vari, x}]}, v} ->
+        snew("-ln(x^2+1)-2*x*atan(x)/2", x)
 
-  def integ({:fcall, name, args}, v) do
-    case base()[name <> "(F)"] do
-      {_, _, val, _} when val != nil ->
-        {ast, _} = Exun.parse(val)
-        mapdef = %{{:vari, "F"} => args |> List.first(), {:vari, "x"} => {:vari, "x"}}
-        Exun.replace(ast, mapdef)
+      {{:fcall, "sinh", [v = {:vari, _x}]}, v} ->
+        {:fcall, "cosh", [v]}
 
-      _ ->
-        {:integ, {:fcall, name, args}, v}
+      {{:fcall, "cosh", [v = {:vari, _x}]}, v} ->
+        {:fcall, "sinh", [v]}
+
+      {{:fcall, "tanh", [v = {:vari, x}]}, v} ->
+        snew("ln(cosh(x))", x)
+
+      {{:fcall, "asinh", [v = {:vari, x}]}, v} ->
+        snew("x*asinh(x)-(x^2+1)^0.5", x)
+
+      {{:fcall, "acosh", [v = {:vari, x}]}, v} ->
+        snew("x*acosh(x)-(x-1)^0.5*(x+1)^0.5", x)
+
+      {{:fcall, "atanh", [v = {:vari, x}]}, v} ->
+        snew("(ln(1+x)+2*x*atanh(x)+ln(1-x))/2", x)
+
+      {{:fcall, name, args}, v} ->
+        case F.base()[name <> "(F)"] do
+          {_, _, val, _} when val != nil ->
+            ast = Exun.new(val).ast
+            mapdef = %{{:vari, "F"} => args |> List.first(), {:vari, "x"} => {:vari, "x"}}
+            Exun.replace(ast, mapdef)
+
+          _ ->
+            {:integ, {:fcall, name, args}, v}
+        end
+
+      {{{:m, :suma}, lst}, v} ->
+        {{:m, :suma}, Enum.map(lst, &integ({:integ, &1, v}))}
+
+      {aexp = {{:m, :mult}, _}, v} ->
+        cond do
+          try_poly = integ_poly(aexp, v) ->
+            try_poly
+
+          try_udu = integ_udu(aexp, v) ->
+            try_udu
+
+          # try_parts = integ_parts(aexp, v) ->
+          # try_parts
+
+          true ->
+            {:integ, aexp, v}
+        end
+
+      {c, v} ->
+        {:integ, c, v}
     end
   end
 
-  def integ({{:m, :suma}, lst}, v) do
-    {{:m, :suma}, Enum.map(lst, &integ(&1, v))}
-  end
-
-  def integ(aexp = {{:m, :mult}, _}, v) do
-    # IO.inspect(aexp,label: "integrating-----------")
-    # Three methods for now
-    cond do
-      try_poly = integ_poly(aexp, v) ->
-        try_poly
-
-      try_udu = integ_udu(aexp, v) ->
-        try_udu
-
-      #try_parts = integ_parts(aexp, v) ->
-        #try_parts
-
-      true ->
-        {:integ, aexp, v}
-    end
-  end
-
-  # Fallthrough
-  def integ(c, v) do
-    {:integ, c, v}
+  defp snew(str, x) do
+    (str |> String.replace("x", x) |> new()).ast
   end
 
   def symbinteg(ast) do
@@ -160,7 +157,7 @@ defmodule Exun.Integral do
   end
 
   def integ_poly(mult = {{:m, :mult}, _}, v = {:vari, x}) do
-    case match_ast(parse_text("a*#{x}^b"), mult, %{}) do
+    case P.match_ast(new("a*#{x}^b").ast, mult, %{}) do
       [] ->
         false
 
@@ -173,8 +170,8 @@ defmodule Exun.Integral do
           if Exun.Fun.contains(a, v) or Exun.Fun.contains(b, v) or var != {:vari, "#{x}"} do
             listsol
           else
-            newexpon = suma(b, @uno)
-            [mult(divi(a, newexpon), elev(v, newexpon)) | listsol]
+            newexpon = S.suma(b, @uno)
+            [S.mult(S.divi(a, newexpon), S.elev(v, newexpon)) | listsol]
           end
         end)
         |> List.first()
@@ -182,7 +179,7 @@ defmodule Exun.Integral do
   end
 
   def integ_udu(ast, {:vari, x}) do
-    udu = Exun.parse_text("u*u'#{x}")
+    udu = Exun.new("u*u'#{x}").ast
 
     case Exun.Pattern.match_ast(udu, ast) do
       [] ->
@@ -191,7 +188,7 @@ defmodule Exun.Integral do
       matchlist ->
         Enum.reduce(matchlist, [], fn {_, map}, listsol ->
           u = Map.fetch!(map, {:vari, "u"})
-          [divi(elev(u, @dos), @dos) | listsol]
+          [S.divi(S.elev(u, @dos), @dos) | listsol]
         end)
         |> List.first()
     end
@@ -199,8 +196,8 @@ defmodule Exun.Integral do
 
   def integ_parts(aexp = {{:m, :mult}, _}, {:vari, x}) do
     # try to integrate by parts. We are going to use Pattern.match over the whole expression
-    aast = Exun.parse_text("u*v'#{x}")
-    vdu = Exun.parse_text("v*u'#{x}")
+    aast = Exun.new("u*v'#{x}").ast
+    vdu = Exun.new("v*u'#{x}").ast
 
     solutions =
       Exun.Pattern.match_ast(aast, aexp)
@@ -212,12 +209,13 @@ defmodule Exun.Integral do
         # that a simplification removes the integral we can use it
         otherInteg =
           replace(vdu, map)
-          |> mutate(:integ, :sinteg)
+          # |> mutate(:integ, :sinteg)
           |> Exun.Simpl.mkrec()
-          |> mutate(:sinteg, :integ)
+
+        # |> mutate(:sinteg, :integ)
 
         if not symbinteg(otherInteg) do
-          uvvdu = Exun.parse_text("u*v-v*u'#{x}")
+          uvvdu = Exun.new("u*v-v*u'#{x}").ast
           {:ok, replace(uvvdu, map) |> Exun.Simpl.mkrec()}
         else
           {:ko, nil}

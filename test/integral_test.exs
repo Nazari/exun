@@ -2,15 +2,15 @@ defmodule IntegralTest do
   use ExUnit.Case
 
   test "Integral ln" do
-    assert Exun.eval("$ln(f(x)),x") == "x*ln(f(x))-($(x/f(x)),x)"
+    assert Exun.eval2str("$ln(f(x)),x") == "x*ln(f(x))-($(x/f(x)),x)"
   end
 
   test "Integral poly" do
-    assert Exun.eval("$1+2*x+3*x^2+4*x^3,x") == "x*(1+x*(1+x*(1+x)))"
+    assert Exun.eval2str("$1+2*x+3*x^2+4*x^3,x") == "x*(1+x*(1+x*(1+x)))"
   end
 
   test "Integral type U * U'x" do
-    assert Exun.eval("$sin(x)*cos(x),x") == "0.5*sin(x)^2"
+    assert Exun.eval2str("$sin(x)*cos(x),x") == "0.5*sin(x)^2"
   end
 
   test "Match integral of product" do
@@ -27,10 +27,10 @@ defmodule IntegralTest do
       "ln",
       "sin",
       "cos",
-      # "tan",
-      # "asin",
-      # "acos",
-      # "atan",
+      "tan",
+      "asin",
+      "acos",
+      "atan",
       "sinh",
       "cosh"
       # "atanh",
@@ -40,9 +40,9 @@ defmodule IntegralTest do
     ]
     |> Enum.map(fn name ->
       integ_fun = "$#{name}(x),x"
-      result_integ = Exun.eval(integ_fun)
+      result_integ = Exun.eval2str(integ_fun)
       deriv_fun = "(#{result_integ})'x"
-      result_deriv_ast = Exun.eval_ast(deriv_fun)
+      result_deriv_ast = (Exun.eval2str(deriv_fun) |> Exun.new()).ast
       reverted = Exun.Fun.revert_compounds(result_deriv_ast)
 
       result_deriv =

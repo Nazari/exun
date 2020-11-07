@@ -1,10 +1,11 @@
 defmodule Exun.UI do
-  import Exun.Eq
-  @uno {:numb, 1, 1}
+  alias Exun.Eq, as: E
 
+  @uno {:numb, 1, 1}
   @moduledoc """
   Parses a tree and transform to string in User Readable form
   """
+
   @doc ~S"""
   Translate tree to human readable math expression:
   ```
@@ -17,8 +18,8 @@ defmodule Exun.UI do
     ]}, %{{:vari, "z"} => {{:m, :suma}, [numb: 1, vari: "y"]}}}
   ```
   """
-  def tostr(tree) do
-    {t, _, d, s} = show(tree)
+  def tostr(ast) do
+    {t, _, d, s} = show(ast)
     # |> IO.inspect(label: "root show")
 
     cond do
@@ -133,7 +134,7 @@ defmodule Exun.UI do
   end
 
   def show({{:m, op}, lst}) do
-    lst = Enum.sort(lst, &smm(&1, &2))
+    lst = Enum.sort(lst, &E.smm(&1, &2))
     {_opt, pri} = if op == :suma, do: {"+", 50}, else: {"*", 90}
 
     texto =
@@ -185,7 +186,7 @@ defmodule Exun.UI do
       !d1 and d2 -> true
       s1 and !s2 -> false
       !s1 and s2 -> true
-      true -> smm(a1, a2)
+      true -> E.smm(a1, a2)
     end
   end
 

@@ -83,7 +83,7 @@ defmodule Exun.Fun do
         end
 
       (cfunc = compounds()[name <> "(F)"]) != nil ->
-        {ast, _ctx} = Exun.parse(cfunc)
+        ast = Exun.new(cfunc).ast
         mapdef = %{{:vari, "F"} => args |> List.first(), {:vari, "x"} => {:vari, "x"}}
         Exun.replace(ast, mapdef)
 
@@ -107,7 +107,7 @@ defmodule Exun.Fun do
       compounds()
       |> Enum.map(fn {k, v} ->
         # Compile value
-        {vast, _} = Exun.parse(v, %{})
+        vast = Exun.new(v).ast
         # Match, get the first match
         res = Exun.Pattern.match_ast(vast, ast, [], false)
         {k, res |> List.first()}
@@ -118,7 +118,7 @@ defmodule Exun.Fun do
 
     if match != nil do
       {tk, {:ok, map}} = match
-      {atk, _} = Exun.parse(tk, %{})
+      atk = Exun.new(tk, %{}).ast
       Exun.replace(atk, map)
     else
       nil
