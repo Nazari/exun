@@ -23,12 +23,16 @@ defmodule Exun.Der do
   def deriv(txt, x) when is_binary(txt) and is_binary(x) do
     ast = Exun.new(txt).ast
 
-    deriv(ast, x)
+    der(ast, x)
     # |> IO.inspect(label: "reduced")
     |> Exun.UI.tostr()
   end
 
-  def deriv({:deriv, f, v}) do
+  def deriv(%Exun{ast: ast}, v) when is_binary(v) do
+    %Exun{ast: der(ast, {:vari, v})}
+  end
+
+  def deriv(f, v) when is_tuple(f) and is_tuple(v) do
     der(f, v)
   end
 
@@ -70,7 +74,7 @@ defmodule Exun.Der do
         end
 
       {:minus, a} ->
-        {:minus, der(a,x)}
+        {:minus, der(a, x)}
 
       {:elev, base, expon} ->
         S.mult(
@@ -106,10 +110,10 @@ defmodule Exun.Der do
         end
 
       {tt = {:vector, _}, list} ->
-        {tt, list |> Enum.map(&deriv({:deriv, &1, x}))}
+        {tt, list |> Enum.map(&deriv(&1, x))}
 
       {tt = {:raw, _, _}, list, mr, mc} ->
-        {tt, list |> Enum.map(&deriv({:deriv, &1, x})), mr, mc}
+        {tt, list |> Enum.map(&deriv(&1, x)), mr, mc}
 
       _other ->
         @zero
