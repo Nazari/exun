@@ -82,21 +82,21 @@ defmodule Exun.UI do
   def show({:minus, a}) do
     {t, p, d, s} = show(a)
     # Xor sign with returned sign s
-    ns = if s, do: false, else: true
+    ns = not s
     {withpar(p, 200, t), p, d, ns}
   end
 
   def show({:elev, b, {:numb, nn, nd}}) when nn / nd < 0 do
     {t, p, d, s} = show({:elev, b, {:numb, -nn, nd}})
     # Xor denomi with returned denomi
-    nd = if d, do: false, else: true
+    nd = not d
     {t, p, nd, s}
   end
 
   def show({:elev, b, {:minus, a}}) do
     {t, p, d, s} = show({:elev, b, a})
     # Xor denomi with returned denomi
-    nd = if d, do: false, else: true
+    nd = not d
     {t, p, nd, s}
   end
 
