@@ -2,6 +2,7 @@ defmodule Exun.Simpl do
   alias Exun.Collect, as: C
   alias Exun.Unit, as: Un
   alias Exun.Eq, as: E
+  require Integer
 
   @zero {:numb, 0, 1}
   @uno {:numb, 1, 1}
@@ -14,7 +15,7 @@ defmodule Exun.Simpl do
   For a more agressive simplify, use Exun.Collect.coll
   """
   def mkrec(ast) when is_tuple(ast) do
-    nast = mk(ast)
+    nast = ast |> normalize |> mk
 
     if E.eq(nast, ast),
       do: nast,
@@ -23,6 +24,84 @@ defmodule Exun.Simpl do
 
   def mkrec(%Exun{ast: ast, pc: pc}) do
     %Exun{ast: mkrec(ast), pc: pc}
+  end
+
+  @doc """
+  Normalize some structs, mainly {{:m,op},l} so signs can be comparables
+  """
+  def normalize(ast) do
+    case ast do
+      {:minus, {{:m, :mult}, list}} ->
+        list = list |> Enum.map(&normalize/1) |> Enum.sort(&E.smm/2)
+        # Reduce sign if any opand of mult has minus
+        case Enum.find_index(list, fn el ->
+               case el do
+                 {:minus, _} -> true
+                 _ -> false
+               end
+             end) do
+          nil ->
+            {:minus, {{:m, :mult}, list}}
+
+          index ->
+            {:minus, a} = Enum.fetch!(list, index)
+            {{:m, :mult}, List.replace_at(list, index, a)}
+        end
+
+      {:minus, {{:m, :suma}, list}} ->
+        list = list |> Enum.map(&normalize/1)
+        [h | _] = list
+
+        if not signof(h) do
+          {{:m, :suma}, chsign(list)}
+        else
+          {:minus, {{:m, :suma}, list}}
+        end
+
+      {:minus, a} ->
+        {:minus, normalize(a)}
+
+      {{:m, :suma}, list} ->
+        list = list |> Enum.map(&normalize/1) |> Enum.sort(&E.smm/2)
+        [h | _] = list
+
+        cond do
+          # First component of list must be positive
+          !signof(h) -> {:minus, chsign({{:m, :suma}, list})}
+          true -> {{:m, :suma}, list}
+        end
+
+      {{:m, :mult}, list} ->
+        list = list |> Enum.map(&normalize/1) |> Enum.sort(&E.smm/2)
+        [h | t] = list
+
+        cond do
+          # First component of list must be positive
+          !signof(h) -> {:minus, {{:m, :mult}, [chsign(h) | t]}}
+          true -> {{:m, :mult}, list}
+        end
+
+      # if numb is even you can change the sign of base to positive if need
+      {:elev, base, num = {:numb, _, _}} ->
+        base = normalize(base)
+
+        cond do
+          is_par(num) and is_gtzero(num) and !signof(base) ->
+            {:elev, chsign(base), num}
+
+          true ->
+            ast
+        end
+
+      {:deriv, f, v} ->
+        {:deriv, normalize(f), v}
+
+      {:integ, f, v} ->
+        {:integ, normalize(f), v}
+
+      other ->
+        other
+    end
   end
 
   # simplify
@@ -38,7 +117,7 @@ defmodule Exun.Simpl do
         @zero
 
       {:minus, a} ->
-        chsign(mk(a))
+        {:minus, mk(a)}
 
       {:unit, val, @uno} ->
         mk(val)
@@ -72,7 +151,7 @@ defmodule Exun.Simpl do
         Exun.Fun.fcall(name, args)
 
       {:deriv, f, v} ->
-        Exun.Der.deriv({:deriv, mk(f), v})
+        Exun.Der.deriv(mk(f), v)
 
       {:integ, f, v = {:vari, _}} ->
         Exun.Integral.integ({:integ, mk(f), v})
@@ -100,16 +179,11 @@ defmodule Exun.Simpl do
         else
           case length(lst) do
             # No more elements in list, return unity
-            0 ->
-              unity
-
+            0 -> unity
             # Only one element, replace {{}:m,op},lst} with it
-            1 ->
-              List.first(lst)
-
+            1 -> List.first(lst)
             # Let's play, try to extract commons from list
-            _ ->
-              isolate({{:m, op}, lst})
+            _ -> isolate({{:m, op}, lst})
           end
         end
 
@@ -478,5 +552,69 @@ defmodule Exun.Simpl do
           {{:m, op}, [a, b]}
       end
     )
+  end
+
+  @doc """
+  Returns normalized sign of ast
+  """
+  def signof(ast) do
+    case ast do
+      {:minus, a} ->
+        not signof(a)
+
+      {:numb, a, b} ->
+        a / b >= 0
+
+      {:elev, a, b} ->
+        case b do
+          {:numb, _, _} ->
+            if is_par(b) and is_gtzero(b) do
+              true
+            else
+              signof(a)
+            end
+
+          _ ->
+            signof(a)
+        end
+
+      {{:m, _}, [h | _]} ->
+        signof(h)
+
+      {:unit, a, _} ->
+        signof(a)
+
+      {:fcall, _, _} ->
+        true
+
+      {:deriv, f, _} ->
+        signof(f)
+
+      {:integ, f, _} ->
+        signof(f)
+
+      {:vari, _} ->
+        true
+    end
+  end
+
+  def is_par(ast) do
+    case ast do
+      {:numb, n, d} ->
+        num = n / d
+
+        if floor(num) == num do
+          Integer.is_even(floor(num))
+        else
+          false
+        end
+
+      _ ->
+        false
+    end
+  end
+
+  def is_gtzero({:numb, n, d}) do
+    if (n > 0 and d > 0) or (n < 0 and d < 0), do: true, else: false
   end
 end

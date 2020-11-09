@@ -2,6 +2,7 @@ defmodule Mix.Tasks.Debg do
   use Mix.Task
 
   def run(_) do
-    Exun.Pattern.umatch("a*d+b*c","x*y+z*k" )
+    e1 = Exun.new "a^2-b^2"
+    Exun.eval e1
   end
 end
