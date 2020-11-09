@@ -3,7 +3,6 @@ defmodule Exun.Unit do
   alias Exun.Collect, as: C
   alias Exun.UI, as: U
 
-
   @zero {:numb, 0, 1}
   @uno {:numb, 1, 1}
   @muno {:numb, -1, 1}
@@ -403,7 +402,7 @@ defmodule Exun.Unit do
         exp == @zero -> ac
         exp == @uno -> "#{ac}*#{var}"
         exp == @muno -> "#{ac}/#{var}"
-        signof(exp)==:neg -> "#{ac}/#{var}^#{U.tostr(S.chsign(exp))}"
+        S.signof(exp) == false -> "#{ac}/#{var}^#{U.tostr(S.chsign(exp))}"
         true -> "#{ac}*#{var}^#{U.tostr(exp)}"
       end
     end)
@@ -420,19 +419,8 @@ defmodule Exun.Unit do
        e
        |> Enum.reject(fn {_a, b} -> b == @zero end)
        |> Enum.reduce(@uno, fn {var, expon}, tree ->
-        S.mult(tree, {:elev, {:vari, var}, expon})
+         S.mult(tree, {:elev, {:vari, var}, expon})
        end)
      )}
-  end
-
-
-  defp signof({:numb, a, b}) do
-    r = a / b
-
-    cond do
-      r < 0 -> :neg
-      r > 0 -> :pos
-      true -> :zero
-    end
   end
 end
