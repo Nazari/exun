@@ -12,25 +12,25 @@ defmodule Exun.Eq do
   end
 
   @stype %{
-    :numb => 0,
-    :vari => 1,
-    :fcall => 2,
-    :unit => 3,
-    :integ => 4,
-    :deriv => 5,
-    {:m, :sum} => 6,
-    {:m, :mult} => 7,
-    :minus => 8,
-    :elev => 9
+    :minus => 0,
+    :numb => 1,
+    :vari => 2,
+    :fcall => 3,
+    :unit => 4,
+    :integ => 5,
+    :deriv => 6,
+    {:m, :sum} => 7,
+    {:m, :mult} => 8,
+    :elev => 9,
   }
   @doc """
   Sort for m multiple list
   Sorts components of lis {{:m,op},lst} in a convenient way for eq
-  and operating
+  and normalizing
   """
   def smm(left, right) do
-    type_l = grt(left)
-    type_r = grt(right)
+    type_l = get_first_of_tuple(left)
+    type_r = get_first_of_tuple(right)
 
     left_index = @stype[type_l]
     right_index = @stype[type_r]
@@ -41,7 +41,7 @@ defmodule Exun.Eq do
     end
   end
 
-  defp grt(tup) do
+  defp get_first_of_tuple(tup) do
     elem(tup, 0)
   end
 end
