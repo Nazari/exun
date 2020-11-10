@@ -67,6 +67,9 @@ defmodule Exun.Collect do
       {:elev, a, {:numb, n, d}} when n > 0 and d == 1 and floor(n) == n ->
         {{:m, :mult}, List.duplicate(a, floor(n))}
 
+      {:elev, a, {:numb, n, d}} when n < -1 and d == 1 and floor(n) == n ->
+        {:elev, {{:m, :mult}, List.duplicate(a, floor(-n))}, {:numb, -1, 1}}
+
       {:elev, b, e} ->
         {:elev, expand(b), expand(e)}
 
@@ -77,22 +80,58 @@ defmodule Exun.Collect do
         {{t, rs, cs}, list |> Enum.map(&expand/1), mr, mc}
 
       {{:m, :suma}, l} ->
+        l = Enum.map(l, &expand_rec/1)
         {{:m, :suma}, Enum.map(l, &expand(&1))}
 
       {{:m, :mult}, l} ->
-        tsuma = List.keyfind(l, {:m, :suma}, 0)
+        l = Enum.map(l, &expand_rec/1)
 
-        if tsuma != nil do
-          {_, lsuma} = tsuma
-          # Convert {:m,:mult} to {:m,:suma}
-          remain = {{:m, :mult}, List.delete(l, tsuma)}
-          {{:m, :suma}, Enum.map(lsuma, &S.mult(remain, &1))}
-        else
-          {{:m, :mult}, Enum.map(l, &expand(&1))}
+        cond do
+          (newop = find_op(l, :suma_num)) != nil ->
+            newop
+
+          (newop = find_op(l, :suma_den)) != nil ->
+            newop
+
+          true ->
+            {{:m, :mult}, l}
         end
 
       unknown ->
-        throw("Unknown at collect: #{Exun.UI.tostr(unknown)}")
+        throw("Unknown at expand: #{Exun.UI.tostr(unknown)}")
+    end
+  end
+
+  def find_op(list, :suma_num) do
+    tsuma_n = List.keyfind(list, {:m, :suma}, 0)
+
+    if tsuma_n != nil do
+      {_, lsuma} = tsuma_n
+      # Convert {:m,:mult} to {:m,:suma}
+      remain = {{:m, :mult}, List.delete(list, tsuma_n)}
+      {{:m, :suma}, Enum.map(lsuma, &S.mult(remain, &1))}
+    else
+      nil
+    end
+  end
+
+  def find_op(list, :suma_den) do
+    {sublist, remain} =
+      Enum.reduce(list, {[], []}, fn op, {sl, re} ->
+        case op do
+          {:elev, {{:m, :suma}, _}, {:numb, n, 1}} when floor(n) == n and n < 0 ->
+            {[op | sl], re}
+
+          _ ->
+            {sl, [op | re]}
+        end
+      end)
+
+    if length(sublist) > 1 do
+      denom = S.chpow(expand_rec(S.chpow({{:m, :mult}, sublist})))
+      {{:m, :mult}, [denom | remain]}
+    else
+      nil
     end
   end
 end

@@ -71,6 +71,9 @@ defmodule Exun.Simpl do
           is_par(num) and is_gtzero(num) and !signof(base) ->
             {:elev, chsign(base), num}
 
+          !is_par(num) and !is_gtzero(num) and !signof(base) ->
+            {:minus, {:elev, chsign(base), num}}
+
           !signof(base) ->
             {:minus, {:elev, chsign(base), num}}
 
@@ -103,6 +106,9 @@ defmodule Exun.Simpl do
 
       {:minus, @zero} ->
         @zero
+
+      {:minus, {:numb, n, d}} ->
+        {:numb, -n, d}
 
       {:minus, a} ->
         {:minus, mk(a)}
@@ -539,8 +545,8 @@ defmodule Exun.Simpl do
             signof(a)
         end
 
-      {{:m, _}, [h | _]} ->
-        signof(h)
+      {{:m, _}, _} ->
+        true
 
       {:unit, a, _} ->
         signof(a)
