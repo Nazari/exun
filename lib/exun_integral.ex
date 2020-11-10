@@ -58,7 +58,7 @@ defmodule Exun.Integral do
         snew("x*acos(x)-(1-x^2)^0.5", x)
 
       {{:fcall, "atan", [v = {:vari, x}]}, v} ->
-        snew("-ln(x^2+1)-2*x*atan(x)/2", x)
+        snew("x*atan(x)-ln(x^2+1)/2", x)
 
       {{:fcall, "sinh", [v = {:vari, _x}]}, v} ->
         {:fcall, "cosh", [v]}
