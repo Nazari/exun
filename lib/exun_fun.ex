@@ -64,7 +64,8 @@ defmodule Exun.Fun do
   def compounds,
     do: %{
       "sqrt(F)" => "F^0.5",
-      "tan(F)" => "sin(F)/cos(F)"
+      "tan(F)" => "sin(F)/cos(F)",
+      "tanh(F)" => "sinh(F)/cosh(F)"
     }
 
   @doc """
@@ -104,17 +105,29 @@ defmodule Exun.Fun do
   """
   def revert_compounds(ast) do
     matches =
-      compounds()
-      |> Enum.map(fn {k, v} ->
+      Enum.map(compounds(), fn {k, v} ->
         # Compile value
         vast = Exun.new(v).ast
         # Match, get the first match
         res = Exun.Pattern.match_ast(vast, ast, [], false)
         {k, res |> List.first()}
-      end)
-      |> Enum.reject(fn {_, v} -> v == nil end)
+      end) |> Enum.reject(fn {_, v} -> v == nil end)
 
-    match = matches |> List.first()
+    match =
+      matches
+      |> Enum.reject(fn {_, {:ok,map}} ->
+        # Have to be same fcall names
+        Enum.reduce(map, true, fn {key, value}, res ->
+          case {key, value} do
+            {{:fcall, n1, _}, {:fcall, n2, _}} ->
+              res and n1 != n2
+
+            _ ->
+              res
+          end
+        end)
+      end)
+      |> List.first()
 
     if match != nil do
       {tk, {:ok, map}} = match
