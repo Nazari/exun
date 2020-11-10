@@ -31,35 +31,24 @@ defmodule Exun.Simpl do
   """
   def normalize(ast) do
     case ast do
-      {:minus, {{:m, :mult}, list}} ->
-        list = list |> Enum.map(&normalize/1) |> Enum.sort(&E.smm/2)
-        # Reduce sign if any opand of mult has minus
-        case Enum.find_index(list, fn el ->
-               case el do
-                 {:minus, _} -> true
-                 _ -> false
-               end
-             end) do
-          nil ->
-            {:minus, {{:m, :mult}, list}}
+      {{:m, :mult}, list} ->
+        {newlist, count_negs} =
+          Enum.map(list, &normalize/1)
+          |> Enum.reduce({[], 0}, fn el, {newlist, count_negs} ->
+            if !signof(el) do
+              {[chsign(el) | newlist], count_negs + 1}
+            else
+              {[el | newlist], count_negs}
+            end
+          end)
 
-          index ->
-            {:minus, a} = Enum.fetch!(list, index)
-            {{:m, :mult}, List.replace_at(list, index, a)}
-        end
+        newop = {{:m, :mult}, newlist |> Enum.sort(&E.smm/2)}
 
-      {:minus, {{:m, :suma}, list}} ->
-        list = list |> Enum.map(&normalize/1)
-        [h | _] = list
-
-        if not signof(h) do
-          {{:m, :suma}, chsign(list)}
+        if Integer.is_even(count_negs) do
+          newop
         else
-          {:minus, {{:m, :suma}, list}}
+          {:minus, newop}
         end
-
-      {:minus, a} ->
-        {:minus, normalize(a)}
 
       {{:m, :suma}, list} ->
         list = list |> Enum.map(&normalize/1) |> Enum.sort(&E.smm/2)
@@ -71,15 +60,8 @@ defmodule Exun.Simpl do
           true -> {{:m, :suma}, list}
         end
 
-      {{:m, :mult}, list} ->
-        list = list |> Enum.map(&normalize/1) |> Enum.sort(&E.smm/2)
-        [h | t] = list
-
-        cond do
-          # First component of list must be positive
-          !signof(h) -> {:minus, {{:m, :mult}, [chsign(h) | t]}}
-          true -> {{:m, :mult}, list}
-        end
+      {:minus, a} ->
+        {:minus, normalize(a)}
 
       # if numb is even you can change the sign of base to positive if need
       {:elev, base, num = {:numb, _, _}} ->
@@ -88,6 +70,9 @@ defmodule Exun.Simpl do
         cond do
           is_par(num) and is_gtzero(num) and !signof(base) ->
             {:elev, chsign(base), num}
+
+          !signof(base) ->
+            {:minus, {:elev, chsign(base), num}}
 
           true ->
             ast
@@ -98,6 +83,9 @@ defmodule Exun.Simpl do
 
       {:integ, f, v} ->
         {:integ, normalize(f), v}
+
+      {:fcall, name, list} ->
+        {:fcall, name, Enum.map(list, &normalize/1)}
 
       other ->
         other
@@ -408,33 +396,6 @@ defmodule Exun.Simpl do
 
       {:numb, n, d} ->
         {:numb, -n, d}
-
-      {{:m, :suma}, list} ->
-        {{:m, :suma}, Enum.map(list, &chsign(&1))}
-
-      {{:m, :mult}, list} ->
-        # sign true is positive, false is negative
-        {res, nl} =
-          Enum.reduce(list, {true, []}, fn opand, {sign, nl} ->
-            case opand do
-              {:numb, -1, 1} ->
-                {not sign, nl}
-
-              {:minus, minusop} ->
-                {not sign, [minusop | nl]}
-
-              _ ->
-                {sign, [opand | nl]}
-            end
-          end)
-
-        nl = nl |> Enum.reverse()
-
-        if res do
-          {:minus, {{:m, :mult}, nl}}
-        else
-          {{:m, :mult}, nl}
-        end
 
       other ->
         {:minus, other}
