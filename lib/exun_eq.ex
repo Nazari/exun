@@ -12,7 +12,6 @@ defmodule Exun.Eq do
   end
 
   @stype %{
-    :minus => 0,
     :numb => 1,
     :vari => 2,
     :fcall => 3,
@@ -22,6 +21,7 @@ defmodule Exun.Eq do
     {:m, :sum} => 7,
     {:m, :mult} => 8,
     :elev => 9,
+    :minus => 10,
   }
   @doc """
   Sort for m multiple list
