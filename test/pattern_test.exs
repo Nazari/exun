@@ -15,123 +15,102 @@ defmodule PatternTest do
   test "Patterns 02" do
     assert(
       match("f*g", "sin(x)/cos(x)", %{}) == [
-        ok: %{
-          {:vari, "f"} => {
-            {:m, :mult},
-            [
-              {
-                :elev,
-                {:fcall, "cos", [vari: "x"]},
-                {
-                  {:m, :suma},
-                  [{:numb, -1, 1}, {:minus, {:fcall, "sin", [vari: "x"]}}]
-                }
-              },
-              {:fcall, "sin", [vari: "x"]}
-            ]
-          },
-          {:vari, "g"} => {
-            :elev,
-            {:fcall, "cos", [vari: "x"]},
-            {:fcall, "sin", [vari: "x"]}
+        {
+          :ok,
+          %{
+            {:vari, "f"} => {
+              {:m, :mult},
+              [
+                {:elev, {:fcall, "cos", [vari: "x"]},
+                 {{:m, :suma}, [{:numb, -1, 1}, {:minus, {:fcall, "sin", [vari: "x"]}}]}},
+                {:fcall, "sin", [vari: "x"]}
+              ]
+            },
+            {:vari, "g"} => {:elev, {:fcall, "cos", [vari: "x"]}, {:fcall, "sin", [vari: "x"]}}
           }
         },
-        ok: %{
-          {:vari, "f"} => {
-            {:m, :mult},
-            [
-              {
-                :elev,
-                {:fcall, "cos", [vari: "x"]},
+        {
+          :ok,
+          %{
+            {:vari, "f"} =>
+              {{:m, :mult},
+               [
+                 {:elev, {:fcall, "cos", [vari: "x"]}, {:fcall, "sin", [vari: "x"]}},
+                 {:fcall, "sin", [vari: "x"]}
+               ]},
+            {:vari, "g"} =>
+              {:elev, {:fcall, "cos", [vari: "x"]},
+               {{:m, :suma}, [{:numb, -1, 1}, {:minus, {:fcall, "sin", [vari: "x"]}}]}}
+          }
+        },
+        {:ok,
+         %{
+           {:vari, "f"} =>
+             {{:m, :mult},
+              [
+                {:elev, {:fcall, "cos", [vari: "x"]}, {:numb, -1, 1}},
                 {:fcall, "sin", [vari: "x"]}
-              },
-              {:fcall, "sin", [vari: "x"]}
-            ]
-          },
-          {:vari, "g"} => {
-            :elev,
-            {:fcall, "cos", [vari: "x"]},
-            {
-              {:m, :suma},
-              [{:numb, -1, 1}, {:minus, {:fcall, "sin", [vari: "x"]}}]
+              ]},
+           {:vari, "g"} => {:numb, 1, 1}
+         }},
+        {:ok,
+         %{
+           {:vari, "f"} => {:elev, {:fcall, "cos", [vari: "x"]}, {:minus, {:numb, 1, 1}}},
+           {:vari, "g"} => {:fcall, "sin", [vari: "x"]}
+         }},
+        {
+          :ok,
+          %{
+            {:vari, "f"} =>
+              {:elev, {:fcall, "cos", [vari: "x"]},
+               {{:m, :suma}, [{:numb, -1, 1}, {:minus, {:fcall, "sin", [vari: "x"]}}]}},
+            {:vari, "g"} =>
+              {{:m, :mult},
+               [
+                 {:elev, {:fcall, "cos", [vari: "x"]}, {:fcall, "sin", [vari: "x"]}},
+                 {:fcall, "sin", [vari: "x"]}
+               ]}
+          }
+        },
+        {
+          :ok,
+          %{
+            {:vari, "f"} => {:elev, {:fcall, "cos", [vari: "x"]}, {:fcall, "sin", [vari: "x"]}},
+            {:vari, "g"} => {
+              {:m, :mult},
+              [
+                {:elev, {:fcall, "cos", [vari: "x"]},
+                 {{:m, :suma}, [{:numb, -1, 1}, {:minus, {:fcall, "sin", [vari: "x"]}}]}},
+                {:fcall, "sin", [vari: "x"]}
+              ]
             }
           }
         },
-        ok: %{
-          {:vari, "f"} => {
-            {:m, :mult},
-            [
-              {:elev, {:fcall, "cos", [vari: "x"]}, {:numb, -1, 1}},
-              {:fcall, "sin", [vari: "x"]}
-            ]
-          },
-          {:vari, "g"} => {:numb, 1, 1}
-        },
-        ok: %{
-          {:vari, "f"} => {
-            :elev,
-            {:fcall, "cos", [vari: "x"]},
-            {
-              {:m, :suma},
-              [{:numb, -1, 1}, {:minus, {:fcall, "sin", [vari: "x"]}}]
-            }
-          },
-          {:vari, "g"} => {
-            {:m, :mult},
-            [
-              {
-                :elev,
-                {:fcall, "cos", [vari: "x"]},
+        {:ok,
+         %{
+           {:vari, "f"} => {:elev, {:fcall, "cos", [vari: "x"]}, {:numb, -1, 1}},
+           {:vari, "g"} => {:fcall, "sin", [vari: "x"]}
+         }},
+        {:ok,
+         %{
+           {:vari, "f"} => {:fcall, "sin", [vari: "x"]},
+           {:vari, "g"} => {:elev, {:fcall, "cos", [vari: "x"]}, {:minus, {:numb, 1, 1}}}
+         }},
+        {:ok,
+         %{
+           {:vari, "f"} => {:fcall, "sin", [vari: "x"]},
+           {:vari, "g"} => {:elev, {:fcall, "cos", [vari: "x"]}, {:numb, -1, 1}}
+         }},
+        {:ok,
+         %{
+           {:vari, "f"} => {:numb, 1, 1},
+           {:vari, "g"} =>
+             {{:m, :mult},
+              [
+                {:elev, {:fcall, "cos", [vari: "x"]}, {:numb, -1, 1}},
                 {:fcall, "sin", [vari: "x"]}
-              },
-              {:fcall, "sin", [vari: "x"]}
-            ]
-          }
-        },
-        ok: %{
-          {:vari, "f"} => {
-            :elev,
-            {:fcall, "cos", [vari: "x"]},
-            {:fcall, "sin", [vari: "x"]}
-          },
-          {:vari, "g"} => {
-            {:m, :mult},
-            [
-              {
-                :elev,
-                {:fcall, "cos", [vari: "x"]},
-                {
-                  {:m, :suma},
-                  [{:numb, -1, 1}, {:minus, {:fcall, "sin", [vari: "x"]}}]
-                }
-              },
-              {:fcall, "sin", [vari: "x"]}
-            ]
-          }
-        },
-        ok: %{
-          {:vari, "f"} => {
-            :elev,
-            {:fcall, "cos", [vari: "x"]},
-            {:numb, -1, 1}
-          },
-          {:vari, "g"} => {:fcall, "sin", [vari: "x"]}
-        },
-        ok: %{
-          {:vari, "f"} => {:fcall, "sin", [vari: "x"]},
-          {:vari, "g"} => {
-            :elev,
-            {:fcall, "cos", [vari: "x"]},
-            {:numb, -1, 1}
-          }
-        },
-        ok: %{
-          {:vari, "f"} => {:numb, 1, 1},
-          {:vari, "g"} => {
-            {:m, :mult},
-            [{:elev, {:fcall, "cos", [vari: "x"]}, {:numb, -1, 1}}, {:fcall, "sin", [vari: "x"]}]
-          }
-        }
+              ]}
+         }}
       ]
     )
   end
@@ -291,140 +270,151 @@ defmodule PatternTest do
 
   test "Pattern 09" do
     assert match("a*b+a*c", "x/((1-x^2)^0.5)+x*((1-x^2)^0.5)/((-1+x^2))", %{}) == [
-             ok: %{
-               {:vari, "a"} => {:vari, "x"},
-               {:vari, "b"} =>
-                 {{:m, :mult},
-                  [
-                    {:elev,
-                     {{:m, :suma},
-                      [{:numb, 1, 1}, {:minus, {:elev, {:vari, "x"}, {:numb, 2, 1}}}]},
-                     {:numb, 1, 2}},
-                    {:elev, {{:m, :suma}, [{:numb, -1, 1}, {:elev, {:vari, "x"}, {:numb, 2, 1}}]},
-                     {:numb, -1, 1}}
-                  ]},
-               {:vari, "c"} =>
-                 {:elev,
-                  {{:m, :suma}, [{:numb, 1, 1}, {:minus, {:elev, {:vari, "x"}, {:numb, 2, 1}}}]},
-                  {:numb, -1, 2}}
-             },
-             ok: %{
-               {:vari, "a"} => {:vari, "x"},
-               {:vari, "b"} =>
-                 {:elev,
-                  {{:m, :suma}, [{:numb, 1, 1}, {:minus, {:elev, {:vari, "x"}, {:numb, 2, 1}}}]},
-                  {:numb, -1, 2}},
-               {:vari, "c"} =>
-                 {{:m, :mult},
-                  [
-                    {:elev,
-                     {{:m, :suma},
-                      [{:numb, 1, 1}, {:minus, {:elev, {:vari, "x"}, {:numb, 2, 1}}}]},
-                     {:numb, 1, 2}},
-                    {:elev, {{:m, :suma}, [{:numb, -1, 1}, {:elev, {:vari, "x"}, {:numb, 2, 1}}]},
-                     {:numb, -1, 1}}
-                  ]}
-             },
-             ok: %{
-               {:vari, "a"} => {:numb, 1, 1},
-               {:vari, "b"} =>
-                 {{:m, :mult},
-                  [
-                    {:elev,
-                     {{:m, :suma},
-                      [{:numb, 1, 1}, {:minus, {:elev, {:vari, "x"}, {:numb, 2, 1}}}]},
-                     {:numb, -1, 2}},
-                    {:vari, "x"}
-                  ]},
-               {:vari, "c"} =>
-                 {{:m, :mult},
-                  [
-                    {:elev,
-                     {{:m, :suma},
-                      [{:numb, 1, 1}, {:minus, {:elev, {:vari, "x"}, {:numb, 2, 1}}}]},
-                     {:numb, 1, 2}},
-                    {:elev, {{:m, :suma}, [{:numb, -1, 1}, {:elev, {:vari, "x"}, {:numb, 2, 1}}]},
-                     {:numb, -1, 1}},
-                    {:vari, "x"}
-                  ]}
-             },
-             ok: %{
-               {:vari, "a"} => {:numb, 1, 1},
-               {:vari, "b"} =>
-                 {{:m, :mult},
-                  [
-                    {:elev,
-                     {{:m, :suma},
-                      [{:numb, 1, 1}, {:minus, {:elev, {:vari, "x"}, {:numb, 2, 1}}}]},
-                     {:numb, 1, 2}},
-                    {:elev, {{:m, :suma}, [{:numb, -1, 1}, {:elev, {:vari, "x"}, {:numb, 2, 1}}]},
-                     {:numb, -1, 1}},
-                    {:vari, "x"}
-                  ]},
-               {:vari, "c"} =>
-                 {{:m, :mult},
-                  [
-                    {:elev,
-                     {{:m, :suma},
-                      [{:numb, 1, 1}, {:minus, {:elev, {:vari, "x"}, {:numb, 2, 1}}}]},
-                     {:numb, -1, 2}},
-                    {:vari, "x"}
-                  ]}
-             },
-             ok: %{
-               {:vari, "a"} => {:numb, 1, 1},
-               {:vari, "b"} =>
+      ok: %{
+        {:vari, "a"} => {:vari, "x"},
+        {:vari, "b"} => {:minus,
+         {{:m, :mult},
+          [
+            {:elev,
+             {{:m, :suma},
+              [{:numb, 1, 1}, {:minus, {:elev, {:vari, "x"}, {:numb, 2, 1}}}]},
+             {:numb, 1, 2}},
+            {:elev,
+             {:minus,
+              {{:m, :suma}, [{:numb, -1, 1}, {:elev, {:vari, "x"}, {:numb, 2, 1}}]}},
+             {:numb, -1, 1}}
+          ]}},
+        {:vari, "c"} => {:elev,
+         {{:m, :suma},
+          [{:numb, 1, 1}, {:minus, {:elev, {:vari, "x"}, {:numb, 2, 1}}}]},
+         {:numb, -1, 2}}
+      },
+      ok: %{
+        {:vari, "a"} => {:vari, "x"},
+        {:vari, "b"} => {:elev,
+         {{:m, :suma},
+          [{:numb, 1, 1}, {:minus, {:elev, {:vari, "x"}, {:numb, 2, 1}}}]},
+         {:numb, -1, 2}},
+        {:vari, "c"} => {:minus,
+         {{:m, :mult},
+          [
+            {:elev,
+             {{:m, :suma},
+              [{:numb, 1, 1}, {:minus, {:elev, {:vari, "x"}, {:numb, 2, 1}}}]},
+             {:numb, 1, 2}},
+            {:elev,
+             {:minus,
+              {{:m, :suma}, [{:numb, -1, 1}, {:elev, {:vari, "x"}, {:numb, 2, 1}}]}},
+             {:numb, -1, 1}}
+          ]}}
+      },
+      ok: %{
+        {:vari, "a"} => {:numb, 1, 1},
+        {:vari, "b"} => {:minus,
+         {{:m, :mult},
+          [
+            {:elev,
+             {{:m, :suma},
+              [{:numb, 1, 1}, {:minus, {:elev, {:vari, "x"}, {:numb, 2, 1}}}]},
+             {:numb, 1, 2}},
+            {:elev,
+             {:minus,
+              {{:m, :suma}, [{:numb, -1, 1}, {:elev, {:vari, "x"}, {:numb, 2, 1}}]}},
+             {:numb, -1, 1}},
+            {:vari, "x"}
+          ]}},
+        {:vari, "c"} => {{:m, :mult},
+         [
+           {:elev,
+            {{:m, :suma},
+             [{:numb, 1, 1}, {:minus, {:elev, {:vari, "x"}, {:numb, 2, 1}}}]},
+            {:numb, -1, 2}},
+           {:vari, "x"}
+         ]}
+      },
+      ok: %{
+        {:vari, "a"} => {:numb, 1, 1},
+        {:vari, "b"} => {{:m, :mult},
+         [
+           {:elev,
+            {{:m, :suma},
+             [{:numb, 1, 1}, {:minus, {:elev, {:vari, "x"}, {:numb, 2, 1}}}]},
+            {:numb, -1, 2}},
+           {:vari, "x"}
+         ]},
+        {:vari, "c"} => {:minus,
+         {{:m, :mult},
+          [
+            {:elev,
+             {{:m, :suma},
+              [{:numb, 1, 1}, {:minus, {:elev, {:vari, "x"}, {:numb, 2, 1}}}]},
+             {:numb, 1, 2}},
+            {:elev,
+             {:minus,
+              {{:m, :suma}, [{:numb, -1, 1}, {:elev, {:vari, "x"}, {:numb, 2, 1}}]}},
+             {:numb, -1, 1}},
+            {:vari, "x"}
+          ]}}
+      },
+      ok: %{
+        {:vari, "a"} => {:numb, 1, 1},
+        {:vari, "b"} => {{:m, :suma},
+         [
+           {:minus,
+            {{:m, :mult},
+             [
+               {:elev,
+                {{:m, :suma},
+                 [{:numb, 1, 1}, {:minus, {:elev, {:vari, "x"}, {:numb, 2, 1}}}]},
+                {:numb, 1, 2}},
+               {:elev,
+                {:minus,
                  {{:m, :suma},
-                  [
-                    {{:m, :mult},
-                     [
-                       {:elev,
-                        {{:m, :suma},
-                         [{:numb, 1, 1}, {:minus, {:elev, {:vari, "x"}, {:numb, 2, 1}}}]},
-                        {:numb, 1, 2}},
-                       {:elev,
-                        {{:m, :suma}, [{:numb, -1, 1}, {:elev, {:vari, "x"}, {:numb, 2, 1}}]},
-                        {:numb, -1, 1}},
-                       {:vari, "x"}
-                     ]},
-                    {{:m, :mult},
-                     [
-                       {:elev,
-                        {{:m, :suma},
-                         [{:numb, 1, 1}, {:minus, {:elev, {:vari, "x"}, {:numb, 2, 1}}}]},
-                        {:numb, -1, 2}},
-                       {:vari, "x"}
-                     ]}
-                  ]},
-               {:vari, "c"} => {:numb, 0, 1}
-             },
-             ok: %{
-               {:vari, "a"} => {:numb, 1, 1},
-               {:vari, "b"} => {:numb, 0, 1},
-               {:vari, "c"} =>
+                  [{:numb, -1, 1}, {:elev, {:vari, "x"}, {:numb, 2, 1}}]}},
+                {:numb, -1, 1}},
+               {:vari, "x"}
+             ]}},
+           {{:m, :mult},
+            [
+              {:elev,
+               {{:m, :suma},
+                [{:numb, 1, 1}, {:minus, {:elev, {:vari, "x"}, {:numb, 2, 1}}}]},
+               {:numb, -1, 2}},
+              {:vari, "x"}
+            ]}
+         ]},
+        {:vari, "c"} => {:numb, 0, 1}
+      },
+      ok: %{
+        {:vari, "a"} => {:numb, 1, 1},
+        {:vari, "b"} => {:numb, 0, 1},
+        {:vari, "c"} => {{:m, :suma},
+         [
+           {:minus,
+            {{:m, :mult},
+             [
+               {:elev,
+                {{:m, :suma},
+                 [{:numb, 1, 1}, {:minus, {:elev, {:vari, "x"}, {:numb, 2, 1}}}]},
+                {:numb, 1, 2}},
+               {:elev,
+                {:minus,
                  {{:m, :suma},
-                  [
-                    {{:m, :mult},
-                     [
-                       {:elev,
-                        {{:m, :suma},
-                         [{:numb, 1, 1}, {:minus, {:elev, {:vari, "x"}, {:numb, 2, 1}}}]},
-                        {:numb, 1, 2}},
-                       {:elev,
-                        {{:m, :suma}, [{:numb, -1, 1}, {:elev, {:vari, "x"}, {:numb, 2, 1}}]},
-                        {:numb, -1, 1}},
-                       {:vari, "x"}
-                     ]},
-                    {{:m, :mult},
-                     [
-                       {:elev,
-                        {{:m, :suma},
-                         [{:numb, 1, 1}, {:minus, {:elev, {:vari, "x"}, {:numb, 2, 1}}}]},
-                        {:numb, -1, 2}},
-                       {:vari, "x"}
-                     ]}
-                  ]}
-             }
-           ]
+                  [{:numb, -1, 1}, {:elev, {:vari, "x"}, {:numb, 2, 1}}]}},
+                {:numb, -1, 1}},
+               {:vari, "x"}
+             ]}},
+           {{:m, :mult},
+            [
+              {:elev,
+               {{:m, :suma},
+                [{:numb, 1, 1}, {:minus, {:elev, {:vari, "x"}, {:numb, 2, 1}}}]},
+               {:numb, -1, 2}},
+              {:vari, "x"}
+            ]}
+         ]}
+      }
+    ]
+
   end
 end
