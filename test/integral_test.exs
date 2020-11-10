@@ -32,11 +32,11 @@ defmodule IntegralTest do
       "acos",
       "atan",
       "sinh",
-      "cosh"
-      # "atanh",
-      # "asinh"
-      # "acosh",
-      # "atanh"
+      "cosh",
+      "tanh",
+      "asinh",
+      "acosh",
+      "atanh",
     ]
     |> Enum.map(fn name ->
       integ_fun = "$#{name}(x),x"
