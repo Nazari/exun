@@ -43,10 +43,6 @@ defmodule ExunTest do
              "133.60013333333333[m^2/s^2]"
   end
 
-  test "Sort of tree" do
-    assert Exun.eval2str("(1+a)*(a+1)/(a+1)^3") == "1/(1+a)"
-  end
-
   test "Convert unit" do
     assert Exun.Unit.convert("70[mi/h]", "Km/h") == "112.65408000000001[Km/h]"
   end
