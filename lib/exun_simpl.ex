@@ -7,6 +7,8 @@ defmodule Exun.Simpl do
   @zero {:numb, 0, 1}
   @uno {:numb, 1, 1}
   @muno {:numb, -1, 1}
+  @dos {:numb, 2, 1}
+
   @moduledoc """
   Simplify expressions
   """
@@ -31,6 +33,12 @@ defmodule Exun.Simpl do
   """
   def normalize(ast) do
     case ast do
+      {{:m, :suma}, [unique]} ->
+        normalize(unique)
+
+      {{:m, :mult}, [unique]} ->
+        normalize(unique)
+
       {{:m, :mult}, list} ->
         {newlist, count_negs} =
           Enum.map(list, &normalize/1)
@@ -51,14 +59,17 @@ defmodule Exun.Simpl do
         end
 
       {{:m, :suma}, list} ->
-        list = list |> Enum.map(&normalize/1) |> Enum.sort(&E.smm/2)
-        [h | _] = list
+        {{:m, :suma}, list |> Enum.map(&normalize/1) |> Enum.sort(&E.smm/2)}
 
-        cond do
-          # First component of list must be positive
-          !signof(h) -> {:minus, chsign({{:m, :suma}, list})}
-          true -> {{:m, :suma}, list}
+      {:minus, {{:m, :suma}, list = [h | _]}} ->
+        if(!signof(h)) do
+          {{:m, :suma}, Enum.map(list, fn el -> chsign(normalize(el)) end)}
+        else
+          {:minus, {{:m, :suma}, Enum.map(list, &normalize/1)}}
         end
+
+      {:minus, {:minus, a}} ->
+        normalize(a)
 
       {:minus, a} ->
         {:minus, normalize(a)}
@@ -177,7 +188,7 @@ defmodule Exun.Simpl do
             # Only one element, replace {{}:m,op},lst} with it
             1 -> List.first(lst)
             # Let's play, try to extract commons from list
-            _ -> isolate({{:m, op}, lst})
+            _ -> cfactor({{:m, op}, lst})
           end
         end
 
@@ -186,116 +197,6 @@ defmodule Exun.Simpl do
 
       tree ->
         tree
-    end
-  end
-
-  def isolate({{:m, op}, list}) do
-    best_match =
-      Enum.map(list, fn pivot ->
-        coefs =
-          Enum.map(list, fn ast ->
-            case {op, pivot, ast} do
-              {op, a, a} when op in [:suma, :mult] ->
-                {:ok, pivot, @uno}
-
-              {op, {:minus, a}, a} when op in [:suma, :mult] ->
-                {:ok, pivot, @muno}
-
-              {op, {:elev, a, e1}, {:elev, a, e2}} ->
-                case op do
-                  :suma -> {:err, nil, ast}
-                  :mult -> {:ok, pivot, mk(divi(e2, e1))}
-                end
-
-              {op, a, {:elev, a, b}} ->
-                case op do
-                  :suma -> {:ok, pivot, mk({:elev, a, mk(rest(b, @uno))})}
-                  :mult -> {:ok, pivot, b}
-                end
-
-              {:suma, a, {{:m, :mult}, lst}} ->
-                if a in lst,
-                  do: {:ok, pivot, {{:m, :mult}, lst |> List.delete(a)}},
-                  else: {:err, nil, ast}
-
-              _ ->
-                {:err, nil, ast}
-            end
-          end)
-
-        # Count matches for pivot
-        matches = Enum.count(coefs, fn {res, _, _} -> res == :ok end)
-        {matches, coefs}
-      end)
-      |> Enum.reject(fn {matches, _} -> matches < 2 end)
-      |> Enum.sort(fn {e1, _}, {e2, _} -> e1 < e2 end)
-      |> List.first()
-
-    case best_match do
-      {_, coefs} ->
-        {pivot, iso, notiso} =
-          Enum.reduce(coefs, {nil, [], []}, fn item, {piv, iso, noiso} ->
-            case item do
-              {:ok, pivot, coef} ->
-                {pivot, [coef | iso], noiso}
-
-              {:err, _, ast} ->
-                {piv, iso, [ast | noiso]}
-            end
-          end)
-
-        sum_coefs = mk({{:m, :suma}, iso})
-
-        case {op, length(iso), length(notiso)} do
-          {_, 0, 1} ->
-            List.first(notiso)
-
-          {:suma, 0, 0} ->
-            @zero
-
-          {:suma, 1, 0} ->
-            {{:m, :mult}, [pivot, List.first(iso)]}
-
-          {:suma, 0, 1} ->
-            List.first(notiso)
-
-          {:suma, 1, 1} ->
-            {{:m, :suma}, [{{:m, :mult}, [pivot, List.first(iso)]}, List.first(notiso)]}
-
-          {:suma, _, 0} ->
-            {{:m, :mult}, [pivot, sum_coefs]}
-
-          {:suma, 0, _} ->
-            {{:m, :suma}, notiso}
-
-          {:suma, _, _} ->
-            {{:m, :suma}, [{{:m, :mult}, [pivot, sum_coefs]} | notiso]}
-
-          {:mult, 0, 0} ->
-            @uno
-
-          {:mult, 1, 0} ->
-            {:elev, pivot, List.first(iso)}
-
-          {:mult, 0, 1} ->
-            List.first(notiso)
-
-          {:mult, 1, 1} ->
-            {{:m, :mult}, [{:elev, pivot, List.first(iso)}, List.first(notiso)]}
-
-          {:mult, _, 0} ->
-            {:elev, pivot, sum_coefs}
-
-          {:mult, 0, _} ->
-            {{:m, :mult}, notiso}
-
-          {:mult, _, _} ->
-            {{:m, :mult}, [{:elev, pivot, sum_coefs} | notiso]}
-        end
-        |> mk()
-
-      nil ->
-        {{:m, op}, list}
     end
   end
 
@@ -340,7 +241,7 @@ defmodule Exun.Simpl do
   end
 
   @doc """
-  Reduce literals to une unit or one constant if possible
+  Reduce literals to one unit or one constant if possible
   """
   def collect_literals({{:m, op}, lst}) do
     unity = if op == :suma, do: @zero, else: @uno
@@ -406,6 +307,7 @@ defmodule Exun.Simpl do
       other ->
         {:minus, other}
     end
+    |> normalize()
   end
 
   @doc """
@@ -431,6 +333,7 @@ defmodule Exun.Simpl do
       other ->
         {:elev, other, @muno}
     end
+    |> normalize()
   end
 
   @doc """
@@ -504,21 +407,20 @@ defmodule Exun.Simpl do
   def exp(a, b), do: {:fcall, "exp", [a, b]}
 
   defp mcompose(op, a, b) do
-    C.coll(
-      case {a, b} do
-        {{{:m, ^op}, l1}, {{:m, ^op}, l2}} ->
-          {{:m, op}, l1 ++ l2}
+    case {a, b} do
+      {{{:m, ^op}, l1}, {{:m, ^op}, l2}} ->
+        {{:m, op}, l1 ++ l2}
 
-        {{{:m, ^op}, l1}, _} ->
-          {{:m, op}, [b | l1]}
+      {{{:m, ^op}, l1}, _} ->
+        {{:m, op}, [b | l1]}
 
-        {_, {{:m, ^op}, l2}} ->
-          {{:m, op}, [a | l2]}
+      {_, {{:m, ^op}, l2}} ->
+        {{:m, op}, [a | l2]}
 
-        _ ->
-          {{:m, op}, [a, b]}
-      end
-    )
+      _ ->
+        {{:m, op}, [a, b]}
+    end
+    |> normalize
   end
 
   @doc """
@@ -583,5 +485,166 @@ defmodule Exun.Simpl do
 
   def is_gtzero({:numb, n, d}) do
     if (n > 0 and d > 0) or (n < 0 and d < 0), do: true, else: false
+  end
+
+  @doc """
+  Extract common factors from mult
+  """
+  def cfactor({{:m, op}, lst}) do
+    case Enum.reduce(lst, [], fn pivot, nl ->
+           remain = lst |> List.delete(pivot)
+
+           nl ++
+             Enum.reduce(remain, [], fn opand, subs ->
+               case subst(op, pivot, opand) do
+                 {:ok, s} -> [{pivot, opand, s} | subs]
+                 _ -> subs
+               end
+             end)
+         end) do
+      [] ->
+        {{:m, op}, lst}
+
+      [{p, o, s} | _] ->
+        {{:m, op}, [s | lst |> List.delete(p) |> List.delete(o)]}
+        |> normalize()
+    end
+  end
+
+  def subst(op, pivot, opand) do
+    case {op, pivot, opand} do
+      {:suma, a, a} ->
+        {:ok, mult(@dos, a)}
+
+      {:suma, a, {:minus, a}} ->
+        {:ok, @zero}
+
+      {:suma, {:elev, base, e1}, {:elev, base, e2}} ->
+        {:ok, mult({:elev, base, e2}, suma(@uno, {:elev, base, rest(e1, e2)}))}
+
+      {:suma, {:elev, base, e1}, {:elev, {:minus, base}, e2}} ->
+        {:ok, mult({:elev, base, e2}, suma(@muno, {:elev, base, rest(e1, e2)}))}
+
+      {:suma, base, {:elev, base, exp}} ->
+        {:ok, mult(base, suma(@uno, elev(base, rest(exp, @uno))))}
+
+      {:suma, {:minus, base}, {:elev, base, exp}} ->
+        {:ok, mult(base, suma(@muno, elev(base, rest(exp, @uno))))}
+
+      {:suma, base, {:minus, {:elev, base, exp}}} ->
+        {:ok, mult(base, suma(@uno, {:minus, elev(base, rest(exp, @uno))}))}
+
+      {:suma, {:minus, {{:m, :mult}, p1}}, {:minus, {{:m, :mult}, p2}}} ->
+        sumofmults(false, p1, false, p2)
+
+      {:suma, {{:m, :mult}, p1}, {:minus, {{:m, :mult}, p2}}} ->
+        sumofmults(true, p1, false, p2)
+
+      {:suma, {{:m, :mult}, p1}, {{:m, :mult}, p2}} ->
+        sumofmults(true, p1, true, p2)
+
+      {:suma, a, {{:m, :mult}, l}} ->
+        if a in l do
+          extract = l |> List.delete(a)
+          {:ok, {{:m, :mult}, [a, suma(@uno, {{:m, :mult}, extract})]}}
+        else
+          {:err, nil}
+        end
+
+      {:mult, a, a} ->
+        {:ok, elev(a, @dos)}
+
+      {:mult, a, {:minus, a}} ->
+        {:ok, {:minus, elev(a, @dos)}}
+
+      {:mult, {:elev, base, e1}, {:elev, base, e2}} ->
+        {:ok, {:elev, base, suma(e1, e2)}}
+
+      {:mult, base, {:elev, base, exp}} ->
+        {:ok, elev(base, suma(exp, @uno))}
+
+      _ ->
+        {:err, nil}
+    end
+  end
+
+  defp sumofmults(s1, p1, s2, p2) do
+    allsubst =
+      Enum.reduce(p1, [], fn op1, ac1 ->
+        remainl1 = List.delete(p1, op1)
+
+        Enum.reduce(p2, [], fn op2, ac2 ->
+          case {op1, op2} do
+            {a, a} ->
+              remainl2 = List.delete(p2, op2)
+              m1 = {{:m, :mult}, remainl1}
+              m2 = {{:m, :mult}, remainl2}
+
+              coefs =
+                case {s1, s2} do
+                  {true, true} -> suma(m1, m2)
+                  {true, false} -> rest(m1, m2)
+                  {false, false} -> {:minus, suma(m1, m2)}
+                end
+
+              [{:ok, mult(a, coefs)} | ac2]
+
+            {a, {:minus, a}} ->
+              remainl2 = List.delete(p2, op2)
+              m1 = {{:m, :mult}, remainl1}
+              m2 = {{:m, :mult}, remainl2}
+
+              coefs =
+                case {s1, s2} do
+                  {true, true} -> suma(m1, m2)
+                  {true, false} -> rest(m1, m2)
+                  {false, false} -> {:minus, suma(m1, m2)}
+                end
+
+              [{:ok, minus(mult(a, coefs))} | ac2]
+
+            {{:elev, base, e1}, {:elev, base, e2}} ->
+              remainl2 = List.delete(p2, op2)
+              aux1 = [{:elev, base, rest(e2, e1)} | remainl2]
+
+              coefs =
+                case {s1, s2} do
+                  {true, true} -> {{:m, :suma}, remainl1 ++ aux1}
+                  {true, false} -> rest({{:m, :suma}, remainl1}, {{:m, :suma}, aux1})
+                  {false, false} -> {:minus, {{:m, :suma}, remainl1 ++ aux1}}
+                end
+
+              [
+                {:ok, mult({:elev, base, e1}, coefs)}
+                | ac2
+              ]
+
+            {base, {:elev, base, exp}} ->
+              remainl2 = List.delete(p2, op2)
+              aux1 = [{:elev, base, rest(exp, @uno)} | remainl2]
+
+              coefs =
+                case {s1, s2} do
+                  {true, true} -> {{:m, :suma}, [@uno | aux1]}
+                  {true, false} -> rest(@uno, {{:m, :suma}, aux1})
+                  {false, false} -> {:minus, {{:m, :suma}, [@uno | aux1]}}
+                end
+
+              [{:ok, mult(base, coefs)} | ac2]
+
+            _ ->
+              ac2
+          end
+        end) ++
+          ac1
+      end)
+
+    case allsubst do
+      [] ->
+        {:err, nil}
+
+      _ ->
+        List.first(allsubst)
+    end
   end
 end
