@@ -366,7 +366,7 @@ defmodule Exun.Unit do
 
   defp to_si2({a, b}, _pcontext, _curr_exp, _exps) do
     # IO.inspect({:unit, {:numb, a}, b}, label: "For unit:")
-    throw("Invalid unit definition: " <> U.tostr({:unit, {:numb, a, 1}, b}))
+    throw("Invalid unit definition: " <> U.tostr({:unit, a, b}))
   end
 
   defp get_def(name, pcontext) do
@@ -411,6 +411,10 @@ defmodule Exun.Unit do
   @doc """
   Converts unit to International System
   """
+  def toSI({:unit, un, {:numb, _, _}}) do
+    S.mkrec(un)
+  end
+
   def toSI({:unit, uv, ut}) do
     {r, e} = to_si2({:unit, C.coll(uv), C.coll(ut)})
 

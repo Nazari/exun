@@ -71,6 +71,11 @@ defmodule Exun.Pattern do
     end
   end
 
+  def match(taast, expr) when is_binary(taast) and is_tuple(expr) do
+    aast = Exun.new(taast)
+    match_ast(aast.ast,expr)
+  end
+
   def match(taast, texpr, context, tconditions \\ [], transf \\ true) do
     aast = Exun.new(taast).ast
     expr = Exun.new(texpr, context).ast

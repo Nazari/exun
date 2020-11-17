@@ -1,5 +1,4 @@
 defmodule Exun.Simpl do
-  alias Exun.Collect, as: C
   alias Exun.Unit, as: Un
   alias Exun.Eq, as: E
   require Integer
@@ -17,7 +16,10 @@ defmodule Exun.Simpl do
   For a more agressive simplify, use Exun.Collect.coll
   """
   def mkrec(ast) when is_tuple(ast) do
-    nast = ast |> normalize |> mk
+    nast =
+      ast
+      |> normalize
+      |> mk
 
     if E.eq(nast, ast),
       do: nast,
@@ -33,6 +35,12 @@ defmodule Exun.Simpl do
   """
   def normalize(ast) do
     case ast do
+      {:unit, value, {:numb, 1, 1}} ->
+        normalize(value)
+
+      {:unit, value, units} ->
+        {:unit, normalize(value), units}
+
       {{:m, :suma}, [unique]} ->
         normalize(unique)
 
@@ -79,6 +87,9 @@ defmodule Exun.Simpl do
         base = normalize(base)
 
         cond do
+          num == @zero ->
+            @uno
+
           is_par(num) and is_gtzero(num) and !signof(base) ->
             {:elev, chsign(base), num}
 
@@ -152,14 +163,13 @@ defmodule Exun.Simpl do
         {:unit, mk({:elev, uv, expon}), mk({:elev, ut, expon})}
 
       {:fcall, name, lst} ->
-        args = Enum.map(lst, &C.coll/1)
-        Exun.Fun.fcall(name, args)
+        Exun.Fun.fcall(name, lst)
 
       {:deriv, f, v} ->
-        Exun.Der.deriv(mk(f), v)
+        Exun.Der.deriv(f, v)
 
       {:integ, f, v = {:vari, _}} ->
-        Exun.Integral.integ({:integ, mk(f), v})
+        Exun.Integral.integ({:integ, f, v})
 
       {{:m, op}, lst} ->
         # Simplify each component of the list
@@ -261,8 +271,16 @@ defmodule Exun.Simpl do
 
               case op do
                 :mult ->
-                  sou = {:unit, mult(acu_nd, u_nd), mult(acu_t, u_t)}
-                  {nd_ac, sou, rest}
+                  number_unit = mkrec(mult(acu_nd, u_nd))
+                  tree_unit = mkrec(mult(acu_t, u_t))
+
+                  case tree_unit do
+                    {:numb, _, _} ->
+                      {ufc.(nd_ac, number_unit), nil, rest}
+
+                    _ ->
+                      {nd_ac, {:unit, number_unit, tree_unit}, rest}
+                  end
 
                 :suma ->
                   sou =
@@ -284,7 +302,7 @@ defmodule Exun.Simpl do
       {^unity, nil} -> lst
       {^unity, unit} -> [unit | lst]
       {number, nil} -> [number | lst]
-      {nd, {:unit, und, tree}} -> [{:unit, mult(nd, und), tree} | lst]
+      {nd, {:unit, und, tree}} -> [{:unit, mult(nd, und), mk(tree)} | lst]
     end
 
     # |> IO.inspect(label: "final unit,number,lst")
@@ -605,13 +623,22 @@ defmodule Exun.Simpl do
 
             {{:elev, base, e1}, {:elev, base, e2}} ->
               remainl2 = List.delete(p2, op2)
-              aux1 = [{:elev, base, rest(e2, e1)} | remainl2]
+
+              {e1, remainl1, e2, remainl2} =
+                case gt(e2, e1) do
+                  {:ok, true} -> {e1, remainl1, e2, remainl2}
+                  {:unknown, _} -> {e1, remainl1, e2, remainl2}
+                  {:ok, false} -> {e2, remainl2, e1, remainl1}
+                end
+
+              aux1 = {{:m, :mult}, remainl1}
+              aux2 = {{:m, :mult}, [{:elev, base, rest(e2, e1)} | remainl2]}
 
               coefs =
                 case {s1, s2} do
-                  {true, true} -> {{:m, :suma}, remainl1 ++ aux1}
-                  {true, false} -> rest({{:m, :suma}, remainl1}, {{:m, :suma}, aux1})
-                  {false, false} -> {:minus, {{:m, :suma}, remainl1 ++ aux1}}
+                  {true, true} -> suma(aux1, aux2)
+                  {true, false} -> rest(aux1, aux2)
+                  {false, false} -> {:minus, suma(aux1, aux2)}
                 end
 
               [
@@ -646,5 +673,17 @@ defmodule Exun.Simpl do
       _ ->
         List.first(allsubst)
     end
+  end
+
+  defp gt({:numb, n1, d1}, {:numb, n2, d2}) do
+    {:ok, n1 / d1 > n2 / d2}
+  end
+
+  defp gt({:elev, a, e1}, {:numb, a, e2}) do
+    gt(e1, e2)
+  end
+
+  defp gt(_, _) do
+    {:unknown, nil}
   end
 end

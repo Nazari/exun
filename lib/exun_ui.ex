@@ -83,7 +83,8 @@ defmodule Exun.UI do
     {t, p, d, s} = show(a)
     # Xor sign with returned sign s
     ns = not s
-    {withpar(p, 200, t), p, d, ns}
+    {newp, newtext} = withpar(p, 200, t)
+    {newtext, newp, d, ns}
   end
 
   def show({:elev, b, {:numb, nn, nd}}) when nn / nd < 0 do
@@ -104,12 +105,12 @@ defmodule Exun.UI do
     {tb, pb, d, s} = show(b)
     {_, pe, _, _} = show(e)
     te = tostr(e)
-    tbase = withpar(pb, 200, tb)
-    texpo = withpar(pe, 200, te)
+    {pbase,tbase} = withpar(pb, 200, tb)
+    {_,texpo} = withpar(pe, 200, te)
 
     cond do
-      e == @uno -> {"#{tbase}", pb, d, s}
-      true -> {"#{tbase}^#{texpo}", pb, d, s}
+      e == @uno -> {"#{tbase}", pbase, d, s}
+      true -> {"#{tbase}^#{texpo}", pbase, d, s}
     end
   end
 
@@ -117,15 +118,15 @@ defmodule Exun.UI do
     {tf, pf, d, s} = show(f)
     tv = tostr(v)
 
-    tderi = withpar(pf, 200, tf)
-    {"#{tderi}'#{tv}", pf, d, s}
+    {pderi,tderi} = withpar(pf, 200, tf)
+    {"#{tderi}'#{tv}", pderi, d, s}
   end
 
   def show({:integ, f, v}) do
     {tf, pf, d, s} = show(f)
     tv = tostr(v)
-    tfinteg = withpar(pf, 200, tf)
-    {"$#{tfinteg},#{tv}", pf, d, s}
+    {pfinteg,tfinteg} = withpar(pf, 200, tf)
+    {"$#{tfinteg},#{tv}", pfinteg, d, s}
   end
 
   def show({:fcall, n, a}) do
@@ -141,7 +142,7 @@ defmodule Exun.UI do
       Enum.map(lst, fn el -> {el, show(el)} end)
       |> Enum.sort(&sop/2)
       |> Enum.reduce("", fn {_, {t, p, d, s}}, atxt ->
-        wp = withpar(p, pri, t)
+        {_,wp} = withpar(p, pri, t)
 
         if atxt == "" do
           if s, do: "-" <> wp, else: wp
@@ -150,11 +151,11 @@ defmodule Exun.UI do
 
           cond do
             d and s and suma -> "#{atxt}-1/#{wp}"
-            d and s and !suma -> "#{atxt}/-#{wp}"
+            d and s and !suma -> "-#{atxt}/#{wp}"
             d and !s and suma -> "#{atxt}+1/#{wp}"
             d and !s and !suma -> "#{atxt}/#{wp}"
             !d and s and suma -> "#{atxt}-#{wp}"
-            !d and s and !suma -> "#{atxt}*-#{wp}"
+            !d and s and !suma -> "-#{atxt}*#{wp}"
             !d and !s and suma -> "#{atxt}+#{wp}"
             !d and !s and !suma -> "#{atxt}*#{wp}"
           end
@@ -190,5 +191,11 @@ defmodule Exun.UI do
     end
   end
 
-  defp withpar(p, pmax, t), do: if(p < pmax, do: "(#{t})", else: "#{t}")
+  defp withpar(p, pmax, t) do
+    if p < pmax do
+      {pmax, "(#{t})"}
+    else
+      {p, "#{t}"}
+    end
+  end
 end

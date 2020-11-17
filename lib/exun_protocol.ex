@@ -7,9 +7,9 @@ end
 defimpl Inspect, for: Exun do
   def inspect(%Exun{ast: val, pc: map}, _opts) do
     tctx = if map != nil,
-      do: for({k, v} <- map, into: "", do: "#{Exun.UI.tostr(k)}=#{Exun.UI.tostr(v)}\n"),
+      do: for({k, v} <- map, into: "", do: "\nMap #{Exun.UI.tostr(k)}=#{Exun.UI.tostr(v)}"),
       else: ""
 
-    "#Exun #{tctx} #{Exun.UI.tostr(val)}"
+    "#Exun #{tctx}\n#{Exun.UI.tostr(val)}"
   end
 end

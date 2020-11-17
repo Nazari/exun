@@ -73,6 +73,14 @@ defmodule Exun do
   @doc """
   Eval an ast, returns an ast(not text expression)
   """
+  def eval(%Exun{ast: tree}, pctx) do
+    eval(%Exun{ast: tree, pc: pctx})
+  end
+
+  def eval(tree, pctx) do
+    eval(%Exun{ast: tree, pc: pctx})
+  end
+
   def eval(%Exun{ast: tree, pc: pctx}) do
     case tree do
       {:error, {line, _app, list}} ->
@@ -85,7 +93,13 @@ defmodule Exun do
             {k, C.coll(v)}
           end
 
-        %Exun{ast: tree |> replace(pctx) |> S.mkrec(), pc: pctx}
+        %Exun{
+          ast:
+            tree
+            |> replace(pctx)
+            |> S.mkrec(),
+          pc: pctx
+        }
     end
   end
 

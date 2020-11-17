@@ -65,10 +65,16 @@ defmodule Exun.Collect do
         {:minus, expand(a)}
 
       {:elev, a, {:numb, n, d}} when n > 0 and d == 1 and floor(n) == n ->
-        {{:m, :mult}, List.duplicate(a, floor(n))}
+        case a do
+          {:vari, _} -> ast
+          _ -> {{:m, :mult}, List.duplicate(a, floor(n))}
+        end
 
       {:elev, a, {:numb, n, d}} when n < -1 and d == 1 and floor(n) == n ->
-        {:elev, {{:m, :mult}, List.duplicate(a, floor(-n))}, {:numb, -1, 1}}
+        case a do
+          {:vari, _} -> ast
+          _ -> {:elev, {{:m, :mult}, List.duplicate(a, floor(-n))}, {:numb, -1, 1}}
+        end
 
       {:elev, b, e} ->
         {:elev, expand(b), expand(e)}
@@ -80,8 +86,8 @@ defmodule Exun.Collect do
         {{t, rs, cs}, list |> Enum.map(&expand/1), mr, mc}
 
       {{:m, :suma}, l} ->
-        l = Enum.map(l, &expand_rec/1)
-        {{:m, :suma}, Enum.map(l, &expand(&1))}
+        {{:m, :suma}, Enum.map(l, &expand_rec(&1))}
+
 
       {{:m, :mult}, l} ->
         l = Enum.map(l, &expand_rec/1)
