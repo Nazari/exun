@@ -72,8 +72,7 @@ defmodule Exun.Pattern do
   end
 
   def match(taast, expr) when is_binary(taast) and is_tuple(expr) do
-    aast = Exun.new(taast)
-    match_ast(aast.ast,expr)
+    match(taast, Exun.UI.tostr(expr))
   end
 
   def match(taast, texpr, context, tconditions \\ [], transf \\ true) do
@@ -285,6 +284,9 @@ defmodule Exun.Pattern do
       # We *must* check all of them,
       {a = {{:m, _op}, _l1}, expr} ->
         mmult(a, expr, map)
+
+      {{:minus, a}, {:minus, b}} ->
+        mnode(a, b, map)
 
       # General match
       {{:vari, a}, expr} ->
