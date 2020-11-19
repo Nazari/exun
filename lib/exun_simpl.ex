@@ -234,7 +234,7 @@ defmodule Exun.Simpl do
                 {sign, sublist ++ newlist}
 
               {:minus, {{:m, :mult}, sublist}} ->
-                {if(sign, do: false, else: true), sublist ++ newlist}
+                {not sign, sublist ++ newlist}
 
               other ->
                 {sign, [other | newlist]}
