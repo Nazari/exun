@@ -71,6 +71,9 @@ defmodule Exun.Pattern do
     end
   end
 
+  @doc """
+  Match pattern taast (text) with expr in tuple format
+  """
   def match(taast, expr) when is_binary(taast) and is_tuple(expr) do
     match(taast, Exun.UI.tostr(expr))
   end
@@ -177,6 +180,9 @@ defmodule Exun.Pattern do
     {res, map}
   end
 
+  @doc """
+  Apply transformations if exec is true
+  """
   def transform(expr, exec) do
     if exec do
       [
