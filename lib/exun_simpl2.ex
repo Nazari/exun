@@ -1,4 +1,4 @@
-defmodule Exun.Simpl2 do
+defmodule Exun.Simpl do
   alias Exun.Unit, as: Un
   alias Exun.Eq, as: E
   require Integer
@@ -16,14 +16,9 @@ defmodule Exun.Simpl2 do
   For a more agressive simplify, use Exun.Collect.coll
   """
   def mkrec(ast) when is_tuple(ast) do
-    nast =
-      ast
-      |> normalize
-      |> mk
-
-    if E.eq(nast, ast),
+    if E.eq(nast = mk(ast), ast),
       do: nast,
-      else: nast |> mkrec
+      else: mkrec(nast)
   end
 
   def mkrec(%Exun{ast: ast, pc: pc}) do
@@ -33,105 +28,109 @@ defmodule Exun.Simpl2 do
   @doc """
   Normalize some structs, mainly {{:m,op},l} so signs can be comparables
   """
-  def normalize(ast) do
-    case ast do
-      {:unit, value, {:numb, 1, 1}} ->
-        normalize(value)
+  def normalize({:numb, n, d}), do: mknum(n, d)
+  def normalize({:unit, value, {:numb, 1, 1}}), do: normalize(value)
+  def normalize({:unit, value, units}), do: {:unit, normalize(value), units}
+  def normalize({:elev, _, @zero}), do: @uno
+  def normalize({:elev, a, @uno}), do: a
+  def normalize({:elev, @uno, _}), do: @uno
+  def normalize({:elev, @zero, _}), do: @zero
+  def normalize({{:m, :suma}, []}), do: @zero
+  def normalize({{:m, :suma}, [unique]}), do: normalize(unique)
+  def normalize({{:m, :mult}, []}), do: @uno
+  def normalize({{:m, :mult}, [unique]}), do: normalize(unique)
+  def normalize({:minus, {:minus, a}}), do: normalize(a)
+  def normalize({:minus, @zero}), do: @zero
+  def normalize({:minus, {:numb, n, d}}), do: {:numb, -n, d}
+  def normalize({:deriv, f, v}), do: {:deriv, normalize(f), v}
+  def normalize({:integ, f, v}), do: {:integ, normalize(f), v}
+  def normalize({:fcall, name, list}), do: {:fcall, name, Enum.map(list, &normalize/1)}
 
-      {:unit, value, units} ->
-        {:unit, normalize(value), units}
+  def normalize({{:m, :suma}, list}) do
+    list = Enum.map(list, &normalize/1)
+    list = promote_sublist(:suma, list)
 
-      {{:m, :suma}, [unique]} ->
-        normalize(unique)
+    newlist =
+      Enum.reduce(list, [], fn opand, ac ->
+        add_opand(:suma, opand, {{:m, :suma}, ac})
+      end)
+      |> Enum.sort(&E.smm/2)
 
-      {{:m, :mult}, [unique]} ->
-        normalize(unique)
-
-      {{:m, :mult}, list} ->
-        {newlist, count_negs} =
-          Enum.map(list, &normalize/1)
-          |> Enum.reduce({[], 0}, fn el, {newlist, count_negs} ->
-            if !signof(el) do
-              {[chsign(el) | newlist], count_negs + 1}
-            else
-              {[el | newlist], count_negs}
-            end
-          end)
-
-        newop = {{:m, :mult}, newlist |> Enum.sort(&E.smm/2)}
-
-        if Integer.is_even(count_negs) do
-          newop
-        else
-          {:minus, newop}
-        end
-
-      {{:m, :suma}, list} ->
-        {{:m, :suma}, list |> Enum.map(&normalize/1) |> Enum.sort(&E.smm/2)}
-
-      {:minus, {{:m, :suma}, list = [h | _]}} ->
-        if(!signof(h)) do
-          {{:m, :suma}, Enum.map(list, fn el -> chsign(normalize(el)) end)}
-        else
-          {:minus, {{:m, :suma}, Enum.map(list, &normalize/1)}}
-        end
-
-      {:minus, {:minus, a}} ->
-        normalize(a)
-
-      {:minus, a} ->
-        {:minus, normalize(a)}
-
-      # if numb is even you can change the sign of base to positive if need
-      {:elev, base, num = {:numb, _, _}} ->
-        base = normalize(base)
-
-        cond do
-          num == @zero ->
-            @uno
-
-          is_par(num) and is_gtzero(num) and !signof(base) ->
-            {:elev, chsign(base), num}
-
-          !is_par(num) and !is_gtzero(num) and !signof(base) ->
-            {:minus, {:elev, chsign(base), num}}
-
-          !signof(base) ->
-            {:minus, {:elev, chsign(base), num}}
-
-          true ->
-            ast
-        end
-
-      {:deriv, f, v} ->
-        {:deriv, normalize(f), v}
-
-      {:integ, f, v} ->
-        {:integ, normalize(f), v}
-
-      {:fcall, name, list} ->
-        {:fcall, name, Enum.map(list, &normalize/1)}
-
-      other ->
-        other
+    case length(newlist) do
+      0 -> @zero
+      1 -> List.first(newlist)
+      _ -> {{:m, :suma}, newlist}
     end
   end
 
-  # simplify
+  def normalize({{:m, :mult}, list}) do
+    {newlist, count_negs} =
+      Enum.map(list, &normalize/1)
+      |> Enum.reduce({[], 0}, fn el, {newlist, count_negs} ->
+        if !signof(el) do
+          {[chsign(el) | newlist], count_negs + 1}
+        else
+          {[el | newlist], count_negs}
+        end
+      end)
+
+    newlist =
+      Enum.reduce(newlist, [], fn opand, ac ->
+        add_opand(:mult, opand, {{:m, :mult}, ac})
+      end)
+      |> Enum.sort(&E.smm/2)
+
+    newop =
+      case length(newlist) do
+        0 -> @uno
+        1 -> List.first(newlist)
+        _ -> {{:m, :mult}, newlist}
+      end
+
+    if Integer.is_even(count_negs) do
+      newop
+    else
+      {:minus, newop}
+    end
+  end
+
+  def normalize({:minus, {{:m, :suma}, list = [h | _]}}) do
+    if(!signof(h)) do
+      list = Enum.map(list, fn el -> chsign(el) end)
+      normalize({{:m, :suma}, list})
+    else
+      {:minus, normalize({{:m, :suma}, list})}
+    end
+  end
+
+  def normalize({:minus, a}), do: {:minus, normalize(a)}
+
+  def normalize(ast = {:elev, base, num = {:numb, _, _}}) do
+    base = normalize(base)
+
+    cond do
+      num == @zero ->
+        @uno
+
+      is_par(num) and is_gtzero(num) and !signof(base) ->
+        {:elev, chsign(base), num}
+
+      !is_par(num) and !is_gtzero(num) and !signof(base) ->
+        {:minus, {:elev, chsign(base), num}}
+
+      !signof(base) ->
+        {:minus, {:elev, chsign(base), num}}
+
+      true ->
+        ast
+    end
+  end
+
+  def normalize(other), do: other
+
+  # Calculate
   def mk(ast) do
-    case ast do
-      {:numb, n, d} ->
-        mknum(n, d)
-
-      {:minus, {:minus, a}} ->
-        mk(a)
-
-      {:minus, @zero} ->
-        @zero
-
-      {:minus, {:numb, n, d}} ->
-        {:numb, -n, d}
-
+    case normalize(ast) do
       {:minus, a} ->
         {:minus, mk(a)}
 
@@ -141,17 +140,8 @@ defmodule Exun.Simpl2 do
       {:unit, val, ut} ->
         Un.toSI({:unit, mk(val), mk(ut)})
 
-      {:elev, _, @zero} ->
-        @uno
-
-      {:elev, a, @uno} ->
-        mk(a)
-
-      {:elev, @uno, _} ->
-        @uno
-
-      {:elev, {:numb, base, d1}, {:numb, -1, 1}} ->
-        {:numb, d1, base}
+      {:elev, {:numb, n, d}, @muno} ->
+        {:numb, d, n}
 
       {:elev, {:numb, base, d1}, {:numb, exp, d2}} ->
         {:numb, :math.pow(base, exp / d2), :math.pow(d1, exp / d2)}
@@ -204,6 +194,8 @@ defmodule Exun.Simpl2 do
 
       {op, a, b} ->
         {op, mk(a), mk(b)}
+
+      # throw "Unknown in mk #{U.tostr({op,a,b})}"
 
       tree ->
         tree
@@ -388,22 +380,10 @@ defmodule Exun.Simpl2 do
   end
 
   @doc """
-  For convenience, creates ast {{:m,:mult},[a,b]}
-  """
-  def mult({:numb, n1, d1}, {:numb, n2, d2}), do: mknum(n1 * n2, d1 * d2)
-  def mult(a, b), do: mcompose(:mult, a, b)
-
-  @doc """
   For convenience, creates ast {{:m,:mult},[a,b^-1]}
   """
   def divi({:numb, n1, d1}, {:numb, n2, d2}), do: mknum(n1 * d2, d1 * n2)
   def divi(a, b), do: mult(a, chpow(b))
-
-  @doc """
-  For convenience, creates ast {{:m,:suma},[a,b]}
-  """
-  def suma({:numb, n1, d1}, {:numb, n2, d2}), do: mknum(n1 * d2 + n2 * d1, d1 * d2)
-  def suma(a, b), do: mcompose(:suma, a, b)
 
   @doc """
   For convenience, creates ast {{:m,:mult},[a,-b]}
@@ -423,23 +403,6 @@ defmodule Exun.Simpl2 do
 
   def ln(a), do: {:fcall, "ln", [a]}
   def exp(a, b), do: {:fcall, "exp", [a, b]}
-
-  defp mcompose(op, a, b) do
-    case {a, b} do
-      {{{:m, ^op}, l1}, {{:m, ^op}, l2}} ->
-        {{:m, op}, l1 ++ l2}
-
-      {{{:m, ^op}, l1}, _} ->
-        {{:m, op}, [b | l1]}
-
-      {_, {{:m, ^op}, l2}} ->
-        {{:m, op}, [a | l2]}
-
-      _ ->
-        {{:m, op}, [a, b]}
-    end
-    |> normalize
-  end
 
   @doc """
   Returns normalized sign of ast
@@ -685,5 +648,116 @@ defmodule Exun.Simpl2 do
 
   defp gt(_, _) do
     {:unknown, nil}
+  end
+
+  def add_opand(:suma, {{:m, :suma}, l1}, {{:m, :suma}, l2}) do
+    Enum.reduce(l1, l2, fn sumando1, ac ->
+      add_opand(:suma, sumando1, {{:m, :suma}, ac})
+    end)
+  end
+
+  def add_opand(:mult, {{:m, :mult}, l1}, {{:m, :mult}, l2}) do
+    #IO.inspect(binding())
+
+    Enum.reduce(l1, l2, fn multando, ac ->
+      add_opand(:mult, multando, {{:m, :mult}, ac})
+      #|> IO.inspect()
+    end)
+    #|> IO.inspect()
+  end
+
+  def add_opand(:suma, a, {{:m, :suma}, l}) do
+    {reduced, list} =
+      Enum.reduce(l, {false, []}, fn sumando, {matched, newlist} ->
+        if not matched do
+          case {a, sumando} do
+            {{:numb, _, _}, {:numb, _, _}} -> {true, [suma(a, sumando) | newlist]}
+            {{:unit, _, _}, {:unit, _, _}} -> {true, [suma(a, sumando) | newlist]}
+            {a, a} -> {true, [mult(@dos, a) | newlist]}
+            {a, {:minus, a}} -> {true, newlist}
+            {{:minus, a}, a} -> {true, newlist}
+            {a, {{:m, :mult}, l2}} -> add_opand1(a, l2, sumando, newlist)
+            {{{:m, :mult}, l2}, a} -> add_opand1(a, l2, sumando, newlist)
+            _ -> {false, [sumando | newlist]}
+          end
+        else
+          {true, [sumando | newlist]}
+        end
+      end)
+
+    if reduced,
+      do: list,
+      else:
+        [a | l]
+        |> Enum.sort(&E.smm/2)
+  end
+
+  def add_opand(:mult, opand, {{:m, :mult}, l}) do
+    #IO.inspect(binding(), label: "single")
+
+    {reduced, list} =
+      Enum.reduce(l, {false, []}, fn multando, {matched, newlist} ->
+        if not matched do
+          case {opand, multando} do
+            {{:numb, _, _}, {:numb, _, _}} -> {true, [mult(opand, multando) | newlist]}
+            {{:numb, _, _}, {:unit, _, _}} -> {true, [mult(opand, multando) | newlist]}
+            {{:unit, _, _}, {:numb, _, _}} -> {true, [mult(opand, multando) | newlist]}
+            {a, a} -> {true, [{:elev, a, @dos} | newlist]}
+            {a, {:minus, a}} -> {true, [{:minus, {:elev, a, @dos}} | newlist]}
+            {{:minus, a}, a} -> {true, [{:minus, {:elev, a, @dos}} | newlist]}
+            {a, {:elev, a, @muno}} -> {true, [@uno | newlist]}
+            {{:elev, a, @muno}, a} -> {true, [@uno | newlist]}
+            {a, {:elev, a, exp}} -> {true, [{:elev, a, suma(exp, @uno)} | newlist]}
+            {{:elev, a, exp}, a} -> {true, [{:elev, a, suma(exp, @uno)} | newlist]}
+            {{:elev, a, e1}, {:elev, a, e2}} -> {true, [{:elev, a, suma(e1, e2)} | newlist]}
+            _ -> {false, [multando | newlist]}
+          end
+        else
+          {true, [multando | newlist]}
+        end
+      end)
+
+    if reduced do
+      list
+    else
+      [opand | l]
+    end
+    |> Enum.sort(&E.smm/2)
+    #|> IO.inspect(label: "Single result")
+  end
+
+  @doc """
+  For convenience, creates ast {{:m,:suma},[a,b]}
+  """
+  def suma({:numb, n1, d1}, {:numb, n2, d2}), do: mknum(n1 * d2 + n2 * d1, d1 * d2)
+
+  def suma(u1 = {:unit, _, _}, u2 = {:unit, _, _}) do
+    case Un.sum(u1, u2) do
+      {:ok, ast} -> ast
+      {:err, msg} -> throw(msg)
+    end
+  end
+
+  def suma(a, b), do: {{:m, :suma}, [a, b]}
+
+  @doc """
+  For convenience, creates ast {{:m,:mult},[a,b]}
+  """
+  def mult(@uno, a), do: a
+  def mult(a, @uno), do: a
+  def mult({:numb, n1, d1}, {:numb, n2, d2}), do: mknum(n1 * n2, d1 * d2)
+  def mult(u = {:unit, _, _}, n = {:numb, _, _}), do: mult(n, u)
+  def mult(n = {:numb, _, _}, {:unit, vu1, au1}), do: {:unit, mult(n, vu1), au1}
+  def mult({:unit, v1, t1}, {:unit, v2, t2}), do: {:unit, mult(v1, v2), mult(t1, t2)}
+  def mult(a, b), do: {{:m, :mult}, [a, b]}
+
+  defp add_opand1(a, l2, sumando, newlist) do
+    cond do
+      a in l2 ->
+        {true, [mult(a, {{:m, :suma}, [@uno | List.delete(l2, a)]}) | newlist]}
+
+      true ->
+        {false, [sumando | newlist]}
+    end
   end
 end

@@ -12,11 +12,11 @@ defmodule UnitTest do
   end
 
   test "1[m]+3[cm]+2[dm]+4[mm]" do
-    assert Exun.eval2str("1[m]+3[cm]+2[dm]+4[mm]") == "1.234[m]"
+    assert Exun.eval2str("1[m]+3[cm]+2[dm]+4[mm]") == "1.2340000000000002[m]"
   end
 
   test "(3[Kg] + 2[slug]) / (23[g] + 16[lb])" do
-    assert Exun.eval2str("(3[Kg] + 2[slug]) / (23[g] + 16[lb])") == "4.421111667130775"
+    assert Exun.eval2str("(3[Kg] + 2[slug]) / (23[g] + 16[lb])") == "4.421111667130774"
   end
 
   test "1[mm]/2+1[m]/2" do

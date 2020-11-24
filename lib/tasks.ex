@@ -2,6 +2,7 @@ defmodule Mix.Tasks.Debg do
   use Mix.Task
 
   def run(_) do
-    Exun.Pattern.umatch "a+x*z-x*j","f+a*b/d-(a*c)"
+    e = Exun.new("1+1/x")
+    f = Exun.Collect.expand_rec(e)
   end
 end

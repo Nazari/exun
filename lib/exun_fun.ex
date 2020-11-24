@@ -17,19 +17,20 @@ defmodule Exun.Fun do
 
   For now the definitions are
   ```
-  "ln(F)" => {&:math.log/1, "F'x/F", "x*ln(F)-$(x/F),x"},
-  "sin(F)" => {&:math.sin/1, "F'x*cos(F)", nil},
-  "cos(F)" => {&:math.cos/1, "-F'x*sin(F)", nil},
-  "tan(F)" => {&:math.tan/1, "F'x/cos(F)^2", nil},
-  "acos(F)" => {&:math.acos/1, "-F'x/(1-F^2)^0.5", nil},
-  "asin(F)" => {&:math.asin/1, "F'x/(1-F^2)^0.5", nil},
-  "atan(F)" => {&:math.atan/1, "F'x/(1+F^2)", nil},
-  "sinh(F)" => {&:math.sinh/1, "F'x*cosh(F)", nil},
-  "cosh(F)" => {&:math.cosh/1, "F'x*sinh(F)", nil},
-  "tanh(F)" => {&:math.tanh/1, "F'x/cosh(F)^2", nil},
-  "asinh(F)" => {&:math.asinh/1, "F'x/(F^2+1)^0.5", nil},
-  "acosh(F)" => {&:math.acosh/1, "F'x/(F^2-1)^0.5", nil},
-  "atanh(F)" => {&:math.atanh/1, "F'x/(1-F^2)", nil}
+      "ln(F)" => {&:math.log/1, "F'x/F", "x*ln(F)-$(x/F),x", "exp"},
+      "exp(F)" => {&:math.exp/1, "F'x*exp(F)", nil, "ln"},
+      "sin(F)" => {&:math.sin/1, "F'x*cos(F)", nil, "asin"},
+      "cos(F)" => {&:math.cos/1, "-F'x*sin(F)", nil, "acos"},
+      "tan(F)" => {&:math.tan/1, "F'x/cos(F)^2", nil, "atan"},
+      "acos(F)" => {&:math.acos/1, "-F'x/(1-F^2)^0.5", nil, "cos"},
+      "asin(F)" => {&:math.asin/1, "F'x/(1-F^2)^0.5", nil, "sin"},
+      "atan(F)" => {&:math.atan/1, "F'x/(1+F^2)", nil, "tan"},
+      "sinh(F)" => {&:math.sinh/1, "F'x*cosh(F)", nil, "asinh"},
+      "cosh(F)" => {&:math.cosh/1, "F'x*sinh(F)", nil, "acosh"},
+      "tanh(F)" => {&:math.tanh/1, "F'x/cosh(F)^2", nil, "atanh"},
+      "asinh(F)" => {&:math.asinh/1, "F'x/(F^2+1)^0.5", nil, "sinh"},
+      "acosh(F)" => {&:math.acosh/1, "F'x/(F^2-1)^0.5", nil, "cosh"},
+      "atanh(F)" => {&:math.atanh/1, "F'x/(1-F^2)", nil, "tanh"}
   ```
   """
   # name => Numeric implementation, Derivate, Integrate
@@ -47,7 +48,7 @@ defmodule Exun.Fun do
       "cosh(F)" => {&:math.cosh/1, "F'x*sinh(F)", nil, "acosh"},
       "tanh(F)" => {&:math.tanh/1, "F'x/cosh(F)^2", nil, "atanh"},
       "asinh(F)" => {&:math.asinh/1, "F'x/(F^2+1)^0.5", nil, "sinh"},
-      "acosh(F)" => {&:math.acosh/1, "F'x/(F^2-1)^0.5", nil, "cosh"},
+      "acosh(F)" => {&:math.acosh/1, "F'x/((F-1)^0.5*(F+1)^0.5)", nil, "cosh"},
       "atanh(F)" => {&:math.atanh/1, "F'x/(1-F^2)", nil, "tanh"}
     }
 

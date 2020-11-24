@@ -87,7 +87,8 @@ defmodule Exun.Collect do
 
       {{:m, :suma}, l} ->
         {{:m, :suma}, Enum.map(l, &expand_rec(&1))}
-
+        #l = Enum.map(l, &expand_rec(&1))
+        #find_op(l, :mult_den)
 
       {{:m, :mult}, l} ->
         l = Enum.map(l, &expand_rec/1)
@@ -138,6 +139,53 @@ defmodule Exun.Collect do
       {{:m, :mult}, [denom | remain]}
     else
       nil
+    end
+  end
+
+  # Try transform a+b/c+d/e to (ace+be+dc)/ce
+  def find_op(list, :mult_den) do
+    denoms =
+      Enum.reduce(list, [], fn el, denoms ->
+        case el do
+          {{:m, :mult}, ml} ->
+            Enum.reduce(ml, denoms, fn opand, denoms ->
+              case opand do
+                {:elev, a, b} ->
+                  if not S.signof(b),
+                    do: [S.normalize({:elev, a, S.chsign(b)}) | denoms],
+                    else: denoms
+
+                _ ->
+                  denoms
+              end
+            end)
+
+          {:elev, a, b} ->
+            if not S.signof(b), do: [S.normalize({:elev, a, S.chsign(b)}) | denoms], else: denoms
+
+          _ ->
+            denoms
+        end
+      end)
+
+    if length(denoms) == 0 do
+      {{:m, :suma}, list}
+    else
+      lmdenoms =
+        Enum.reduce(denoms, [], fn opand, ac -> S.add_opand(:mult, opand, {{:m, :mult}, ac}) end)
+        #|> IO.inspect(label: "lmdenoms")
+
+      lmnumer =
+        Enum.map(list, fn el ->
+          {{:m, :mult}, S.add_opand(:mult, el, {{:m, :mult}, lmdenoms})}
+        end)
+        #|> IO.inspect(label: "lmnumer")
+
+      numer = S.mkrec({{:m, :suma}, lmnumer})
+      #|>IO.inspect(label: "numer")
+      denom = S.mkrec({{:m, :mult}, lmdenoms})
+      #|> IO.inspect(label: "denom")
+      {{:m, :mult}, [numer, {:elev, denom, {:numb, -1, 1}}]}
     end
   end
 end
