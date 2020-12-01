@@ -78,7 +78,7 @@ defmodule Exun.Pattern do
     match(taast, Exun.UI.tostr(expr))
   end
 
-  def match(taast, texpr, context, tconditions \\ [], transf \\ true) do
+  def match(taast, texpr, context \\ %{}, tconditions \\ [], transf \\ true) do
     aast = Exun.new(taast).ast
     expr = Exun.new(texpr, context).ast
 

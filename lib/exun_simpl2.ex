@@ -657,13 +657,14 @@ defmodule Exun.Simpl do
   end
 
   def add_opand(:mult, {{:m, :mult}, l1}, {{:m, :mult}, l2}) do
-    #IO.inspect(binding())
+    # IO.inspect(binding())
 
     Enum.reduce(l1, l2, fn multando, ac ->
       add_opand(:mult, multando, {{:m, :mult}, ac})
-      #|> IO.inspect()
+      # |> IO.inspect()
     end)
-    #|> IO.inspect()
+
+    # |> IO.inspect()
   end
 
   def add_opand(:suma, a, {{:m, :suma}, l}) do
@@ -693,7 +694,7 @@ defmodule Exun.Simpl do
   end
 
   def add_opand(:mult, opand, {{:m, :mult}, l}) do
-    #IO.inspect(binding(), label: "single")
+    # IO.inspect(binding(), label: "single")
 
     {reduced, list} =
       Enum.reduce(l, {false, []}, fn multando, {matched, newlist} ->
@@ -723,7 +724,8 @@ defmodule Exun.Simpl do
       [opand | l]
     end
     |> Enum.sort(&E.smm/2)
-    #|> IO.inspect(label: "Single result")
+
+    # |> IO.inspect(label: "Single result")
   end
 
   @doc """
@@ -749,6 +751,8 @@ defmodule Exun.Simpl do
   def mult(u = {:unit, _, _}, n = {:numb, _, _}), do: mult(n, u)
   def mult(n = {:numb, _, _}, {:unit, vu1, au1}), do: {:unit, mult(n, vu1), au1}
   def mult({:unit, v1, t1}, {:unit, v2, t2}), do: {:unit, mult(v1, v2), mult(t1, t2)}
+  def mult(a, {{:m, :mult}, l}), do: {{:m, :mult}, [a | l]}
+  def mult({{:m, :mult}, l}, a), do: {{:m, :mult}, [a | l]}
   def mult(a, b), do: {{:m, :mult}, [a, b]}
 
   defp add_opand1(a, l2, sumando, newlist) do

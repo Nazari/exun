@@ -1,8 +1,11 @@
 defmodule Mix.Tasks.Debg do
   use Mix.Task
+  import Exun
+  import Exun.Collect
 
   def run(_) do
-    e = Exun.new("1+1/x")
-    f = Exun.Collect.expand_rec(e)
+    e = new "a/b+c*d/e+f/g+h"
+    {_,l}=e.ast
+    find_op l,:mult_den
   end
 end

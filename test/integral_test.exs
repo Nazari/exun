@@ -35,7 +35,7 @@ defmodule IntegralTest do
       "cosh",
       "tanh",
       "asinh",
-      #"acosh",
+      "acosh",
       #"atanh",
     ]
     |> Enum.map(fn name ->

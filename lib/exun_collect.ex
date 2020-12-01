@@ -86,9 +86,10 @@ defmodule Exun.Collect do
         {{t, rs, cs}, list |> Enum.map(&expand/1), mr, mc}
 
       {{:m, :suma}, l} ->
-        {{:m, :suma}, Enum.map(l, &expand_rec(&1))}
-        #l = Enum.map(l, &expand_rec(&1))
-        #find_op(l, :mult_den)
+        # {{:m, :suma}, Enum.map(l, &expand_rec(&1))}
+
+        l = Enum.map(l, &expand_rec(&1))
+        find_op(l, :mult_den)
 
       {{:m, :mult}, l} ->
         l = Enum.map(l, &expand_rec/1)
@@ -144,48 +145,51 @@ defmodule Exun.Collect do
 
   # Try transform a+b/c+d/e to (ace+be+dc)/ce
   def find_op(list, :mult_den) do
-    denoms =
-      Enum.reduce(list, [], fn el, denoms ->
+    {numeradores, denominadores} =
+      Enum.reduce(list, {[], []}, fn el, {numers, denoms} ->
         case el do
           {{:m, :mult}, ml} ->
-            Enum.reduce(ml, denoms, fn opand, denoms ->
-              case opand do
-                {:elev, a, b} ->
-                  if not S.signof(b),
-                    do: [S.normalize({:elev, a, S.chsign(b)}) | denoms],
-                    else: denoms
+            {n, d, nn, nd} =
+              Enum.reduce(ml, {numers, denoms, [], []}, fn opand,
+                                                           {numers, denoms, newnumers, newdenoms} ->
+                case opand do
+                  {:elev, a, b} ->
+                    if not S.signof(b) do
+                      rever = S.mkrec({:elev, a, S.chsign(b)})
 
-                _ ->
-                  denoms
-              end
-            end)
+                      {Enum.map(numers, &S.mult(&1, rever)), denoms, newnumers,
+                       [rever | newdenoms]}
+                    else
+                      {numers, denoms, [opand | newnumers], newdenoms}
+                    end
+
+                  _ ->
+                    {numers, denoms, [opand | newnumers], newdenoms}
+                end
+              end)
+
+            {n ++ Enum.map(nn, &S.mult(&1, {{:m, :mult}, denoms})), d ++ nd}
 
           {:elev, a, b} ->
-            if not S.signof(b), do: [S.normalize({:elev, a, S.chsign(b)}) | denoms], else: denoms
+            if not S.signof(b) do
+              rever = {:elev, a, S.chsign(b)}
+              {Enum.map(numers, &S.mult(&1, rever)), [rever | denoms]}
+            else
+              {[{{:m, :mult}, [el | denoms]}], denoms}
+            end
 
           _ ->
-            denoms
+            {[{{:m, :mult}, [el | denoms]}], denoms}
         end
       end)
 
-    if length(denoms) == 0 do
-      {{:m, :suma}, list}
+    upper = {{:m, :suma}, numeradores}
+    upper_simp = S.mkrec(upper)
+
+    if(E.eq(upper, upper_simp)) do
+      {{:m, :mult}, list}
     else
-      lmdenoms =
-        Enum.reduce(denoms, [], fn opand, ac -> S.add_opand(:mult, opand, {{:m, :mult}, ac}) end)
-        #|> IO.inspect(label: "lmdenoms")
-
-      lmnumer =
-        Enum.map(list, fn el ->
-          {{:m, :mult}, S.add_opand(:mult, el, {{:m, :mult}, lmdenoms})}
-        end)
-        #|> IO.inspect(label: "lmnumer")
-
-      numer = S.mkrec({{:m, :suma}, lmnumer})
-      #|>IO.inspect(label: "numer")
-      denom = S.mkrec({{:m, :mult}, lmdenoms})
-      #|> IO.inspect(label: "denom")
-      {{:m, :mult}, [numer, {:elev, denom, {:numb, -1, 1}}]}
+      S.divi(upper_simp, {{:m, :mult}, denominadores})
     end
   end
 end
