@@ -152,6 +152,9 @@ defmodule Exun.Simpl do
       {:elev, {:unit, uv, ut}, expon} ->
         {:unit, mk({:elev, uv, expon}), mk({:elev, ut, expon})}
 
+      {:elev, {{:m, :mult}, mults}, exp} ->
+        {{:m, :mult}, Enum.map(mults, &elev(&1, exp))}
+
       {:fcall, name, lst} ->
         Exun.Fun.fcall(name, lst)
 
