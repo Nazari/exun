@@ -3,6 +3,7 @@ defmodule Exun.Pattern do
   alias Exun.Eq, as: E
   alias Exun.Collect, as: C
   alias Exun.Simpl, as: S
+  alias Exun.Fun, as: F
 
   @zero {:numb, 0, 1}
   @uno {:numb, 1, 1}
@@ -269,8 +270,8 @@ defmodule Exun.Pattern do
       {{:elev, a, b}, expr} ->
         mlist([a, b], [expr, @uno], map)
 
-      # Cannot isolate for now. Match sin(F) <= 1 would be possible
-      # if we can isolate F=acos(1) and define F as constant, a number.
+      # Cannot isolate for now. Match sin(F) = 1 would be possible
+      # if we can isolate F=asin(1) and define F as constant, a number.
       {{:fcall, _name, _args}, {:numb, _, _}} ->
         [{:ko, map}]
 
@@ -488,16 +489,26 @@ defmodule Exun.Pattern do
   and equals x*y  If we use a pattern like f(x) then x must be in the expression expr
   in any way. If we use f(g(x)) then g(x) must be in the expression also
   """
-  def mfdef(acall1 = {:fcall, _, a1}, acall2 = {:fcall, _, a2}, mainmap) do
+  def mfdef(acall1 = {:fcall, pfn, a1}, acall2 = {:fcall, efn, a2}, mainmap) do
     if(length(a1) != length(a2)) do
       [{:ko, mainmap}]
     else
-      # Try match arguments in same order
-      mlist(a1, a2, mainmap)
-      # Set fname in all matching maps
-      |> Enum.map(fn {_, smap} ->
-        checkmap(smap, acall1, acall2)
-      end)
+      # If function name in abstract pattern is a base function (Exun.Fun.base)
+      # then a textual match is required
+      in_base = F.base()[pfn<>"(F)"]
+
+      cond do
+        in_base != nil and pfn != efn ->
+          [{:ko, mainmap}]
+
+        (in_base != nil and pfn == efn) or in_base == nil ->
+          # Try match arguments in same order
+          mlist(a1, a2, mainmap)
+          # Set fname in all matching maps
+          |> Enum.map(fn {_, smap} ->
+            checkmap(smap, acall1, acall2)
+          end)
+      end
     end
   end
 
