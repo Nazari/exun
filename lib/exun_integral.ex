@@ -116,6 +116,9 @@ defmodule Exun.Integral do
     (str |> String.replace("x", x) |> new()).ast
   end
 
+  @doc """
+  Returns true if expressioon contains a symbolic integral
+  """
   def symbinteg(ast) do
     case ast do
       {:integ, _, _} -> true
