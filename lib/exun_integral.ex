@@ -76,7 +76,7 @@ defmodule Exun.Integral do
         snew("x*acosh(x)-(1+x)*((x-1)/(x+1))^0.5", x)
 
       {{:fcall, "atanh", [v = {:vari, x}]}, v} ->
-        snew("(ln(1+x)+2*x*atanh(x)+ln(1-x))/2", x)
+        snew("ln(1-x^2)/2+x*atanh(x)", x)
 
       {{:fcall, name, args}, v} ->
         case F.base()[name <> "(F)"] do

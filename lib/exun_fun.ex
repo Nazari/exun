@@ -33,7 +33,7 @@ defmodule Exun.Fun do
       "atanh(F)" => {&:math.atanh/1, "F'x/(1-F^2)", nil, "tanh"}
   ```
   """
-  # name => Numeric implementation, Derivate, Integrate
+  # name => Numeric implementation, Derivate, Integrate, Reverse
   def base,
     do: %{
       "ln(F)" => {&:math.log/1, "F'x/F", "x*ln(F)-$(x/F),x", "exp"},
