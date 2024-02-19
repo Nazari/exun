@@ -152,7 +152,7 @@ defmodule Exun.Pattern do
     |> Enum.map(&check_def_consistency(&1))
   end
 
-  defp check_def_consistency(tmap) when is_tuple(tmap) do
+  defp check_def_consistency(tmap) when is_tuple(tmap) and tuple_size(tmap) == 2 do
     {:ok, map} = tmap
 
     res =
