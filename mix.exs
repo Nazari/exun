@@ -10,8 +10,7 @@ defmodule Exun.MixProject do
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       package: package(),
-      compilers: [:yecc] ++ Mix.compilers(),
-      compilers: [:leex] ++ Mix.compilers()
+      compilers: [:leex, :yecc] ++ Mix.compilers()
     ]
   end
 
