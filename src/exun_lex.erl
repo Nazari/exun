@@ -1,4 +1,4 @@
--file("/usr/local/Cellar/erlang/26.2.2/lib/erlang/lib/parsetools-2.5/include/leexinc.hrl", 0).
+-file("/usr/lib/erlang/lib/parsetools-2.6/include/leexinc.hrl", 0).
 %% The source of this file is part of leex distribution, as such it
 %% has the same Copyright as the other files in the leex
 %% distribution. The Copyright is defined in the accompanying file
@@ -14,7 +14,7 @@
 %% User code. This is placed here to allow extra attributes.
 -file("src/exun_lex.xrl", 59).
 parse_string(Chars) -> list_to_binary(string:replace(string:replace('Elixir.String':slice(list_to_binary(Chars), 1, length(Chars) - 2), <<"\\\"">>, <<"\"">>, all), <<"\\\\">>, <<"\\">>, all)).
--file("/usr/local/Cellar/erlang/26.2.2/lib/erlang/lib/parsetools-2.5/include/leexinc.hrl", 14).
+-file("/usr/lib/erlang/lib/parsetools-2.6/include/leexinc.hrl", 14).
 
 format_error({illegal,S}) -> ["illegal characters ",io_lib:write_string(S)];
 format_error({user,S}) -> S.
@@ -707,4 +707,4 @@ yyaction_20(TokenLine) ->
 -file("src/exun_lex.xrl", 55).
 yyaction_21() ->
      skip_token .
--file("/usr/local/Cellar/erlang/26.2.2/lib/erlang/lib/parsetools-2.5/include/leexinc.hrl", 344).
+-file("/usr/lib/erlang/lib/parsetools-2.6/include/leexinc.hrl", 344).
