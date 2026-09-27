@@ -9,7 +9,9 @@ defmodule Exun.MixProject do
       description: descripcion(),
       start_permanent: Mix.env() == :prod,
       deps: deps(),
-      package: package()
+      package: package(),
+      compilers: [:yecc] ++ Mix.compilers(),
+      compilers: [:leex] ++ Mix.compilers()
     ]
   end
 

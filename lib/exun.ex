@@ -173,7 +173,7 @@ defmodule Exun do
             ast = pc[key]
 
             nv =
-              List.zip([args_names, args])
+              Enum.zip([args_names, args])
               |> Enum.reduce(%{}, fn {n, v}, ac ->
                 Map.put(ac, n, v)
               end)

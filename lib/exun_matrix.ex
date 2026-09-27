@@ -145,7 +145,7 @@ defmodule Exun.Matrix do
   defp mult_list(rlist, clist) when is_list(rlist) and is_list(clist) do
     C.coll(
       {{:m, :suma},
-       List.zip([clist, rlist])
+       Enum.zip([clist, rlist])
        |> Enum.map(fn {r, c} -> S.mult(r, c) end)}
     )
   end

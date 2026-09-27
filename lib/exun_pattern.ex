@@ -348,7 +348,7 @@ defmodule Exun.Pattern do
     Enum.reduce(cmb, [], fn set, acc ->
       # zip pattern and expresion and try to match with mnode with current defs map
       (
-        zipped = List.zip([lsta, set])
+        zipped = Enum.zip([lsta, set])
         # |> IO.inspect(label: "zipped")
         Enum.reduce(zipped, [{:ok, mainmap}], fn {abs, exp}, maplist ->
           Enum.reduce(maplist, [], fn {res, map}, acu ->
@@ -537,7 +537,7 @@ defmodule Exun.Pattern do
   end
 
   def mlist(a1, a2, mainmap) when is_list(a1) and is_list(a2) do
-    List.zip([a1, a2])
+    Enum.zip([a1, a2])
     # |> IO.inspect(label: "mlist zipped")
     |> Enum.reduce([{:ok, mainmap}], fn {ast, exp}, maps ->
       Enum.reduce(maps, [], fn {res, smap}, acu ->
@@ -651,7 +651,7 @@ defmodule Exun.Pattern do
     seed = sfi(number - pivot, ngs - 1, 1)
     pivots = List.duplicate(pivot, length(seed))
 
-    ((List.zip([pivots, seed])
+    ((Enum.zip([pivots, seed])
       |> Enum.map(fn e -> Tuple.to_list(e) |> List.flatten() end)) ++
        if pivot < floor(number / ngs) do
          sfi(number, ngs, pivot + 1)
@@ -728,7 +728,7 @@ defmodule Exun.Pattern do
         reduced_ssets = Enum.slice(ssets, unos, length(ssets))
 
         result =
-          List.zip([remain, toset])
+          Enum.zip([remain, toset])
           |> Enum.map(fn {rem, fe} ->
             rcombin(reduced_ssets, rem, fe)
           end)
@@ -742,7 +742,7 @@ defmodule Exun.Pattern do
         toset = Enum.map(disperse, &(presolution ++ [&1]))
 
         result =
-          List.zip([remain, toset])
+          Enum.zip([remain, toset])
           |> Enum.map(fn {rem, fe} ->
             rcombin(ts, rem, fe)
           end)
